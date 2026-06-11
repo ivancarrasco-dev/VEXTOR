@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./src/assets/brand/isotipo/Isotipo_Verde_Vextor.png" alt="Vextor Logo" width="160" style="border-radius: 24px; margin-bottom: 20px;"/>
+  <img src="/src/assets/brand/isotipo/Isotipo_Verde_Vextor.png" alt="Vextor Logo" width="160" style="border-radius: 24px; margin-bottom: 20px;"/>
 
   # Vextor
 
