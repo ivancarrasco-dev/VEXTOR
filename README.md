@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./src/assets/brand/logo-full.png" alt="Vextor Logo" width="160" style="border-radius: 24px; margin-bottom: 20px;"/>
+  <img src="./src/assets/brand/isotipo/Isotipo Vextor Blanco Sin Fondo.png" alt="Vextor Logo" width="160" style="border-radius: 24px; margin-bottom: 20px;"/>
 
   # Vextor
 
@@ -7,8 +7,6 @@
 
   Plataforma SaaS premium diseñada para modernizar la gestión operativa de empresas de transporte especial.  
   Reemplaza procesos manuales con un sistema centralizado, seguro y eficiente.
-
-  [vextor.com](https://vextor.com)
 </div>
 
 ---
@@ -44,3 +42,26 @@ El proyecto sigue una estructura modular y escalable:
 ### Instalación de dependencias
 ```bash
 npm install
+```
+Iniciar servidor de desarrollo
+```Bash
+npm run dev
+```
+Construcción para producción
+```Bash
+npm run build
+```
+
+## 🔒 Próximos Pasos
+
+> [!NOTE]
+> **Estado del proyecto:** Vextor se encuentra en fase de desarrollo activo.
+
+- **Implementación de módulos de gestión individual:** Desarrollo de las secciones para la administración de *Vehículos* y *Conductores*.
+- **Integración de servicios de Backend / API:** Conexión de la interfaz con los endpoints del servidor.
+- **Configuración de estados globales:** Arquitectura del flujo de datos utilizando *Context API* o *Redux*.
+- **Implementación de notificaciones en tiempo real:** Sistema de alertas instantáneas para el usuario.
+
+<div align="center">
+  <img src="./src/assets/brand/Logotipo/Logo Blanco Vextor Sin Fondo.png" alt="Vextor Logo" width="400" style="border-radius: 24px; margin-bottom: 20px;"/>
+</div>
