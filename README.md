@@ -1,6 +1,17 @@
-# Vextor - Gestión Inteligente de Flotas
+<div align="center">
+  <img src="./src/assets/brand/logo-full.png" alt="Vextor Logo" width="160" style="border-radius: 24px; margin-bottom: 20px;"/>
 
-Vextor es una plataforma SaaS premium diseñada para modernizar la gestión operativa de empresas de transporte especial. Este proyecto reemplaza procesos manuales (papel, Excel, WhatsApp) con un sistema centralizado, seguro y eficiente.
+  # Vextor
+
+  ### Gestión Inteligente de Flotas
+
+  Plataforma SaaS premium diseñada para modernizar la gestión operativa de empresas de transporte especial.  
+  Reemplaza procesos manuales con un sistema centralizado, seguro y eficiente.
+
+  [vextor.com](https://vextor.com)
+</div>
+
+---
 
 ## 🚀 Tecnologías Core
 * **React 19:** Biblioteca base para la interfaz.
@@ -33,20 +44,3 @@ El proyecto sigue una estructura modular y escalable:
 ### Instalación de dependencias
 ```bash
 npm install
-```
-
-### Iniciar servidor de desarrollo
-```bash
-npm run dev
-```
-
-### Construcción para producción
-```bash
-npm run build
-```
-
-## 🔒 Próximos Pasos
-1. Implementación de módulos de gestión individual (Vehículos, Conductores).
-2. Integración de servicios de Backend / API.
-3. Configuración de estados globales (Context API / Redux).
-4. Implementación de notificaciones en tiempo real.
