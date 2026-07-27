@@ -156,7 +156,7 @@ const Register = () => {
           transition={{ duration: 1, delay: 1 }}
           className="text-v-gray text-sm"
         >
-          © 2024 Vextor Technologies. Todos los derechos reservados.
+          © 2026 Vextor Technologies. Todos los derechos reservados.
         </motion.p>
       </div>
 
