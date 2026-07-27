@@ -73,7 +73,6 @@ const HeroSection = () => {
                   </div>
                 ))}
               </div>
-              <p>Confianza de +500 empresas de transporte</p>
             </div>
           </motion.div>
 
