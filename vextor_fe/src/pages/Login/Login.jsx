@@ -106,8 +106,11 @@ const Login = () => {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
+          className="relative z-10"
         >
-          <Logo />
+          <Link to="/" className="inline-block">
+            <Logo />
+          </Link>
         </motion.div>
 
         <div className="relative z-10">
@@ -155,7 +158,9 @@ const Login = () => {
       <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-6 sm:p-12 bg-v-dark-soft lg:rounded-l-[40px] shadow-[-20px_0_40px_rgba(0,0,0,0.5)] border-l border-white/5">
         <div className="w-full max-w-md space-y-8">
           <div className="lg:hidden mb-8 flex justify-center">
-            <Logo />
+            <Link to="/">
+              <Logo />
+            </Link>
           </div>
 
           <div className="space-y-2 text-center lg:text-left">
