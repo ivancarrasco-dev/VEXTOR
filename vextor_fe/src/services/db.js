@@ -208,4 +208,60 @@ export const initializeDatabase = () => {
     }
     localStorage.setItem('vextor_db_maintenance', JSON.stringify(maintenance));
   }
+
+  // 4. Initialize Routes if not exists
+  if (!localStorage.getItem('vextor_db_routes')) {
+    const vehicles = JSON.parse(localStorage.getItem('vextor_db_vehicles') || '[]');
+    const drivers = JSON.parse(localStorage.getItem('vextor_db_drivers') || '[]');
+
+    const sampleDriverId = drivers[0]?.id_conductor || generateUUID();
+    const sampleVehicleId = vehicles[0]?.id_vehiculo || generateUUID();
+
+    const routes = [
+      {
+        id_ruta: 'route1111-1111-4000-a000-000000000001',
+        codigo_ruta: 'RUT-101',
+        nombre_ruta: 'Ruta Portal Norte a Andino',
+        origen: '4.7554, -74.0463',
+        destino: '4.6669, -74.0528',
+        fecha_programada: new Date(Date.now() + 24 * 3600 * 1000).toISOString().slice(0, 16), // tomorrow
+        hora_inicio_real: '',
+        hora_fin_real: '',
+        estado_ruta: 'PROGRAMADA',
+        motivo_suspension: '',
+        id_conductor: sampleDriverId,
+        id_vehiculo: sampleVehicleId
+      },
+      {
+        id_ruta: 'route2222-2222-4000-a000-000000000002',
+        codigo_ruta: 'RUT-102',
+        nombre_ruta: 'Ruta Portal 80 a Parque de la 93',
+        origen: '4.7100, -74.1120',
+        destino: '4.6768, -74.0483',
+        fecha_programada: new Date().toISOString().slice(0, 16), // nowish
+        hora_inicio_real: new Date(Date.now() - 3600 * 1000).toISOString().slice(0, 16),
+        hora_fin_real: '',
+        estado_ruta: 'EN_PROCESO',
+        motivo_suspension: '',
+        id_conductor: drivers[1]?.id_conductor || sampleDriverId,
+        id_vehiculo: vehicles[1]?.id_vehiculo || sampleVehicleId
+      },
+      {
+        id_ruta: 'route3333-3333-4000-a000-000000000003',
+        codigo_ruta: 'RUT-103',
+        nombre_ruta: 'Ruta Terminal Salitre a Aeropuerto',
+        origen: '4.6534, -74.1158',
+        destino: '4.6975, -74.1411',
+        fecha_programada: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString().slice(0, 16), // 2 days ago
+        hora_inicio_real: new Date(Date.now() - 2 * 24 * 3600 * 1000 + 15 * 60 * 1000).toISOString().slice(0, 16),
+        hora_fin_real: new Date(Date.now() - 2 * 24 * 3600 * 1000 + 45 * 60 * 1000).toISOString().slice(0, 16),
+        estado_ruta: 'COMPLETADA',
+        motivo_suspension: '',
+        id_conductor: drivers[2]?.id_conductor || sampleDriverId,
+        id_vehiculo: vehicles[2]?.id_vehiculo || sampleVehicleId
+      }
+    ];
+
+    localStorage.setItem('vextor_db_routes', JSON.stringify(routes));
+  }
 };
