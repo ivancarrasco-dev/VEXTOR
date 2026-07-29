@@ -1,9 +1,14 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Truck, MapPin, Calendar, Clock, ChevronRight, Users, Wrench } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import StatsCard from '../../components/dashboard/StatsCard';
 import QuickActionCard from '../../components/dashboard/QuickActionCard';
 import { useAuth } from '../../context/AuthContext';
+import { vehicleService } from '../../services/vehicleService';
+import { driverService } from '../../services/driverService';
+import { maintenanceService } from '../../services/maintenanceService';
 
 const recentActivity = [
   { id: 1, type: 'route', title: 'Ruta Escolar Norte', user: 'Juan Pérez', status: 'Completada', time: 'hace 15 min', icon: MapPin, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
@@ -19,13 +24,47 @@ const recentActivity = [
  * Vista principal de control operativo para gerentes de flota.
  *
  * Funcionalidades:
- * * Visualización de métricas clave (Vehículos, Conductores, Rutas, Mantenimientos).
+ * * Visualización de métricas clave dinámicas (Vehículos, Conductores, Rutas, Mantenimientos).
  * * Registro de actividad reciente con estados codificados por colores.
- * * Acceso rápido a las tareas más comunes del sistema.
+ * * Acceso rápido a las tareas más comunes del sistema con navegación fluida.
  * * Saludo personalizado y contexto temporal de la operación.
  */
 const Dashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+
+  // Dynamic counts state
+  const [stats, setStats] = useState({
+    activeVehicles: '0',
+    driversCount: '0',
+    maintenanceCount: '0'
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardStats = async () => {
+      try {
+        const vehicles = await vehicleService.getVehicles();
+        const drivers = await driverService.getDrivers();
+        const maintenances = await maintenanceService.getMaintenances();
+
+        // Calculate active vehicles (excluding INACTIVO)
+        const activeVeh = vehicles.filter(v => v.estado_vehiculo !== 'INACTIVO').length;
+
+        setStats({
+          activeVehicles: activeVeh.toString(),
+          driversCount: drivers.length.toString(),
+          maintenanceCount: maintenances.length.toString()
+        });
+      } catch (error) {
+        console.error('Error fetching dashboard stats:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDashboardStats();
+  }, []);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
@@ -55,7 +94,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
           title="Vehículos Activos"
-          value="42"
+          value={isLoading ? '...' : stats.activeVehicles}
           icon={Truck}
           trend="up"
           trendValue={12}
@@ -63,7 +102,7 @@ const Dashboard = () => {
         />
         <StatsCard
           title="Conductores"
-          value="38"
+          value={isLoading ? '...' : stats.driversCount}
           icon={Users}
           trend="up"
           trendValue={5}
@@ -79,7 +118,7 @@ const Dashboard = () => {
         />
         <StatsCard
           title="Mantenimientos"
-          value="4"
+          value={isLoading ? '...' : stats.maintenanceCount}
           icon={Wrench}
           trend="up"
           trendValue={1}
@@ -131,24 +170,28 @@ const Dashboard = () => {
               title="Registrar Vehículo"
               description="Añade una nueva unidad a la flota"
               icon={Truck}
+              onClick={() => navigate('/vehicles?action=new')}
               delay={0.5}
             />
             <QuickActionCard
               title="Registrar Conductor"
               description="Asigna un nuevo operador"
               icon={Users}
+              onClick={() => navigate('/drivers?action=new')}
               delay={0.6}
             />
             <QuickActionCard
               title="Crear Ruta"
               description="Planifica un nuevo trayecto"
               icon={MapPin}
+              onClick={() => navigate('/routes')}
               delay={0.7}
             />
             <QuickActionCard
               title="Mantenimiento"
               description="Agenda una revisión técnica"
               icon={Wrench}
+              onClick={() => navigate('/maintenance?action=new')}
               delay={0.8}
             />
           </div>
