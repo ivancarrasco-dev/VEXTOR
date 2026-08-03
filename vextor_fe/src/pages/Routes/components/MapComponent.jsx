@@ -3,6 +3,7 @@ import L from 'leaflet';
 import 'leaflet-routing-machine';
 import { Layers, MapPin, Navigation, Compass, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '../../../utils/cn';
+import { useTheme } from '../../../context/ThemeContext';
 
 // Tile Providers configuration list
 const TILE_PROVIDERS = [
@@ -108,11 +109,12 @@ const MapComponent = ({
   onSelectPoints,
   onRouteCalculated,
 }) => {
+  const { theme } = useTheme();
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
 
   // UI States
-  const [activeTileId, setActiveTileId] = useState('carto-dark');
+  const [activeTileId, setActiveTileId] = useState(theme === 'dark' ? 'carto-dark' : 'carto-positron');
   const [isTilesLoading, setIsTilesLoading] = useState(false);
   const [hasTileError, setHasTileError] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -166,8 +168,9 @@ const MapComponent = ({
 
     mapInstanceRef.current = map;
 
-    // Load initial tile layer (Carto Dark Matter is a gorgeous theme)
-    switchTileLayer('carto-dark');
+    // Load initial tile layer based on current theme
+    const initialTileId = theme === 'dark' ? 'carto-dark' : 'carto-positron';
+    switchTileLayer(initialTileId);
 
     // Handle map clicks for selecting points
     map.on('click', (e) => {
@@ -231,6 +234,14 @@ const MapComponent = ({
       }
     };
   }, []);
+
+  // Switch tile layer automatically when global theme changes
+  useEffect(() => {
+    if (mapInstanceRef.current) {
+      const targetTileId = theme === 'dark' ? 'carto-dark' : 'carto-positron';
+      switchTileLayer(targetTileId);
+    }
+  }, [theme]);
 
   // Set tile loading states and handle tile layer swaps
   const switchTileLayer = (providerId) => {

@@ -114,8 +114,8 @@ const ProblemSection = () => {
             className="p-8 rounded-3xl bg-primary flex flex-col justify-between"
           >
             <div>
-              <h3 className="text-2xl font-bold text-v-dark mb-4">Vextor es la solución que su empresa necesita.</h3>
-              <p className="text-v-dark/80 font-medium leading-relaxed">
+              <h3 className="text-2xl font-bold text-v-dark-constant mb-4">Vextor es la solución que su empresa necesita.</h3>
+              <p className="text-v-dark-constant/80 font-medium leading-relaxed">
                 Centralizamos toda su operación en una plataforma intuitiva, profesional y diseñada para el crecimiento.
               </p>
             </div>

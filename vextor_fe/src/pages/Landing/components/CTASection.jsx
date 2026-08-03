@@ -33,7 +33,7 @@ const CTASection = () => {
               className="relative z-10"
             >
               <div className="w-20 h-20 bg-primary rounded-3xl flex items-center justify-center mx-auto mb-10 shadow-[0_0_50px_rgba(16,185,129,0.3)] rotate-12">
-                <Rocket className="text-v-dark w-10 h-10" />
+                <Rocket className="text-v-dark-constant w-10 h-10" />
               </div>
 
               <h2 className="text-4xl md:text-6xl font-bold text-v-white mb-8 tracking-tight">

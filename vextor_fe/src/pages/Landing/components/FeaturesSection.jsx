@@ -108,7 +108,7 @@ const FeaturesSection = () => {
               transition={{ delay: index * 0.05 }}
               className="p-6 rounded-2xl bg-v-dark border border-v-dark-border hover:border-primary/30 transition-all duration-300 group"
             >
-              <div className="w-12 h-12 rounded-xl bg-v-dark-soft text-v-white flex items-center justify-center mb-6 group-hover:bg-primary group-hover:text-v-dark transition-colors duration-300">
+              <div className="w-12 h-12 rounded-xl bg-v-dark-soft text-v-white flex items-center justify-center mb-6 group-hover:bg-primary group-hover:text-v-dark-constant transition-colors duration-300">
                 <feature.icon size={24} />
               </div>
               <h3 className="text-lg font-bold text-v-white mb-3">{feature.title}</h3>

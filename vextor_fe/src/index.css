@@ -1,25 +1,47 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --v-bg: #f8fafc; /* slate-50 */
+  --v-bg-soft: #ffffff; /* pure white cards */
+  --v-border: #e2e8f0; /* slate-200 */
+  --v-text: #0f172a; /* slate-900 */
+  --v-gray: #64748b; /* slate-500 */
+  --v-gray-dark: #e2e8f0; /* slate-200 */
+}
+
+.dark {
+  --v-bg: #0f172a; /* slate-900 */
+  --v-bg-soft: #1e293b; /* slate-800 */
+  --v-border: #334155; /* slate-700 */
+  --v-text: #ffffff;
+  --v-gray: #94a3b8; /* slate-400 */
+  --v-gray-dark: #334155; /* slate-700 */
+}
 
 @theme {
   --color-primary: #10b981; /* emerald-500 */
   --color-primary-dark: #059669; /* emerald-600 */
+  --color-primary-hover: #059669; /* emerald-600 */
 
-  --color-v-dark: #0f172a; /* slate-900 */
-  --color-v-dark-soft: #1e293b; /* slate-800 or similar */
-  --color-v-dark-border: #334155; /* slate-700 */
+  --color-v-dark: var(--v-bg);
+  --color-v-dark-soft: var(--v-bg-soft);
+  --color-v-dark-border: var(--v-border);
+  --color-v-dark-constant: #0f172a;
 
-  --color-v-light: #f8fafc; /* slate-50 */
-  --color-v-light-soft: #f1f5f9; /* slate-100 */
+  --color-v-light: var(--v-bg);
+  --color-v-light-soft: var(--v-bg-soft);
 
-  --color-v-gray: #94a3b8; /* slate-400 */
-  --color-v-white: #ffffff;
+  --color-v-gray: var(--v-gray);
+  --color-v-gray-dark: var(--v-gray-dark);
+  --color-v-white: var(--v-text);
 
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 @layer base {
   body {
-    @apply bg-v-dark text-v-white font-sans antialiased;
+    @apply bg-v-dark text-v-white font-sans antialiased transition-colors duration-300;
   }
 }
 
@@ -34,5 +56,5 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-v-dark-border rounded-full hover:bg-v-gray/50 transition-colors;
+  @apply bg-v-dark-border rounded-full hover:bg-v-gray/50 transition-colors duration-300;
 }

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { Logo } from '../../../components/ui/Logo';
+import { ThemeToggle } from '../../../components/ui/ThemeToggle';
 
 /**
  * LandingNavbar Component
@@ -66,6 +67,7 @@ const LandingNavbar = () => {
 
         {/* Desktop Actions */}
         <div className="hidden md:flex items-center gap-4">
+          <ThemeToggle />
           <Link to="/login">
             <Button variant="ghost" className="text-v-white hover:text-primary">
               Iniciar Sesión
@@ -76,13 +78,16 @@ const LandingNavbar = () => {
           </Link>
         </div>
 
-        {/* Mobile Menu Toggle */}
-        <button
-          className="md:hidden text-v-white"
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        >
-          {isMobileMenuOpen ? <X /> : <Menu />}
-        </button>
+        {/* Mobile Menu & Theme Toggle */}
+        <div className="flex items-center gap-2 md:hidden">
+          <ThemeToggle />
+          <button
+            className="text-v-white p-2"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          >
+            {isMobileMenuOpen ? <X /> : <Menu />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile Menu Overlay */}

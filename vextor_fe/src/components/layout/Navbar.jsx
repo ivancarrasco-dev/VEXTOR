@@ -3,6 +3,7 @@ import UserMenu from './UserMenu';
 import NotificationButton from './NotificationButton';
 import { useLocation } from 'react-router-dom';
 import { Logo } from '../ui/Logo';
+import { ThemeToggle } from '../ui/ThemeToggle';
 
 /**
  * Navbar Component
@@ -76,6 +77,7 @@ const Navbar = ({ onMenuClick }) => {
         </div>
 
         <div className="flex items-center gap-3">
+          <ThemeToggle />
           <NotificationButton />
           <div className="w-px h-8 bg-v-dark-border mx-2 hidden sm:block" />
           <UserMenu />

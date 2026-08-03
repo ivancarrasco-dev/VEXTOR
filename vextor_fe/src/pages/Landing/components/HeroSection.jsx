@@ -103,7 +103,7 @@ const HeroSection = () => {
             <motion.div
               animate={{ y: [0, -10, 0] }}
               transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute -top-6 -right-6 z-20 bg-primary/90 text-v-dark p-4 rounded-2xl font-bold shadow-xl flex items-center gap-3"
+              className="absolute -top-6 -right-6 z-20 bg-primary/90 text-v-dark-constant p-4 rounded-2xl font-bold shadow-xl flex items-center gap-3"
             >
               <div className="bg-v-dark/20 p-2 rounded-lg">
                 <ChevronRight className="w-5 h-5" />

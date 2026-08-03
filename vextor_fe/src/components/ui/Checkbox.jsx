@@ -32,7 +32,7 @@ const Checkbox = React.forwardRef(({ className, label, ...props }, ref) => {
           {...props}
         />
         <Check
-          className="absolute h-3.5 w-3.5 text-v-dark pointer-events-none opacity-0 peer-checked:opacity-100 left-0.5 transition-opacity duration-200"
+          className="absolute h-3.5 w-3.5 text-v-dark-constant pointer-events-none opacity-0 peer-checked:opacity-100 left-0.5 transition-opacity duration-200"
           strokeWidth={3}
         />
       </div>
