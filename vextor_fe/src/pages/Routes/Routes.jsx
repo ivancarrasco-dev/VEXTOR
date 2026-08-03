@@ -17,13 +17,18 @@ import {
   Save,
   CheckCircle2,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Route as RouteIcon,
+  Navigation,
+  Compass,
+  ArrowRight
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { routeService } from '../../services/routeService';
 import { driverService } from '../../services/driverService';
 import { vehicleService } from '../../services/vehicleService';
 import MapComponent from './components/MapComponent';
+import NominatimAutocomplete from './components/NominatimAutocomplete';
 import { cn } from '../../utils/cn';
 
 const ROUTE_STATUSES = [
@@ -49,9 +54,16 @@ const Routes = () => {
   const [statusFilter, setStatusFilter] = useState('');
 
   // Active / Selected state
-  const [selectedRoute, setSelectedRoute] = useState(null); // Highlighting on map and loading in form
+  const [selectedRoute, setSelectedRoute] = useState(null); 
   const [routeToDelete, setRouteToDelete] = useState(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+
+  // Friendly address search inputs
+  const [origenSearch, setOrigenSearch] = useState('');
+  const [destinoSearch, setDestinoSearch] = useState('');
+
+  // Live route metrics from Nominatim / OSRM
+  const [routeInfo, setRouteInfo] = useState(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -68,7 +80,7 @@ const Routes = () => {
     id_vehiculo: ''
   });
   const [formErrors, setFormErrors] = useState({});
-  const [feedback, setFeedback] = useState({ type: '', message: '' }); // success/error feedback banner
+  const [feedback, setFeedback] = useState({ type: '', message: '' }); 
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -82,12 +94,10 @@ const Routes = () => {
       const dData = await driverService.getDrivers();
       const vData = await vehicleService.getVehicles();
 
-      // Only active drivers/vehicles for new assignments
       setDrivers(dData.filter(d => d.estado_conductor === 'ACTIVO'));
       setVehicles(vData.filter(v => v.estado_vehiculo !== 'INACTIVO'));
       setRoutes(rData);
 
-      // Set defaults for form if drivers/vehicles exist
       const activeDrivers = dData.filter(d => d.estado_conductor === 'ACTIVO');
       const activeVehicles = vData.filter(v => v.estado_vehiculo !== 'INACTIVO');
 
@@ -128,21 +138,67 @@ const Routes = () => {
     }
   };
 
+  // Helper to reverse-geocode coordinates of old routes to fill search inputs
+  const resolveRouteAddresses = async (origenCoords, destinoCoords) => {
+    try {
+      const origParts = origenCoords.split(',');
+      const destParts = destinoCoords.split(',');
+      if (origParts.length !== 2 || destParts.length !== 2) return;
+
+      const origLat = origParts[0].trim();
+      const origLng = origParts[1].trim();
+      const destLat = destParts[0].trim();
+      const destLng = destParts[1].trim();
+
+      const [origRes, destRes] = await Promise.all([
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${origLat}&lon=${origLng}&accept-language=es`, {
+          headers: { 'User-Agent': 'VextorFleetApp/1.0 (contact: info@vextor.com)' }
+        }),
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${destLat}&lon=${destLng}&accept-language=es`, {
+          headers: { 'User-Agent': 'VextorFleetApp/1.0 (contact: info@vextor.com)' }
+        })
+      ]);
+
+      if (origRes.ok) {
+        const oData = await origRes.json();
+        setOrigenSearch(oData?.display_name || origenCoords);
+      } else {
+        setOrigenSearch(origenCoords);
+      }
+
+      if (destRes.ok) {
+        const dData = await destRes.json();
+        setDestinoSearch(dData?.display_name || destinoCoords);
+      } else {
+        setDestinoSearch(destinoCoords);
+      }
+    } catch (err) {
+      console.error('Failed to resolve route addresses:', err);
+      setOrigenSearch(origenCoords);
+      setDestinoSearch(destinoCoords);
+    }
+  };
+
   // Click on Map coordinates callback
-  const handleSelectPointsOnMap = (coords) => {
+  const handleSelectPointsOnMap = ({ coordinates, address }) => {
     setFormData(prev => {
       let updated = { ...prev };
 
       if (!prev.origen) {
-        updated.origen = coords;
+        updated.origen = coordinates;
+        setOrigenSearch(address);
         if (formErrors.origen) setFormErrors(errs => ({ ...errs, origen: '' }));
       } else if (prev.origen && !prev.destino) {
-        updated.destino = coords;
+        updated.destino = coordinates;
+        setDestinoSearch(address);
         if (formErrors.destino) setFormErrors(errs => ({ ...errs, destino: '' }));
       } else {
-        // Reset both and start fresh
-        updated.origen = coords;
+        // Reset both and start fresh with clicked point as Origin
+        updated.origen = coordinates;
         updated.destino = '';
+        setOrigenSearch(address);
+        setDestinoSearch('');
+        setRouteInfo(null);
       }
       return updated;
     });
@@ -166,11 +222,11 @@ const Routes = () => {
     }
 
     if (!formData.origen.trim()) {
-      errors.origen = 'El origen es obligatorio (clic en el mapa)';
+      errors.origen = 'El origen es obligatorio (utiliza el buscador o haz clic en el mapa)';
     }
 
     if (!formData.destino.trim()) {
-      errors.destino = 'El destino es obligatorio (clic en el mapa)';
+      errors.destino = 'El destino es obligatorio (utiliza el buscador o haz clic en el mapa)';
     }
 
     if (!formData.fecha_programada) {
@@ -218,11 +274,9 @@ const Routes = () => {
     setIsSubmitLoading(true);
     try {
       if (selectedRoute) {
-        // Edit mode
         await routeService.updateRoute(selectedRoute.id_ruta, formData);
         showFeedback('success', 'Ruta actualizada correctamente.');
       } else {
-        // Create mode
         await routeService.createRoute(formData);
         showFeedback('success', 'Nueva ruta programada correctamente.');
       }
@@ -253,11 +307,15 @@ const Routes = () => {
       id_vehiculo: route.id_vehiculo
     });
     setFormErrors({});
+    resolveRouteAddresses(route.origen, route.destino);
   };
 
   // Reset form
   const handleClearForm = () => {
     setSelectedRoute(null);
+    setOrigenSearch('');
+    setDestinoSearch('');
+    setRouteInfo(null);
     setFormData({
       codigo_ruta: '',
       nombre_ruta: '',
@@ -276,7 +334,7 @@ const Routes = () => {
 
   // Open delete dialog
   const handleOpenDelete = (route, e) => {
-    e.stopPropagation(); // Stop row click selection
+    e.stopPropagation(); 
     setRouteToDelete(route);
     setIsDeleteOpen(true);
   };
@@ -289,7 +347,6 @@ const Routes = () => {
       showFeedback('success', 'Ruta eliminada con éxito.');
       setIsDeleteOpen(false);
 
-      // If we deleted the route currently loaded in the form, reset form
       if (selectedRoute && selectedRoute.id_ruta === routeToDelete.id_ruta) {
         handleClearForm();
       }
@@ -349,7 +406,6 @@ const Routes = () => {
     if (currentPage < totalPages) setCurrentPage(currentPage + 1);
   };
 
-  // Reset page on search or filter change
   useEffect(() => {
     setCurrentPage(1);
   }, [search, statusFilter]);
@@ -360,8 +416,10 @@ const Routes = () => {
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-v-dark-soft p-6 rounded-2xl border border-v-dark-border">
         <div>
-          <h2 className="text-2xl font-bold text-v-white">Planificación Interactiva de Rutas</h2>
-          <p className="text-v-gray text-sm mt-0.5">Gestione y programe trayectos directamente sobre el mapa de Bogotá.</p>
+          <h2 className="text-2xl font-bold text-v-white flex items-center gap-2">
+            <RouteIcon className="text-primary" size={24} /> Planificación Avanzada de Rutas
+          </h2>
+          <p className="text-v-gray text-sm mt-0.5">Gestione y trace recorridos optimizados mediante mapas interactivos y navegación de calles reales.</p>
         </div>
       </div>
 
@@ -369,14 +427,61 @@ const Routes = () => {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
 
         {/* PANEL IZQUIERDO: Mapa Interactivo (60% width on LG screen) */}
-        <div className="lg:col-span-3 h-[450px] lg:h-[680px]">
-          <MapComponent
-            routes={routes}
-            activeRoute={selectedRoute}
-            selectedOrigin={formData.origen}
-            selectedDestination={formData.destino}
-            onSelectPoints={handleSelectPointsOnMap}
-          />
+        <div className="lg:col-span-3 flex flex-col gap-4">
+          <div className="h-[450px] lg:h-[680px]">
+            <MapComponent
+              routes={routes}
+              activeRoute={selectedRoute}
+              selectedOrigin={formData.origen}
+              selectedDestination={formData.destino}
+              onSelectPoints={handleSelectPointsOnMap}
+              onRouteCalculated={(info) => setRouteInfo(info)}
+            />
+          </div>
+
+          {/* Glassmorphism Route Details overlay / Card below map */}
+          <AnimatePresence>
+            {routeInfo && (
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 15 }}
+                className="bg-v-dark-soft/80 backdrop-blur-md border border-v-dark-border p-4 rounded-2xl shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4 text-left"
+              >
+                <div className="flex items-center gap-3.5 w-full sm:w-auto">
+                  <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center shrink-0 text-primary">
+                    <Compass className="animate-spin-slow text-primary" size={20} />
+                  </div>
+                  <div className="space-y-0.5 overflow-hidden">
+                    <span className="text-xs font-bold text-v-gray uppercase tracking-wider block">Indicadores de Trayecto Real</span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-v-white text-sm font-semibold truncate max-w-[200px]" title={origenSearch || 'Origen'}>
+                        {(origenSearch || 'Origen').split(',')[0]}
+                      </span>
+                      <ArrowRight size={14} className="text-v-gray shrink-0" />
+                      <span className="text-v-white text-sm font-semibold truncate max-w-[200px]" title={destinoSearch || 'Destino'}>
+                        {(destinoSearch || 'Destino').split(',')[0]}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-5 shrink-0">
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] font-bold text-v-gray uppercase tracking-wider block">Distancia</span>
+                    <span className="text-xl font-black text-primary font-mono">{routeInfo.distance} <span className="text-xs">km</span></span>
+                  </div>
+                  <div className="h-8 w-px bg-v-dark-border" />
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] font-bold text-v-gray uppercase tracking-wider block">Tiempo Estimado</span>
+                    <span className="text-xl font-black text-v-white font-mono flex items-baseline gap-1">
+                      {routeInfo.duration} <span className="text-xs text-v-gray font-sans font-medium">min</span>
+                    </span>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* PANEL DERECHO: Formulario & Tabla (40% width on LG screen) */}
@@ -390,7 +495,7 @@ const Routes = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 className={cn(
-                  "p-4 rounded-xl border text-sm flex items-start gap-2.5 shadow-lg",
+                  "p-4 rounded-xl border text-sm flex items-start gap-2.5 shadow-lg text-left",
                   feedback.type === 'success' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-red-500/10 border-red-500/20 text-red-400"
                 )}
               >
@@ -402,19 +507,19 @@ const Routes = () => {
 
           {/* CRUD Form */}
           <div className="bg-v-dark-soft border border-v-dark-border rounded-2xl p-5 shadow-xl space-y-4">
-            <div className="flex justify-between items-center border-b border-v-dark-border pb-3.5">
+            <div className="flex justify-between items-center border-b border-v-dark-border pb-3.5 text-left">
               <div>
                 <h3 className="text-lg font-bold text-v-white">
                   {selectedRoute ? 'Editar Ruta Seleccionada' : 'Crear Nueva Ruta'}
                 </h3>
                 <p className="text-xs text-v-gray mt-0.5">
-                  {selectedRoute ? 'Actualice la información del trayecto.' : 'Complete el formulario interactuando con el mapa.'}
+                  {selectedRoute ? 'Actualice la información del trayecto.' : 'Complete el formulario buscando puntos o haciendo clic en el mapa.'}
                 </p>
               </div>
               {selectedRoute && (
                 <button
                   onClick={handleClearForm}
-                  className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                  className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline cursor-pointer"
                 >
                   <RotateCcw size={12} /> Nueva Ruta
                 </button>
@@ -458,45 +563,52 @@ const Routes = () => {
                 </div>
               </div>
 
-              {/* Origen & Destino */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Origen */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-v-gray flex items-center gap-1.5">
-                    <MapPin size={13} className="text-emerald-500 animate-pulse" /> Origen (Lat, Lng)
-                  </label>
-                  <input
-                    type="text"
-                    name="origen"
-                    placeholder="Haz clic en el mapa..."
-                    value={formData.origen}
-                    onChange={handleInputChange}
-                    className={cn(
-                      "w-full bg-v-dark border focus:border-primary text-v-white text-sm px-3.5 py-2.5 rounded-lg focus:outline-none transition-all font-mono text-xs",
-                      formErrors.origen ? "border-red-500" : "border-v-dark-border"
-                    )}
-                  />
-                  {formErrors.origen && <p className="text-[11px] text-red-500 mt-0.5 font-medium">{formErrors.origen}</p>}
-                </div>
+              {/* Autocomplete Origen */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-v-gray flex items-center gap-1.5">
+                  <MapPin size={13} className="text-emerald-500" /> Dirección de Origen
+                </label>
+                <NominatimAutocomplete
+                  placeholder="Escribe el origen (ej: Portal Norte)..."
+                  value={origenSearch}
+                  onChange={(val) => setOrigenSearch(val)}
+                  onSelect={({ address, coordinates }) => {
+                    setOrigenSearch(address);
+                    setFormData(prev => ({ ...prev, origen: coordinates }));
+                    if (formErrors.origen) setFormErrors(errs => ({ ...errs, origen: '' }));
+                  }}
+                  error={formErrors.origen}
+                />
+                {formData.origen && (
+                  <span className="text-[10px] font-mono text-v-gray mt-1 block px-2 py-0.5 bg-v-dark/40 rounded max-w-max">
+                    Coords: {formData.origen}
+                  </span>
+                )}
+                {formErrors.origen && <p className="text-[11px] text-red-500 mt-0.5 font-medium">{formErrors.origen}</p>}
+              </div>
 
-                {/* Destino */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-v-gray flex items-center gap-1.5">
-                    <MapPin size={13} className="text-red-500 animate-pulse" /> Destino (Lat, Lng)
-                  </label>
-                  <input
-                    type="text"
-                    name="destino"
-                    placeholder="Haz clic en el mapa..."
-                    value={formData.destino}
-                    onChange={handleInputChange}
-                    className={cn(
-                      "w-full bg-v-dark border focus:border-primary text-v-white text-sm px-3.5 py-2.5 rounded-lg focus:outline-none transition-all font-mono text-xs",
-                      formErrors.destino ? "border-red-500" : "border-v-dark-border"
-                    )}
-                  />
-                  {formErrors.destino && <p className="text-[11px] text-red-500 mt-0.5 font-medium">{formErrors.destino}</p>}
-                </div>
+              {/* Autocomplete Destino */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-v-gray flex items-center gap-1.5">
+                  <MapPin size={13} className="text-red-500" /> Dirección de Destino
+                </label>
+                <NominatimAutocomplete
+                  placeholder="Escribe el destino (ej: Aeropuerto El Dorado)..."
+                  value={destinoSearch}
+                  onChange={(val) => setDestinoSearch(val)}
+                  onSelect={({ address, coordinates }) => {
+                    setDestinoSearch(address);
+                    setFormData(prev => ({ ...prev, destino: coordinates }));
+                    if (formErrors.destino) setFormErrors(errs => ({ ...errs, destino: '' }));
+                  }}
+                  error={formErrors.destino}
+                />
+                {formData.destino && (
+                  <span className="text-[10px] font-mono text-v-gray mt-1 block px-2 py-0.5 bg-v-dark/40 rounded max-w-max">
+                    Coords: {formData.destino}
+                  </span>
+                )}
+                {formErrors.destino && <p className="text-[11px] text-red-500 mt-0.5 font-medium">{formErrors.destino}</p>}
               </div>
 
               {/* Conductor & Vehículo */}
@@ -580,7 +692,7 @@ const Routes = () => {
                 </div>
               </div>
 
-              {/* Suspension Reason (Only displayed when SUSPENDIDA is active) */}
+              {/* Suspension Reason display when SUSPENDIDA is active */}
               <AnimatePresence>
                 {formData.estado_ruta === 'SUSPENDIDA' && (
                   <motion.div
@@ -606,7 +718,7 @@ const Routes = () => {
                 )}
               </AnimatePresence>
 
-              {/* Real Times: Start / End (Optional/Nullable) */}
+              {/* Real Times: Start / End */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                 {/* Hora Inicio Real */}
                 <div className="space-y-1.5">
@@ -656,7 +768,7 @@ const Routes = () => {
                   type="submit"
                   variant="primary"
                   isLoading={isSubmitLoading}
-                  className="flex items-center gap-1.5"
+                  className="flex items-center gap-1.5 cursor-pointer"
                 >
                   <Save size={16} /> {selectedRoute ? 'Guardar Cambios' : 'Registrar'}
                 </Button>
@@ -668,7 +780,7 @@ const Routes = () => {
           <div className="bg-v-dark-soft border border-v-dark-border rounded-2xl p-5 shadow-xl space-y-4">
 
             {/* Table Search */}
-            <div className="flex justify-between items-center pb-2 border-b border-v-dark-border">
+            <div className="flex justify-between items-center pb-2 border-b border-v-dark-border text-left">
               <h3 className="text-lg font-bold text-v-white">Listado de Rutas</h3>
               <div className="relative max-w-xs">
                 <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-v-gray" />
@@ -740,14 +852,14 @@ const Routes = () => {
                               <div className="flex justify-end gap-1.5">
                                 <button
                                   onClick={() => handleSelectRoute(route)}
-                                  className="p-1 hover:bg-v-dark border border-transparent hover:border-v-dark-border rounded text-v-gray hover:text-v-white transition-all"
+                                  className="p-1 hover:bg-v-dark border border-transparent hover:border-v-dark-border rounded text-v-gray hover:text-v-white transition-all cursor-pointer"
                                   title="Editar"
                                 >
                                   <Edit2 size={13} />
                                 </button>
                                 <button
                                   onClick={(e) => handleOpenDelete(route, e)}
-                                  className="p-1 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 rounded text-v-gray hover:text-red-400 transition-all"
+                                  className="p-1 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 rounded text-v-gray hover:text-red-400 transition-all cursor-pointer"
                                   title="Eliminar"
                                 >
                                   <Trash2 size={13} />
@@ -771,14 +883,14 @@ const Routes = () => {
                       <button
                         onClick={handlePrevPage}
                         disabled={currentPage === 1}
-                        className="p-1.5 rounded border border-v-dark-border bg-v-dark text-v-gray hover:text-v-white disabled:opacity-45 disabled:cursor-not-allowed transition-all"
+                        className="p-1.5 rounded border border-v-dark-border bg-v-dark text-v-gray hover:text-v-white disabled:opacity-45 disabled:cursor-not-allowed transition-all cursor-pointer"
                       >
                         <ChevronLeft size={13} />
                       </button>
                       <button
                         onClick={handleNextPage}
                         disabled={currentPage === totalPages}
-                        className="p-1.5 rounded border border-v-dark-border bg-v-dark text-v-gray hover:text-v-white disabled:opacity-45 disabled:cursor-not-allowed transition-all"
+                        className="p-1.5 rounded border border-v-dark-border bg-v-dark text-v-gray hover:text-v-white disabled:opacity-45 disabled:cursor-not-allowed transition-all cursor-pointer"
                       >
                         <ChevronRight size={13} />
                       </button>
@@ -833,7 +945,7 @@ const Routes = () => {
                   variant="outline"
                   onClick={handleConfirmDelete}
                   isLoading={isSubmitLoading}
-                  className="bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-v-white border-red-500/20 shadow-none"
+                  className="bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-v-white border-red-500/20 shadow-none cursor-pointer"
                 >
                   Sí, eliminar ruta
                 </Button>
