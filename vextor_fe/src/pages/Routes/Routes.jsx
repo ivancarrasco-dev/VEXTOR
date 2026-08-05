@@ -24,6 +24,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+import { Select } from '../../components/ui/Select';
 import { routeService } from '../../services/routeService';
 import { driverService } from '../../services/driverService';
 import { vehicleService } from '../../services/vehicleService';
@@ -618,11 +619,10 @@ const Routes = () => {
                   <label className="text-xs font-medium text-v-gray flex items-center gap-1.5">
                     <User size={13} className="text-v-gray" /> Conductor asignado
                   </label>
-                  <select
+                  <Select
                     name="id_conductor"
                     value={formData.id_conductor}
                     onChange={handleInputChange}
-                    className="w-full bg-v-dark border border-v-dark-border focus:border-primary text-v-white text-sm px-3.5 py-2.5 rounded-lg focus:outline-none transition-all cursor-pointer"
                   >
                     <option value="">Seleccione Conductor...</option>
                     {drivers.map(d => (
@@ -630,7 +630,7 @@ const Routes = () => {
                         {d.nombre_conductor} {d.apellido_conductor}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   {formErrors.id_conductor && <p className="text-[11px] text-red-500 mt-0.5 font-medium">{formErrors.id_conductor}</p>}
                 </div>
 
@@ -639,11 +639,10 @@ const Routes = () => {
                   <label className="text-xs font-medium text-v-gray flex items-center gap-1.5">
                     <Truck size={13} className="text-v-gray" /> Vehículo asignado
                   </label>
-                  <select
+                  <Select
                     name="id_vehiculo"
                     value={formData.id_vehiculo}
                     onChange={handleInputChange}
-                    className="w-full bg-v-dark border border-v-dark-border focus:border-primary text-v-white text-sm px-3.5 py-2.5 rounded-lg focus:outline-none transition-all cursor-pointer"
                   >
                     <option value="">Seleccione Vehículo...</option>
                     {vehicles.map(v => (
@@ -651,7 +650,7 @@ const Routes = () => {
                         {v.placa} — {v.marca} {v.modelo}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   {formErrors.id_vehiculo && <p className="text-[11px] text-red-500 mt-0.5 font-medium">{formErrors.id_vehiculo}</p>}
                 </div>
               </div>
@@ -679,16 +678,15 @@ const Routes = () => {
                 {/* Estado */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-v-gray">Estado Operativo</label>
-                  <select
+                  <Select
                     name="estado_ruta"
                     value={formData.estado_ruta}
                     onChange={handleInputChange}
-                    className="w-full bg-v-dark border border-v-dark-border focus:border-primary text-v-white text-sm px-3.5 py-2.5 rounded-lg focus:outline-none transition-all cursor-pointer"
                   >
                     {ROUTE_STATUSES.map(st => (
                       <option key={st.value} value={st.value}>{st.label}</option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
               </div>
 

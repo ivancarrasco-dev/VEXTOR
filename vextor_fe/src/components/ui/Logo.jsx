@@ -1,6 +1,6 @@
 import { cn } from '../../utils/cn';
 import logoFull from '../../assets/brand/logo-full.png';
-import logoFullBlack from '../../assets/brand/logo Negro Vextor Sin Fondo.png';
+import logoFullBlack from '../../assets/brand/Logo Negro Vextor Sin Fondo.png';
 import isotipo from '../../assets/brand/isotipo.png';
 import { useTheme } from '../../context/ThemeContext';
 

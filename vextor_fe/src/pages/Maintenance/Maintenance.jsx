@@ -20,6 +20,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+import { Select } from '../../components/ui/Select';
 import { maintenanceService } from '../../services/maintenanceService';
 import { vehicleService } from '../../services/vehicleService';
 import { cn } from '../../utils/cn';
@@ -305,27 +306,27 @@ const Maintenance = () => {
             <span className="text-v-gray text-xs font-medium">Filtros:</span>
           </div>
 
-          <select
+          <Select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-v-dark border border-v-dark-border focus:border-primary text-v-white text-sm px-3 py-2 rounded-lg focus:outline-none cursor-pointer"
+            className="w-48"
           >
             <option value="">Todos los estados</option>
             {MAINTENANCE_STATUSES.map(st => (
               <option key={st.value} value={st.value}>{st.label}</option>
             ))}
-          </select>
+          </Select>
 
-          <select
+          <Select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="bg-v-dark border border-v-dark-border focus:border-primary text-v-white text-sm px-3 py-2 rounded-lg focus:outline-none cursor-pointer"
+            className="w-48"
           >
             <option value="">Todos los tipos</option>
             {MAINTENANCE_TYPES.map(type => (
               <option key={type} value={type}>{type}</option>
             ))}
-          </select>
+          </Select>
         </div>
       </div>
 
@@ -501,38 +502,33 @@ const Maintenance = () => {
                   {/* Select Vehículo */}
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-v-gray">Vehículo de la Flota</label>
-                    <select
+                    <Select
                       name="id_vehiculo"
                       value={formData.id_vehiculo}
                       onChange={handleInputChange}
                       disabled={!!currentMaintenance} // Immutable in standard repair orders
-                      className={cn(
-                        "w-full bg-v-dark border border-v-dark-border focus:border-primary text-v-white text-sm px-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all cursor-pointer",
-                        currentMaintenance && "opacity-60 cursor-not-allowed"
-                      )}
                     >
                       {vehicles.map(v => (
                         <option key={v.id_vehiculo} value={v.id_vehiculo}>
                           {v.placa} — {v.marca} {v.modelo} (Km: {v.kilometraje_actual.toLocaleString()})
                         </option>
                       ))}
-                    </select>
+                    </Select>
                     {formErrors.id_vehiculo && <p className="text-xs text-red-500 mt-0.5 font-medium">{formErrors.id_vehiculo}</p>}
                   </div>
 
                   {/* Tipo Mantenimiento */}
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-v-gray">Tipo de Servicio</label>
-                    <select
+                    <Select
                       name="tipo_mantenimiento"
                       value={formData.tipo_mantenimiento}
                       onChange={handleInputChange}
-                      className="w-full bg-v-dark border border-v-dark-border focus:border-primary text-v-white text-sm px-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all cursor-pointer"
                     >
                       {MAINTENANCE_TYPES.map(type => (
                         <option key={type} value={type}>{type}</option>
                       ))}
-                    </select>
+                    </Select>
                   </div>
                 </div>
 
@@ -618,16 +614,15 @@ const Maintenance = () => {
                 {/* Estado Mantenimiento */}
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-v-gray">Estado del Servicio</label>
-                  <select
+                  <Select
                     name="estado_mantenimiento"
                     value={formData.estado_mantenimiento}
                     onChange={handleInputChange}
-                    className="w-full bg-v-dark border border-v-dark-border focus:border-primary text-v-white text-sm px-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all cursor-pointer"
                   >
                     {MAINTENANCE_STATUSES.map(st => (
                       <option key={st.value} value={st.value}>{st.label}</option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
 
                 {/* Modal Footer */}

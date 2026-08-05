@@ -15,6 +15,7 @@ import {
   SlidersHorizontal
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+import { Select } from '../../components/ui/Select';
 import { vehicleService } from '../../services/vehicleService';
 import { cn } from '../../utils/cn';
 
@@ -334,27 +335,27 @@ const Vehicles = () => {
             <span className="text-v-gray text-xs font-medium">Filtros:</span>
           </div>
 
-          <select
+          <Select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-v-dark border border-v-dark-border focus:border-primary text-v-white text-sm px-3 py-2 rounded-lg focus:outline-none cursor-pointer"
+            className="w-48"
           >
             <option value="">Todos los estados</option>
             {VEHICLE_STATUSES.map(st => (
               <option key={st.value} value={st.value}>{st.label}</option>
             ))}
-          </select>
+          </Select>
 
-          <select
+          <Select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="bg-v-dark border border-v-dark-border focus:border-primary text-v-white text-sm px-3 py-2 rounded-lg focus:outline-none cursor-pointer"
+            className="w-48"
           >
             <option value="">Todos los tipos</option>
             {VEHICLE_TYPES.map(type => (
               <option key={type} value={type}>{type}</option>
             ))}
-          </select>
+          </Select>
         </div>
       </div>
 
@@ -542,16 +543,15 @@ const Vehicles = () => {
                   {/* Tipo de Vehículo */}
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-v-gray">Tipo de Vehículo</label>
-                    <select
+                    <Select
                       name="tipo_vehiculo"
                       value={formData.tipo_vehiculo}
                       onChange={handleInputChange}
-                      className="w-full bg-v-dark border border-v-dark-border focus:border-primary text-v-white text-sm px-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
                     >
                       {VEHICLE_TYPES.map(type => (
                         <option key={type} value={type}>{type}</option>
                       ))}
-                    </select>
+                    </Select>
                   </div>
                 </div>
 
@@ -684,16 +684,15 @@ const Vehicles = () => {
                   {/* Estado Vehículo */}
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-v-gray">Estado Operativo</label>
-                    <select
+                    <Select
                       name="estado_vehiculo"
                       value={formData.estado_vehiculo}
                       onChange={handleInputChange}
-                      className="w-full bg-v-dark border border-v-dark-border focus:border-primary text-v-white text-sm px-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
                     >
                       {VEHICLE_STATUSES.map(st => (
                         <option key={st.value} value={st.value}>{st.label}</option>
                       ))}
-                    </select>
+                    </Select>
                   </div>
 
                   {/* Documentación */}
