@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, User, Settings, LogOut, Shield } from 'lucide-react';
+import Swal from 'sweetalert2';
 import { useAuth } from '../../context/AuthContext';
 
 /**
@@ -20,8 +22,52 @@ import { useAuth } from '../../context/AuthContext';
 const UserMenu = () => {
   const { user, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
 
   if (!user) return null;
+
+  const handleProfileClick = () => {
+    setIsOpen(false);
+    navigate('/settings', { state: { section: 'profile' } });
+  };
+
+  const handleSecurityClick = () => {
+    setIsOpen(false);
+    navigate('/settings', { state: { section: 'security' } });
+  };
+
+  const handleSettingsClick = () => {
+    setIsOpen(false);
+    navigate('/settings');
+  };
+
+  const handleLogoutClick = () => {
+    setIsOpen(false);
+    Swal.fire({
+      title: '¿Cerrar sesión?',
+      text: '¿Está seguro de que desea cerrar la sesión actual?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, cerrar sesión',
+      cancelButtonText: 'Cancelar',
+      buttonsStyling: false,
+      background: 'var(--v-bg-soft)',
+      color: 'var(--v-text)',
+      customClass: {
+        popup: 'bg-v-dark-soft border border-v-dark-border rounded-2xl p-6 shadow-2xl max-w-sm',
+        title: 'text-xl font-bold text-v-white',
+        htmlContainer: 'text-sm text-v-gray mt-2 leading-relaxed',
+        actions: 'flex gap-3 justify-end mt-6 w-full',
+        confirmButton: 'px-4 py-2 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors cursor-pointer focus:outline-none',
+        cancelButton: 'px-4 py-2 text-sm font-semibold text-v-white bg-v-dark border border-v-dark-border hover:bg-v-dark-border rounded-xl transition-colors cursor-pointer focus:outline-none',
+      },
+    }).then((result) => {
+      if (result.isConfirmed) {
+        logout();
+        navigate('/login');
+      }
+    });
+  };
 
   return (
     <div className="relative">
@@ -54,15 +100,24 @@ const UserMenu = () => {
                 <p className="text-sm text-v-white truncate">{user.email}</p>
               </div>
 
-              <button className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-v-gray hover:text-v-white hover:bg-v-dark-border transition-colors">
+              <button
+                onClick={handleProfileClick}
+                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-v-gray hover:text-v-white hover:bg-v-dark-border transition-colors cursor-pointer"
+              >
                 <User size={18} />
                 <span>Mi Perfil</span>
               </button>
-              <button className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-v-gray hover:text-v-white hover:bg-v-dark-border transition-colors">
+              <button
+                onClick={handleSecurityClick}
+                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-v-gray hover:text-v-white hover:bg-v-dark-border transition-colors cursor-pointer"
+              >
                 <Shield size={18} />
                 <span>Seguridad</span>
               </button>
-              <button className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-v-gray hover:text-v-white hover:bg-v-dark-border transition-colors">
+              <button
+                onClick={handleSettingsClick}
+                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-v-gray hover:text-v-white hover:bg-v-dark-border transition-colors cursor-pointer"
+              >
                 <Settings size={18} />
                 <span>Ajustes</span>
               </button>
@@ -70,8 +125,8 @@ const UserMenu = () => {
               <div className="h-px bg-v-dark-border my-2" />
 
               <button
-                onClick={logout}
-                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                onClick={handleLogoutClick}
+                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
               >
                 <LogOut size={18} />
                 <span>Cerrar Sesión</span>

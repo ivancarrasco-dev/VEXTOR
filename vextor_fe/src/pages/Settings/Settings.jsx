@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   User,
@@ -36,28 +37,50 @@ import BackupSection from './sections/BackupSection';
 import SystemSection from './sections/SystemSection';
 import AuditSection from './sections/AuditSection';
 
+// Sidebar Categories definition
+const categories = [
+  { id: 'profile', name: 'Mi Perfil', icon: User, desc: 'Gestione su información de usuario y credenciales.' },
+  { id: 'company', name: 'Empresa', icon: Building2, desc: 'Configure la información legal e institucional de su entidad.' },
+  { id: 'users', name: 'Usuarios y Roles', icon: Users, desc: 'Gestione el acceso y nivel de permisos de los colaboradores.' },
+  { id: 'vehicles', name: 'Vehículos', icon: Truck, desc: 'Parámetros de marcas, modelos, combustibles y flota.' },
+  { id: 'routes', name: 'Rutas', icon: Compass, desc: 'Zonas, centros de distribución y parámetros geográficos.' },
+  { id: 'maintenance', name: 'Mantenimientos', icon: Wrench, desc: 'Frecuencias, alertas automáticas e inventario de talleres.' },
+  { id: 'notifications', name: 'Notificaciones', icon: Bell, desc: 'Configure las vías, alertas de eventos y recordatorios.' },
+  { id: 'documents', name: 'Documentos', icon: FileText, desc: 'Soporte, licencias y control de vencimientos del SOAT.' },
+  { id: 'appearance', name: 'Apariencia', icon: Palette, desc: 'Sistemas de temas, paleta de colores corporativa e idioma.' },
+  { id: 'security', name: 'Seguridad', icon: Lock, desc: 'Control de sesiones activas y seguridad en dos factores (2FA).' },
+  { id: 'backup', name: 'Copias de Seguridad', icon: Database, desc: 'Políticas de respaldos, históricos de backups y restauración.' },
+  { id: 'system', name: 'Sistema', icon: Sliders, desc: 'Zona horaria, tipo de moneda local y registros de listados.' },
+  { id: 'audit', name: 'Auditoría', icon: History, desc: 'Historial detallado del registro de operaciones del sistema.' }
+];
+
 const Settings = () => {
   const { theme, setTheme } = useTheme();
   const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
 
-  // Sidebar Categories definition
-  const categories = [
-    { id: 'profile', name: 'Mi Perfil', icon: User, desc: 'Gestione su información de usuario y credenciales.' },
-    { id: 'company', name: 'Empresa', icon: Building2, desc: 'Configure la información legal e institucional de su entidad.' },
-    { id: 'users', name: 'Usuarios y Roles', icon: Users, desc: 'Gestione el acceso y nivel de permisos de los colaboradores.' },
-    { id: 'vehicles', name: 'Vehículos', icon: Truck, desc: 'Parámetros de marcas, modelos, combustibles y flota.' },
-    { id: 'routes', name: 'Rutas', icon: Compass, desc: 'Zonas, centros de distribución y parámetros geográficos.' },
-    { id: 'maintenance', name: 'Mantenimientos', icon: Wrench, desc: 'Frecuencias, alertas automáticas e inventario de talleres.' },
-    { id: 'notifications', name: 'Notificaciones', icon: Bell, desc: 'Configure las vías, alertas de eventos y recordatorios.' },
-    { id: 'documents', name: 'Documentos', icon: FileText, desc: 'Soporte, licencias y control de vencimientos del SOAT.' },
-    { id: 'appearance', name: 'Apariencia', icon: Palette, desc: 'Sistemas de temas, paleta de colores corporativa e idioma.' },
-    { id: 'security', name: 'Seguridad', icon: Lock, desc: 'Control de sesiones activas y seguridad en dos factores (2FA).' },
-    { id: 'backup', name: 'Copias de Seguridad', icon: Database, desc: 'Políticas de respaldos, históricos de backups y restauración.' },
-    { id: 'system', name: 'Sistema', icon: Sliders, desc: 'Zona horaria, tipo de moneda local y registros de listados.' },
-    { id: 'audit', name: 'Auditoría', icon: History, desc: 'Historial detallado del registro de operaciones del sistema.' }
-  ];
+  const [activeCategory, setActiveCategory] = useState(() => {
+    const locState = location.state?.section;
+    if (locState && categories.some(cat => cat.id === locState)) {
+      return locState;
+    }
+    const savedTab = localStorage.getItem('vextor_active_settings_tab');
+    if (savedTab && categories.some(cat => cat.id === savedTab)) {
+      return savedTab;
+    }
+    return 'profile';
+  });
 
-  const [activeCategory, setActiveCategory] = useState('profile');
+  useEffect(() => {
+    if (location.state?.section && categories.some(cat => cat.id === location.state.section)) {
+      const targetSec = location.state.section;
+      setActiveCategory(targetSec);
+      localStorage.setItem('vextor_active_settings_tab', targetSec);
+      // Clear location state after consumption
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, location.pathname, navigate]);
   const [successMessage, setSuccessMessage] = useState('');
 
   // Toast helper
@@ -370,7 +393,10 @@ const Settings = () => {
               return (
                 <button
                   key={cat.id}
-                  onClick={() => setActiveCategory(cat.id)}
+                  onClick={() => {
+                    setActiveCategory(cat.id);
+                    localStorage.setItem('vextor_active_settings_tab', cat.id);
+                  }}
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all duration-200 group relative cursor-pointer",
                     isActive
