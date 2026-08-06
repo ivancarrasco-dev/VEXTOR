@@ -4,6 +4,7 @@ import NotificationButton from './NotificationButton';
 import { useLocation } from 'react-router-dom';
 import { Logo } from '../ui/Logo';
 import { ThemeToggle } from '../ui/ThemeToggle';
+import { useTranslation } from 'react-i18next';
 
 /**
  * Navbar Component
@@ -23,17 +24,18 @@ import { ThemeToggle } from '../ui/ThemeToggle';
  */
 const Navbar = ({ onMenuClick }) => {
   const location = useLocation();
+  const { t } = useTranslation();
 
   const getPageTitle = () => {
     const path = location.pathname;
     switch(path) {
-      case '/dashboard': return 'Panel Principal';
-      case '/vehicles': return 'Gestión de Vehículos';
-      case '/drivers': return 'Conductores';
-      case '/routes': return 'Control de Rutas';
-      case '/maintenance': return 'Mantenimiento';
-      case '/reports': return 'Reportes y Analítica';
-      case '/settings': return 'Configuración';
+      case '/dashboard': return t('sidebar.dashboard');
+      case '/vehicles': return t('sidebar.vehicles');
+      case '/drivers': return t('sidebar.drivers');
+      case '/routes': return t('sidebar.routes');
+      case '/maintenance': return t('sidebar.maintenance');
+      case '/reports': return t('sidebar.reports');
+      case '/settings': return t('sidebar.settings');
       default: return 'Vextor';
     }
   };
@@ -70,7 +72,7 @@ const Navbar = ({ onMenuClick }) => {
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-v-gray group-focus-within:text-primary transition-colors" />
             <input
               type="text"
-              placeholder="Buscar vehículos, rutas, conductores..."
+              placeholder={t('navbar.search')}
               className="w-full bg-v-dark-soft border border-v-dark-border rounded-xl py-2.5 pl-10 pr-4 text-sm text-v-white placeholder:text-v-gray focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
             />
           </div>
@@ -88,3 +90,4 @@ const Navbar = ({ onMenuClick }) => {
 };
 
 export default Navbar;
+  

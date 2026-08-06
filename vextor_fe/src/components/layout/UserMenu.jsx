@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, User, Settings, LogOut, Shield } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { useAuth } from '../../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 /**
  * UserMenu Component
@@ -23,6 +24,7 @@ const UserMenu = () => {
   const { user, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   if (!user) return null;
 
@@ -44,12 +46,12 @@ const UserMenu = () => {
   const handleLogoutClick = () => {
     setIsOpen(false);
     Swal.fire({
-      title: '¿Cerrar sesión?',
-      text: '¿Está seguro de que desea cerrar la sesión actual?',
+      title: t('navbar.logoutConfirm'),
+      text: t('navbar.logoutText'),
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Sí, cerrar sesión',
-      cancelButtonText: 'Cancelar',
+      confirmButtonText: t('navbar.logoutYes'),
+      cancelButtonText: t('common.cancel'),
       buttonsStyling: false,
       background: 'var(--v-bg-soft)',
       color: 'var(--v-text)',
@@ -105,21 +107,21 @@ const UserMenu = () => {
                 className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-v-gray hover:text-v-white hover:bg-v-dark-border transition-colors cursor-pointer"
               >
                 <User size={18} />
-                <span>Mi Perfil</span>
+                <span>{t('navbar.profile')}</span>
               </button>
               <button
                 onClick={handleSecurityClick}
                 className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-v-gray hover:text-v-white hover:bg-v-dark-border transition-colors cursor-pointer"
               >
                 <Shield size={18} />
-                <span>Seguridad</span>
+                <span>{t('navbar.security')}</span>
               </button>
               <button
                 onClick={handleSettingsClick}
                 className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-v-gray hover:text-v-white hover:bg-v-dark-border transition-colors cursor-pointer"
               >
                 <Settings size={18} />
-                <span>Ajustes</span>
+                <span>{t('navbar.settings')}</span>
               </button>
 
               <div className="h-px bg-v-dark-border my-2" />
@@ -129,7 +131,7 @@ const UserMenu = () => {
                 className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
               >
                 <LogOut size={18} />
-                <span>Cerrar Sesión</span>
+                <span>{t('navbar.logout')}</span>
               </button>
             </motion.div>
           </>

@@ -17,6 +17,7 @@ import {
 import { Logo } from '../ui/Logo';
 import { cn } from '../../utils/cn';
 import { useAuth } from '../../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 /**
  * Sidebar Component
@@ -35,18 +36,19 @@ import { useAuth } from '../../context/AuthContext';
  * * Indicador visual de ruta activa.
  */
 const menuItems = [
-  { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { path: '/vehicles', icon: Truck, label: 'Vehículos' },
-  { path: '/drivers', icon: Users, label: 'Conductores' },
-  { path: '/routes', icon: MapPin, label: 'Rutas' },
-  { path: '/maintenance', icon: Wrench, label: 'Mantenimientos' },
-  { path: '/reports', icon: BarChart3, label: 'Reportes' },
-  { path: '/settings', icon: Settings, label: 'Configuración' },
+  { path: '/dashboard', icon: LayoutDashboard },
+  { path: '/vehicles', icon: Truck },
+  { path: '/drivers', icon: Users },
+  { path: '/routes', icon: MapPin },
+  { path: '/maintenance', icon: Wrench },
+  { path: '/reports', icon: BarChart3 },
+  { path: '/settings', icon: Settings },
 ];
 
 const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen }) => {
   const { logout } = useAuth();
   const location = useLocation();
+  const { t } = useTranslation();
   const [width, setWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
 
   useEffect(() => {
@@ -114,42 +116,45 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
 
           {/* Navigation */}
           <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto custom-scrollbar">
-            {menuItems.map((item) => (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                className={({ isActive }) => cn(
-                  "flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group relative",
-                  isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-v-gray hover:text-v-white hover:bg-v-dark-border/50",
-                  isCollapsed && !isMobile ? "justify-center" : ""
-                )}
-              >
-                <item.icon size={22} className={cn("shrink-0 transition-transform duration-200", !isCollapsed && "group-hover:scale-110")} />
-
-                <AnimatePresence>
-                  {(!isCollapsed || isMobile) && (
-                    <motion.span
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -10 }}
-                      className="font-medium whitespace-nowrap"
-                    >
-                      {item.label}
-                    </motion.span>
+            {menuItems.map((item) => {
+              const labelKey = item.path.replace('/', '');
+              return (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  className={({ isActive }) => cn(
+                    "flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group relative",
+                    isActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-v-gray hover:text-v-white hover:bg-v-dark-border/50",
+                    isCollapsed && !isMobile ? "justify-center" : ""
                   )}
-                </AnimatePresence>
+                >
+                  <item.icon size={22} className={cn("shrink-0 transition-transform duration-200", !isCollapsed && "group-hover:scale-110")} />
 
-                {location.pathname === item.path && (
-                  <motion.div
-                    layoutId="active-pill"
-                    className="absolute left-0 w-1 h-6 bg-primary rounded-r-full"
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  />
-                )}
-              </NavLink>
-            ))}
+                  <AnimatePresence>
+                    {(!isCollapsed || isMobile) && (
+                      <motion.span
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        className="font-medium whitespace-nowrap"
+                      >
+                        {t(`sidebar.${labelKey}`)}
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+
+                  {location.pathname === item.path && (
+                    <motion.div
+                      layoutId="active-pill"
+                      className="absolute left-0 w-1 h-6 bg-primary rounded-r-full"
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    />
+                  )}
+                </NavLink>
+              );
+            })}
           </nav>
 
           {/* Footer */}
@@ -162,7 +167,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
               )}
             >
               <LogOut size={22} className="shrink-0" />
-              {(!isCollapsed || isMobile) && <span className="font-medium">Cerrar Sesión</span>}
+              {(!isCollapsed || isMobile) && <span className="font-medium">{t('sidebar.logout')}</span>}
             </button>
           </div>
         </div>

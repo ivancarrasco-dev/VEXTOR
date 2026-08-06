@@ -23,7 +23,7 @@ import { Loader2 } from 'lucide-react';
  */
 const Button = React.forwardRef(({ className, variant = 'primary', size = 'default', isLoading, children, disabled, ...props }, ref) => {
   const variants = {
-    primary: 'bg-primary text-v-dark-constant hover:bg-primary-hover shadow-[0_0_15px_rgba(0,209,102,0.3)]',
+    primary: 'bg-primary text-v-dark-constant hover:bg-primary-hover shadow-[0_0_15px_var(--primary-color-shadow)]',
     outline: 'border border-v-gray-dark bg-transparent hover:bg-v-gray-dark text-v-white',
     ghost: 'bg-transparent hover:bg-v-gray-dark/50 text-v-gray',
     link: 'text-primary underline-offset-4 hover:underline'

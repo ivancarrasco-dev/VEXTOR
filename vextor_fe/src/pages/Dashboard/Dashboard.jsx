@@ -6,6 +6,7 @@ import { cn } from '../../utils/cn';
 import StatsCard from '../../components/dashboard/StatsCard';
 import QuickActionCard from '../../components/dashboard/QuickActionCard';
 import { useAuth } from '../../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { vehicleService } from '../../services/vehicleService';
 import { driverService } from '../../services/driverService';
 import { maintenanceService } from '../../services/maintenanceService';
@@ -22,16 +23,11 @@ const recentActivity = [
  *
  * Responsabilidad:
  * Vista principal de control operativo para gerentes de flota.
- *
- * Funcionalidades:
- * * Visualización de métricas clave dinámicas (Vehículos, Conductores, Rutas, Mantenimientos).
- * * Registro de actividad reciente con estados codificados por colores.
- * * Acceso rápido a las tareas más comunes del sistema con navegación fluida.
- * * Saludo personalizado y contexto temporal de la operación.
  */
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   // Dynamic counts state
   const [stats, setStats] = useState({
@@ -77,7 +73,7 @@ const Dashboard = () => {
             animate={{ opacity: 1, x: 0 }}
             className="text-3xl font-bold text-v-white mb-2"
           >
-            Bienvenido a Vextor, {user?.name?.split(' ')[0] || 'Admin'}
+            {t('dashboard.welcome')} {user?.name?.split(' ')[0] || 'Admin'}
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, x: -20 }}
@@ -85,7 +81,7 @@ const Dashboard = () => {
             transition={{ delay: 0.1 }}
             className="text-v-gray max-w-xl"
           >
-            Gestione rutas, vehículos y operaciones desde una sola plataforma. Aquí tiene un resumen de la actividad de hoy.
+            {t('dashboard.subtitle')}
           </motion.p>
         </div>
       </section>
@@ -93,7 +89,7 @@ const Dashboard = () => {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
-          title="Vehículos Activos"
+          title={t('dashboard.stats.totalVehicles')}
           value={isLoading ? '...' : stats.activeVehicles}
           icon={Truck}
           trend="up"
@@ -101,7 +97,7 @@ const Dashboard = () => {
           delay={0.1}
         />
         <StatsCard
-          title="Conductores"
+          title={t('dashboard.stats.activeDrivers')}
           value={isLoading ? '...' : stats.driversCount}
           icon={Users}
           trend="up"
@@ -109,7 +105,7 @@ const Dashboard = () => {
           delay={0.2}
         />
         <StatsCard
-          title="Rutas Hoy"
+          title={t('dashboard.stats.routesToday')}
           value="156"
           icon={MapPin}
           trend="down"
@@ -117,7 +113,7 @@ const Dashboard = () => {
           delay={0.3}
         />
         <StatsCard
-          title="Mantenimientos"
+          title={t('dashboard.stats.activeMaintenance')}
           value={isLoading ? '...' : stats.maintenanceCount}
           icon={Wrench}
           trend="up"
@@ -130,8 +126,10 @@ const Dashboard = () => {
         {/* Recent Activity Table */}
         <div className="lg:col-span-2 space-y-4">
           <div className="flex justify-between items-center px-2">
-            <h3 className="text-xl font-bold text-v-white">Actividad Reciente</h3>
-            <button className="text-sm text-primary hover:underline font-medium">Ver todo</button>
+            <h3 className="text-xl font-bold text-v-white">{t('dashboard.recentActivity.title')}</h3>
+            <button className="text-sm text-primary hover:underline font-medium">
+              {t('dashboard.recentActivity.viewAll')}
+            </button>
           </div>
           <div className="bg-v-dark-soft border border-v-dark-border rounded-2xl overflow-hidden">
             <div className="divide-y divide-v-dark-border">
@@ -164,32 +162,32 @@ const Dashboard = () => {
 
         {/* Quick Actions */}
         <div className="space-y-4">
-          <h3 className="text-xl font-bold text-v-white px-2">Acciones Rápidas</h3>
+          <h3 className="text-xl font-bold text-v-white px-2">{t('dashboard.quickActions.title')}</h3>
           <div className="grid grid-cols-1 gap-4">
             <QuickActionCard
-              title="Registrar Vehículo"
-              description="Añade una nueva unidad a la flota"
+              title={t('dashboard.quickActions.registerVehicle')}
+              description={t('dashboard.quickActions.registerVehicleDesc')}
               icon={Truck}
               onClick={() => navigate('/vehicles?action=new')}
               delay={0.5}
             />
             <QuickActionCard
-              title="Registrar Conductor"
-              description="Asigna un nuevo operador"
+              title={t('dashboard.quickActions.registerDriver')}
+              description={t('dashboard.quickActions.registerDriverDesc')}
               icon={Users}
               onClick={() => navigate('/drivers?action=new')}
               delay={0.6}
             />
             <QuickActionCard
-              title="Crear Ruta"
-              description="Planifica un nuevo trayecto"
+              title={t('dashboard.quickActions.programRoute')}
+              description={t('dashboard.quickActions.programRouteDesc')}
               icon={MapPin}
               onClick={() => navigate('/routes')}
               delay={0.7}
             />
             <QuickActionCard
-              title="Mantenimiento"
-              description="Agenda una revisión técnica"
+              title={t('dashboard.quickActions.maintenanceAlert')}
+              description={t('dashboard.quickActions.maintenanceAlertDesc')}
               icon={Wrench}
               onClick={() => navigate('/maintenance?action=new')}
               delay={0.8}

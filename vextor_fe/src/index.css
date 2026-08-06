@@ -8,6 +8,12 @@
   --v-text: #0f172a; /* slate-900 */
   --v-gray: #64748b; /* slate-500 */
   --v-gray-dark: #e2e8f0; /* slate-200 */
+
+  /* Default theme color: emerald */
+  --primary-color: #10b981;
+  --primary-color-dark: #059669;
+  --primary-color-hover: #059669;
+  --primary-color-shadow: rgba(16, 185, 129, 0.3);
 }
 
 .dark {
@@ -19,10 +25,39 @@
   --v-gray-dark: #334155; /* slate-700 */
 }
 
+/* Dynamic theme classes for custom emphasis colors */
+.theme-emerald {
+  --primary-color: #10b981;
+  --primary-color-dark: #059669;
+  --primary-color-hover: #059669;
+  --primary-color-shadow: rgba(16, 185, 129, 0.3);
+}
+
+.theme-blue {
+  --primary-color: #3b82f6;
+  --primary-color-dark: #2563eb;
+  --primary-color-hover: #2563eb;
+  --primary-color-shadow: rgba(59, 130, 246, 0.3);
+}
+
+.theme-purple {
+  --primary-color: #a855f7;
+  --primary-color-dark: #9333ea;
+  --primary-color-hover: #9333ea;
+  --primary-color-shadow: rgba(168, 85, 247, 0.3);
+}
+
+.theme-amber {
+  --primary-color: #f59e0b;
+  --primary-color-dark: #d97706;
+  --primary-color-hover: #d97706;
+  --primary-color-shadow: rgba(245, 158, 11, 0.3);
+}
+
 @theme {
-  --color-primary: #10b981; /* emerald-500 */
-  --color-primary-dark: #059669; /* emerald-600 */
-  --color-primary-hover: #059669; /* emerald-600 */
+  --color-primary: var(--primary-color);
+  --color-primary-dark: var(--primary-color-dark);
+  --color-primary-hover: var(--primary-color-hover);
 
   --color-v-dark: var(--v-bg);
   --color-v-dark-soft: var(--v-bg-soft);

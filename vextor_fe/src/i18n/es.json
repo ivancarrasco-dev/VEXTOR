@@ -1,0 +1,491 @@
+{
+  "common": {
+    "save": "Guardar",
+    "saving": "Guardando...",
+    "cancel": "Cancelar",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "create": "Crear",
+    "add": "Agregar",
+    "remove": "Remover",
+    "search": "Buscar...",
+    "actions": "Acciones",
+    "status": "Estado",
+    "loading": "Cargando...",
+    "noData": "No hay datos disponibles",
+    "success": "Éxito",
+    "error": "Error",
+    "confirm": "Confirmar",
+    "yes": "Sí",
+    "no": "No",
+    "active": "Activo",
+    "inactive": "Inactivo",
+    "all": "Todos"
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "vehicles": "Vehículos",
+    "drivers": "Conductores",
+    "routes": "Rutas",
+    "maintenance": "Mantenimientos",
+    "reports": "Reportes",
+    "settings": "Configuración",
+    "logout": "Cerrar Sesión"
+  },
+  "navbar": {
+    "search": "Buscar en el sistema...",
+    "notifications": "Notificaciones",
+    "noNotifications": "No tienes notificaciones pendientes",
+    "markAsRead": "Marcar todo como leído",
+    "profile": "Mi Perfil",
+    "security": "Seguridad",
+    "settings": "Ajustes",
+    "logout": "Cerrar Sesión",
+    "logoutConfirm": "¿Cerrar sesión?",
+    "logoutText": "¿Está seguro de que desea cerrar la sesión actual?",
+    "logoutYes": "Sí, cerrar sesión"
+  },
+  "dashboard": {
+    "welcome": "Bienvenido de nuevo,",
+    "subtitle": "Aquí está el estado actual de tu flota y operaciones para hoy.",
+    "stats": {
+      "totalVehicles": "Vehículos Totales",
+      "activeDrivers": "Conductores Activos",
+      "routesToday": "Rutas Programadas",
+      "activeMaintenance": "En Mantenimiento"
+    },
+    "quickActions": {
+      "title": "Accesos Rápidos",
+      "registerVehicle": "Registrar Vehículo",
+      "registerVehicleDesc": "Agregue un nuevo vehículo a la flota.",
+      "registerDriver": "Registrar Conductor",
+      "registerDriverDesc": "Agregue un nuevo conductor.",
+      "programRoute": "Programar Ruta",
+      "programRouteDesc": "Asigne una nueva ruta.",
+      "maintenanceAlert": "Crear Mantenimiento",
+      "maintenanceAlertDesc": "Registre un mantenimiento preventivo o correctivo."
+    },
+    "recentActivity": {
+      "title": "Actividad Reciente",
+      "desc": "Monitoreo en tiempo real de operaciones de flota.",
+      "viewAll": "Ver toda la actividad"
+    },
+    "charts": {
+      "performance": "Rendimiento Operativo",
+      "performanceDesc": "Eficiencia de rutas y tiempos de viaje."
+    }
+  },
+  "vehicles": {
+    "title": "Gestión de Flota de Vehículos",
+    "subtitle": "Administre, controle y configure el inventario de vehículos, estados operativos y combustibles.",
+    "addBtn": "Nuevo Vehículo",
+    "placeholderSearch": "Buscar por placa, conductor, marca...",
+    "filterAll": "Todos los Estados",
+    "available": "Disponible",
+    "inMaintenance": "En Mantenimiento",
+    "outOfService": "Fuera de Servicio",
+    "table": {
+      "plate": "Vehículo / Placa",
+      "driver": "Conductor Asignado",
+      "capacity": "Capacidad",
+      "fuel": "Combustible",
+      "km": "Kilometraje",
+      "status": "Estado"
+    },
+    "form": {
+      "addTitle": "Registrar Nuevo Vehículo",
+      "editTitle": "Editar Datos del Vehículo",
+      "plate": "Placa del Vehículo",
+      "platePlaceholder": "Ej. ABC-123",
+      "brand": "Marca",
+      "brandPlaceholder": "Seleccione o ingrese marca",
+      "model": "Modelo / Año",
+      "modelPlaceholder": "Ej. Hilux 2024",
+      "driver": "Conductor",
+      "driverPlaceholder": "Seleccionar Conductor",
+      "capacity": "Capacidad de Carga",
+      "capacityPlaceholder": "Ej. 500 kg",
+      "fuel": "Tipo de Combustible",
+      "fuelPlaceholder": "Seleccionar Combustible",
+      "km": "Kilometraje Actual",
+      "kmPlaceholder": "Ej. 15000",
+      "status": "Estado Operativo",
+      "submitAdd": "Registrar Vehículo",
+      "submitEdit": "Guardar Cambios"
+    },
+    "alerts": {
+      "confirmDelete": "¿Eliminar vehículo?",
+      "confirmDeleteText": "Esta acción no se puede deshacer. Se eliminará el vehículo {plate}.",
+      "deleted": "Vehículo eliminado.",
+      "created": "Vehículo registrado correctamente.",
+      "updated": "Vehículo actualizado con éxito."
+    }
+  },
+  "drivers": {
+    "title": "Gestión de Conductores",
+    "subtitle": "Controle el personal de conducción, licencias, disponibilidad y asignaciones en ruta.",
+    "addBtn": "Nuevo Conductor",
+    "placeholderSearch": "Buscar por nombre, cédula, licencia...",
+    "filterAll": "Todos los Estados",
+    "active": "Activo",
+    "inactive": "Inactivo",
+    "suspended": "Suspendido",
+    "table": {
+      "name": "Conductor",
+      "doc": "Identificación",
+      "license": "Licencia (Categoría)",
+      "phone": "Teléfono",
+      "status": "Estado"
+    },
+    "form": {
+      "addTitle": "Registrar Nuevo Conductor",
+      "editTitle": "Editar Datos del Conductor",
+      "name": "Nombre Completo",
+      "namePlaceholder": "Ej. Juan Pérez",
+      "doc": "Documento de Identidad (C.C.)",
+      "docPlaceholder": "Ej. 1020456789",
+      "license": "Número de Licencia",
+      "licensePlaceholder": "Ej. LIC-78945",
+      "category": "Categoría de Licencia",
+      "categoryPlaceholder": "Ej. C2",
+      "phone": "Teléfono de Contacto",
+      "phonePlaceholder": "Ej. +57 321 456 7890",
+      "status": "Estado",
+      "submitAdd": "Registrar Conductor",
+      "submitEdit": "Guardar Cambios"
+    },
+    "alerts": {
+      "confirmDelete": "¿Eliminar conductor?",
+      "confirmDeleteText": "Se borrará la ficha del conductor {name}.",
+      "deleted": "Conductor eliminado correctamente.",
+      "created": "Conductor registrado con éxito.",
+      "updated": "Conductor actualizado correctamente."
+    }
+  },
+  "routes": {
+    "title": "Monitoreo y Control de Rutas",
+    "subtitle": "Gestione despachos, asigne rutas a vehículos, visualice trazas en mapa y registre tiempos reales.",
+    "addBtn": "Programar Nueva Ruta",
+    "placeholderSearch": "Buscar por código, conductor, origen, destino...",
+    "filterAll": "Todos los Estados",
+    "pending": "Pendiente",
+    "inProgress": "En Curso",
+    "completed": "Completada",
+    "suspended": "Suspendida",
+    "map": {
+      "title": "Mapa de Operación en Tiempo Real",
+      "instruction": "Haz clic en cualquier parte del mapa para marcar Origen (A) y Destino (B) utilizando geocodificación gratuita.",
+      "routesLoading": "Calculando ruta óptima..."
+    },
+    "table": {
+      "code": "Código",
+      "route": "Ruta / Trayecto",
+      "driverVehicle": "Conductor / Vehículo",
+      "scheduled": "Programada",
+      "realTimes": "Tiempos Reales",
+      "status": "Estado"
+    },
+    "form": {
+      "addTitle": "Programar Nueva Ruta",
+      "editTitle": "Editar Detalles de la Ruta",
+      "code": "Código de la Ruta",
+      "codePlaceholder": "Ej. RUT-204",
+      "name": "Nombre de la Ruta",
+      "namePlaceholder": "Ej. Ruta Escolar Norte",
+      "driver": "Conductor Asignado",
+      "driverPlaceholder": "Seleccionar Conductor",
+      "vehicle": "Vehículo Asignado",
+      "vehiclePlaceholder": "Seleccionar Vehículo",
+      "scheduledDate": "Fecha y Hora Programada",
+      "origin": "Coordenadas de Origen (Lat, Lng)",
+      "originPlaceholder": "Ej. 4.711, -74.072 (O haz clic en el mapa)",
+      "destination": "Coordenadas de Destino (Lat, Lng)",
+      "destinationPlaceholder": "Ej. 4.609, -74.081 (O haz clic en el mapa)",
+      "status": "Estado de la Ruta",
+      "reason": "Motivo de Suspensión (si aplica)",
+      "reasonPlaceholder": "Escriba el motivo...",
+      "submitAdd": "Programar Ruta",
+      "submitEdit": "Guardar Cambios"
+    },
+    "alerts": {
+      "confirmDelete": "¿Eliminar ruta?",
+      "confirmDeleteText": "Se cancelará el registro de la ruta {code}.",
+      "deleted": "Ruta eliminada.",
+      "created": "Ruta programada correctamente.",
+      "updated": "Ruta actualizada correctamente."
+    }
+  },
+  "maintenance": {
+    "title": "Centro de Mantenimiento Preventivo y Correctivo",
+    "subtitle": "Planifique y controle mantenimientos de flota, registre talleres y configure umbrales de seguridad.",
+    "addBtn": "Nuevo Mantenimiento",
+    "placeholderSearch": "Buscar por vehículo, taller, diagnóstico...",
+    "filterAll": "Todos los Estados",
+    "scheduled": "Programado",
+    "inProgress": "En Proceso",
+    "completed": "Completado",
+    "preventive": "PREVENTIVO",
+    "corrective": "CORRECTIVO",
+    "table": {
+      "vehicle": "Vehículo",
+      "type": "Tipo",
+      "workshop": "Taller",
+      "date": "Fecha de Entrada",
+      "cost": "Costo estimado",
+      "status": "Estado"
+    },
+    "form": {
+      "addTitle": "Registrar Nuevo Mantenimiento",
+      "editTitle": "Editar Datos de Mantenimiento",
+      "vehicle": "Vehículo",
+      "vehiclePlaceholder": "Seleccionar Vehículo",
+      "type": "Tipo de Mantenimiento",
+      "typePlaceholder": "Seleccionar Tipo",
+      "date": "Fecha de Programación",
+      "workshop": "Taller / Concesionario",
+      "workshopPlaceholder": "Seleccionar Taller",
+      "cost": "Costo Estimado ($)",
+      "costPlaceholder": "Ej. 250000",
+      "desc": "Diagnóstico / Trabajos a realizar",
+      "descPlaceholder": "Ej. Cambio de pastillas de freno y aceite de motor.",
+      "status": "Estado del Mantenimiento",
+      "submitAdd": "Registrar Mantenimiento",
+      "submitEdit": "Guardar Cambios"
+    },
+    "alerts": {
+      "confirmDelete": "¿Eliminar registro?",
+      "confirmDeleteText": "Esta acción removerá el registro de mantenimiento del vehículo.",
+      "deleted": "Registro de mantenimiento eliminado.",
+      "created": "Mantenimiento registrado con éxito.",
+      "updated": "Mantenimiento actualizado con éxito."
+    }
+  },
+  "reports": {
+    "title": "Centro de Inteligencia y Reportes Avanzados",
+    "subtitle": "Exporte reportes unificados, consulte métricas clave y analice el rendimiento operativo de la flota.",
+    "selectReport": "Seleccionar Tipo de Reporte",
+    "vehiclesReport": "Reporte de Vehículos y Flota",
+    "driversReport": "Reporte de Conductores",
+    "routesReport": "Reporte de Rutas y Viajes",
+    "maintenanceReport": "Reporte de Mantenimientos y Gastos",
+    "btnGenerate": "Generar Vista Previa",
+    "btnExport": "Exportar Reporte",
+    "exportPdf": "Exportar como PDF (.pdf)",
+    "exportExcel": "Exportar como Excel (.xlsx)",
+    "exportWord": "Exportar como Word (.docx)",
+    "exportCsv": "Exportar como CSV (.csv)",
+    "previewTitle": "Vista Previa del Reporte Generado",
+    "stats": {
+      "totalRecords": "Registros Encontrados",
+      "lastUpdate": "Última Actualización"
+    },
+    "filters": {
+      "status": "Estado",
+      "driver": "Conductor",
+      "fuel": "Combustible",
+      "maintenanceType": "Tipo de Mantenimiento",
+      "dateRange": "Rango de Fecha"
+    },
+    "toasts": {
+      "loading": "Generando documento...",
+      "success": "Archivo descargado correctamente.",
+      "previewSuccess": "Vista previa de datos cargada con éxito."
+    }
+  },
+  "settings": {
+    "title": "Centro de Administración",
+    "subtitle": "Gestione las configuraciones del sistema, políticas de seguridad y preferencias de la cuenta.",
+    "categories": {
+      "profile": "Mi Perfil",
+      "company": "Empresa",
+      "users": "Usuarios y Roles",
+      "vehicles": "Vehículos",
+      "routes": "Rutas",
+      "maintenance": "Mantenimientos",
+      "notifications": "Notificaciones",
+      "documents": "Documentos",
+      "appearance": "Apariencia",
+      "security": "Seguridad",
+      "backup": "Copias de Seguridad",
+      "system": "Sistema",
+      "audit": "Auditoría"
+    },
+    "profile": {
+      "title": "Mi Perfil",
+      "desc": "Gestione su información de usuario y credenciales.",
+      "name": "Nombre del Administrador",
+      "email": "Correo Electrónico",
+      "phone": "Teléfono",
+      "role": "Rol Asignado",
+      "submit": "Actualizar Perfil",
+      "toastSuccess": "¡Información de perfil actualizada con éxito!"
+    },
+    "company": {
+      "title": "Empresa",
+      "desc": "Configure la información legal e institucional de su entidad.",
+      "name": "Razón Social / Nombre",
+      "nit": "NIT / Identificación Fiscal",
+      "address": "Dirección Legal",
+      "city": "Ciudad, País",
+      "email": "Email Corporativo",
+      "phone": "Teléfono Corporativo",
+      "submit": "Guardar Datos Corporativos",
+      "toastSuccess": "¡Datos de la empresa actualizados correctamente!"
+    },
+    "users": {
+      "title": "Usuarios y Roles",
+      "desc": "Gestione el acceso y nivel de permisos de los colaboradores.",
+      "addBtn": "Nuevo Colaborador",
+      "table": {
+        "name": "Colaborador",
+        "email": "Email",
+        "role": "Rol",
+        "status": "Estado"
+      },
+      "form": {
+        "addTitle": "Registrar Colaborador",
+        "editTitle": "Editar Colaborador",
+        "name": "Nombre Completo",
+        "email": "Correo Electrónico",
+        "role": "Rol en el Sistema",
+        "status": "Estado de Acceso",
+        "submit": "Guardar Colaborador"
+      },
+      "toastStatus": "Estado del usuario actualizado.",
+      "toastCreated": "Usuario creado correctamente.",
+      "toastUpdated": "Usuario editado correctamente.",
+      "toastDeleted": "Usuario eliminado del sistema."
+    },
+    "vehiclesConfig": {
+      "title": "Vehículos (Configuración)",
+      "desc": "Parámetros de marcas, modelos, combustibles y flota.",
+      "types": "Tipos de Vehículo",
+      "brands": "Marcas Disponibles",
+      "models": "Modelos Registrados",
+      "fuels": "Combustibles",
+      "addParam": "Agregar Parámetro",
+      "capacity": "Capacidad Máxima Permitida",
+      "km": "Kilometraje Alerta de Retiro",
+      "toastAdded": "Elemento agregado.",
+      "toastRemoved": "Elemento removido."
+    },
+    "routesConfig": {
+      "title": "Rutas (Configuración)",
+      "desc": "Zonas, centros de distribución y parámetros geográficos.",
+      "zones": "Zonas Operativas",
+      "cities": "Ciudades Autorizadas",
+      "centers": "Centros de Distribución (CEDI)",
+      "toastAdded": "Configuración de rutas actualizada."
+    },
+    "maintenanceConfig": {
+      "title": "Mantenimientos (Configuración)",
+      "desc": "Frecuencias, alertas automáticas e inventario de talleres.",
+      "frequencyKm": "Frecuencia de Mantenimiento (Km)",
+      "frequencyDays": "Frecuencia de Mantenimiento (Días)",
+      "alertKm": "Alerta de Vencimiento (Km Antes)",
+      "alertDays": "Alerta de Vencimiento (Días Antes)",
+      "types": "Clasificación de Trabajos",
+      "workshops": "Talleres Aliados / Concesionarios",
+      "addWorkshop": "Registrar Taller",
+      "workshopName": "Nombre del Taller",
+      "workshopAddress": "Dirección",
+      "workshopPhone": "Teléfono",
+      "toastAdded": "Taller registrado con éxito.",
+      "toastRemoved": "Taller eliminado."
+    },
+    "notifications": {
+      "title": "Notificaciones",
+      "desc": "Configure las vías, alertas de eventos y recordatorios.",
+      "email": "Correos Electrónicos",
+      "emailDesc": "Notificar reportes, vencimientos y novedades críticas por email.",
+      "reminders": "Recordatorios",
+      "remindersDesc": "Alertar con 15 días de antelación sobre revisiones técnicas y SOAT.",
+      "alerts": "Alertas de Operación",
+      "alertsDesc": "Alertar de inmediato si un vehículo supera límites de velocidad o desvíos.",
+      "internal": "Notificaciones Internas",
+      "internalDesc": "Notificar en tiempo real en la bandeja interna del dashboard.",
+      "toast": "Preferencia de notificación actualizada."
+    },
+    "documents": {
+      "title": "Documentos",
+      "desc": "Soporte, licencias y control de vencimientos del SOAT.",
+      "soat": "SOAT Obligatorio",
+      "insurance": "Póliza de Responsabilidad Todo Riesgo",
+      "techno": "Revisión Técnico-Mecánica (RTM)",
+      "licenses": "Licencias del Personal",
+      "docNum": "Número de Documento",
+      "expiry": "Fecha de Vencimiento",
+      "status": "Estado del Documento",
+      "toast": "Documento guardado con éxito."
+    },
+    "appearance": {
+      "title": "Apariencia",
+      "desc": "Sistemas de temas, paleta de colores corporativa e idioma.",
+      "themeMode": "Modo del Tema",
+      "themeDark": "Tema Oscuro",
+      "themeDarkDesc": "Optimizado para entornos nocturnos.",
+      "themeLight": "Tema Claro",
+      "themeLightDesc": "Diseño de alta fidelidad para luz solar.",
+      "accentColor": "Color de Énfasis / Marca",
+      "emerald": "Esmeralda",
+      "blue": "Azul Real",
+      "purple": "Morado Vextor",
+      "amber": "Ámbar",
+      "language": "Idioma de la Interfaz",
+      "langEs": "Español (América Latina)",
+      "langEn": "English (US)",
+      "toastColor": "Color de acento cambiado a {color}.",
+      "toastLang": "Idioma del sistema configurado correctamente."
+    },
+    "security": {
+      "title": "Seguridad",
+      "desc": "Control de sesiones activas y seguridad en dos factores (2FA).",
+      "changePass": "Cambiar Contraseña de Acceso",
+      "currentPass": "Contraseña Actual",
+      "newPass": "Nueva Contraseña",
+      "confirmPass": "Confirmar Nueva Contraseña",
+      "submitPass": "Cambiar Contraseña",
+      "twoFactor": "Autenticación en Dos Factores (2FA)",
+      "twoFactorDesc": "Proteja su cuenta agregando un código de seguridad de un solo uso (OTP) al iniciar sesión.",
+      "activeSessions": "Sesiones Activas en el Sistema",
+      "revokeBtn": "Cerrar sesión",
+      "currentSession": "Sesión Actual",
+      "toastRevoke": "Sesión revocada correctamente.",
+      "toastPass": "Contraseña cambiada exitosamente."
+    },
+    "backup": {
+      "title": "Copias de Seguridad",
+      "desc": "Políticas de respaldos, históricos de backups y restauración.",
+      "autoBackup": "Respaldos Automáticos Diarios",
+      "autoBackupDesc": "Generar una copia de seguridad automática del sistema cada día a las 04:00 AM.",
+      "manualBackup": "Copia de Seguridad Manual",
+      "manualBackupBtn": "Generar Respaldo Ahora",
+      "backingUp": "Generando Respaldo...",
+      "history": "Historial de Respaldos Recientes",
+      "filename": "Nombre del Archivo",
+      "size": "Tamaño",
+      "date": "Fecha y Hora",
+      "toastBackup": "Respaldo del sistema generado correctamente."
+    },
+    "system": {
+      "title": "Sistema",
+      "desc": "Zona horaria, tipo de moneda local y registros de listados.",
+      "timezone": "Zona Horaria Local",
+      "currency": "Moneda Local de Transacciones",
+      "dateFormat": "Formato de Fecha de Visualización",
+      "recordsPerPage": "Registros por Tabla (Paginación)",
+      "toast": "Configuración del sistema actualizada correctamente."
+    },
+    "audit": {
+      "title": "Auditoría",
+      "desc": "Historial detallado del registro de operaciones del sistema.",
+      "table": {
+        "action": "Operación",
+        "desc": "Detalle de Acción",
+        "user": "Usuario",
+        "date": "Fecha",
+        "ip": "Dirección IP"
+      }
+    }
+  }
+}

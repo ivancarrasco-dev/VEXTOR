@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 
 import { useTheme } from '../../context/ThemeContext';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import { cn } from '../../utils/cn';
 
@@ -55,8 +56,9 @@ const categories = [
 ];
 
 const Settings = () => {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, themeColor, setThemeColor, language, setLanguage } = useTheme();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -284,8 +286,10 @@ const Settings = () => {
   });
 
   // 9. Appearance State
-  const [appearanceColor, setAppearanceColor] = useState('emerald');
-  const [appearanceLang, setAppearanceLang] = useState('es');
+  const appearanceColor = themeColor;
+  const setAppearanceColor = setThemeColor;
+  const appearanceLang = language;
+  const setAppearanceLang = setLanguage;
 
   // 10. Security State
   const [passwordForm, setPasswordForm] = useState({ current: '', next: '', confirm: '' });
@@ -375,8 +379,8 @@ const Settings = () => {
       {/* Main Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-v-dark-soft p-6 rounded-2xl border border-v-dark-border">
         <div>
-          <h2 className="text-2xl font-bold text-v-white">Centro de Administración</h2>
-          <p className="text-v-gray text-sm mt-0.5">Gestione las configuraciones del sistema, políticas de seguridad y preferencias de la cuenta.</p>
+          <h2 className="text-2xl font-bold text-v-white">{t('settings.title')}</h2>
+          <p className="text-v-gray text-sm mt-0.5">{t('settings.subtitle')}</p>
         </div>
       </div>
 
@@ -385,7 +389,7 @@ const Settings = () => {
 
         {/* LEFT SIDEBAR: Categories */}
         <div className="lg:col-span-3 bg-v-dark-soft border border-v-dark-border rounded-2xl p-4 space-y-1 overflow-hidden">
-          <p className="text-xs font-bold text-v-gray uppercase tracking-wider px-3 mb-3">Categorías</p>
+          <p className="text-xs font-bold text-v-gray uppercase tracking-wider px-3 mb-3">{t('common.all')}</p>
           <div className="space-y-1 max-h-[70vh] overflow-y-auto custom-scrollbar pr-1">
             {categories.map((cat) => {
               const Icon = cat.icon;
@@ -411,7 +415,7 @@ const Settings = () => {
                       isActive ? "text-primary" : "text-v-gray group-hover:text-v-white group-hover:scale-105"
                     )}
                   />
-                  <span className="text-sm truncate">{cat.name}</span>
+                  <span className="text-sm truncate">{t(`settings.categories.${cat.id}`)}</span>
 
                   {isActive && (
                     <motion.div
@@ -444,11 +448,11 @@ const Settings = () => {
                     {React.createElement(categories.find(c => c.id === activeCategory).icon, { size: 18 })}
                   </div>
                   <h3 className="text-xl font-bold text-v-white">
-                    {categories.find(c => c.id === activeCategory).name}
+                    {t(`settings.categories.${activeCategory}`)}
                   </h3>
                 </div>
                 <p className="text-sm text-v-gray">
-                  {categories.find(c => c.id === activeCategory).desc}
+                  {t(`settings.${activeCategory}.desc`)}
                 </p>
               </div>
 

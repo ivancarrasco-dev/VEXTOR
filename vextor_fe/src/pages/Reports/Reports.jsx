@@ -31,6 +31,7 @@ import { driverService } from '../../services/driverService';
 import { routeService } from '../../services/routeService';
 import { maintenanceService } from '../../services/maintenanceService';
 import { cn } from '../../utils/cn';
+import { useTranslation } from 'react-i18next';
 
 // Status styling mapping for consistent look
 const STATUS_STYLES = {
@@ -57,6 +58,7 @@ const STATUS_STYLES = {
 };
 
 const Reports = () => {
+  const { t } = useTranslation();
   // Navigation / Active report selection
   // Possible values: 'vehicles' | 'drivers' | 'routes' | 'maintenances' | 'day' | 'week' | 'month' | 'general'
   const [activeReport, setActiveReport] = useState(null);
@@ -566,10 +568,10 @@ const Reports = () => {
             <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
               <BarChart3 size={20} />
             </div>
-            <h2 className="text-3xl font-bold text-v-white">Centro de Reportes</h2>
+            <h2 className="text-3xl font-bold text-v-white">{t('reports.title')}</h2>
           </div>
           <p className="text-v-gray text-sm md:text-base leading-relaxed">
-            Genere, visualice y exporte la información del sistema en diferentes formatos para facilitar el análisis y la toma de decisiones.
+            {t('reports.subtitle')}
           </p>
         </div>
 
@@ -581,7 +583,7 @@ const Reports = () => {
             className="flex items-center gap-2.5 w-full md:w-auto font-bold"
             disabled={isExporting}
           >
-            <Download size={16} /> Exportación rápida <ChevronDown size={14} className={cn("transition-transform duration-200", isQuickExportOpen && "rotate-180")} />
+            <Download size={16} /> {t('reports.btnExport')} <ChevronDown size={14} className={cn("transition-transform duration-200", isQuickExportOpen && "rotate-180")} />
           </Button>
 
           <AnimatePresence>
@@ -635,7 +637,7 @@ const Reports = () => {
       {/* QUICK REPORTS BUTTONS SECTION */}
       <section className="space-y-4">
         <h3 className="text-lg font-bold text-v-white flex items-center gap-2">
-          <Clock size={18} className="text-primary" /> Reportes rápidos
+          <Clock size={18} className="text-primary" /> {t('reports.selectReport')}
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <button
@@ -652,7 +654,7 @@ const Reports = () => {
               <Calendar size={18} />
             </div>
             <div className="space-y-1">
-              <h4 className="font-bold text-sm text-v-white group-hover:text-primary transition-colors">Reporte del día</h4>
+              <h4 className="font-bold text-sm text-v-white group-hover:text-primary transition-colors">{t('reports.dayReport', 'Reporte del día')}</h4>
               <p className="text-xs text-v-gray leading-snug">Rutas y mantenimientos planificados para hoy.</p>
             </div>
           </button>
@@ -671,7 +673,7 @@ const Reports = () => {
               <Clock size={18} />
             </div>
             <div className="space-y-1">
-              <h4 className="font-bold text-sm text-v-white group-hover:text-primary transition-colors">Reporte de esta semana</h4>
+              <h4 className="font-bold text-sm text-v-white group-hover:text-primary transition-colors">{t('reports.weekReport', 'Reporte de esta semana')}</h4>
               <p className="text-xs text-v-gray leading-snug">Consolidado operativo de los últimos 7 días.</p>
             </div>
           </button>
@@ -690,7 +692,7 @@ const Reports = () => {
               <TrendingUp size={18} />
             </div>
             <div className="space-y-1">
-              <h4 className="font-bold text-sm text-v-white group-hover:text-primary transition-colors">Reporte del mes</h4>
+              <h4 className="font-bold text-sm text-v-white group-hover:text-primary transition-colors">{t('reports.monthReport', 'Reporte del mes')}</h4>
               <p className="text-xs text-v-gray leading-snug">Análisis de rendimiento mensual de la flota.</p>
             </div>
           </button>
@@ -709,7 +711,7 @@ const Reports = () => {
               <BarChart3 size={18} />
             </div>
             <div className="space-y-1">
-              <h4 className="font-bold text-sm text-v-white group-hover:text-primary transition-colors">Resumen general</h4>
+              <h4 className="font-bold text-sm text-v-white group-hover:text-primary transition-colors">{t('reports.generalReport', 'Resumen general')}</h4>
               <p className="text-xs text-v-gray leading-snug">Base consolidada total de auditorías y estados.</p>
             </div>
           </button>
@@ -736,12 +738,12 @@ const Reports = () => {
                 </div>
                 <div className="text-right">
                   <span className="text-[10px] font-bold text-primary uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary/10">
-                    Vehículos
+                    {t('sidebar.vehicles')}
                   </span>
                 </div>
               </div>
               <div className="mb-5">
-                <p className="text-v-gray text-xs font-medium mb-0.5">Total registrados</p>
+                <p className="text-v-gray text-xs font-medium mb-0.5">{t('reports.stats.totalRecords')}</p>
                 <h3 className="text-3xl font-bold text-v-white">
                   {isLoadingCounts ? '...' : counts.vehicles}
                 </h3>
@@ -755,7 +757,7 @@ const Reports = () => {
               className="w-full font-bold mt-auto"
               disabled={isExporting}
             >
-              Generar reporte
+              {t('reports.btnGenerate')}
             </Button>
           </div>
 
@@ -1433,7 +1435,7 @@ const Reports = () => {
             <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center text-primary mb-5 shadow-inner">
               <BarChart3 size={28} />
             </div>
-            <h4 className="text-xl font-bold text-v-white mb-2">Configure su reporte</h4>
+            <h4 className="text-xl font-bold text-v-white mb-2">{t('reports.selectReport')}</h4>
             <p className="text-v-gray text-xs sm:text-sm max-w-sm leading-relaxed">
               Haga clic sobre cualquiera de los módulos o periodos de tiempo en la parte superior para cargar el panel de filtros y la vista previa interactiva.
             </p>

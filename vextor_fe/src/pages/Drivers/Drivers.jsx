@@ -22,6 +22,7 @@ import { Button } from '../../components/ui/Button';
 import { Select } from '../../components/ui/Select';
 import { driverService } from '../../services/driverService';
 import { cn } from '../../utils/cn';
+import { useTranslation } from 'react-i18next';
 
 const DRIVER_STATUSES = [
   { value: 'ACTIVO', label: 'Activo', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
@@ -37,6 +38,7 @@ const LICENSE_TYPES = [
 ];
 
 const Drivers = () => {
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [drivers, setDrivers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -264,15 +266,15 @@ const Drivers = () => {
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-v-dark-soft p-6 rounded-2xl border border-v-dark-border">
         <div>
-          <h2 className="text-2xl font-bold text-v-white">Gestión de Conductores</h2>
-          <p className="text-v-gray text-sm mt-0.5">Administre el personal operativo de su flota y controle licencias.</p>
+          <h2 className="text-2xl font-bold text-v-white">{t('drivers.title')}</h2>
+          <p className="text-v-gray text-sm mt-0.5">{t('drivers.subtitle')}</p>
         </div>
         <Button
           variant="primary"
           onClick={handleOpenCreate}
           className="flex items-center gap-2 self-stretch sm:self-auto shrink-0"
         >
-          <Plus size={18} /> Registrar Conductor
+          <Plus size={18} /> {t('drivers.addBtn')}
         </Button>
       </div>
 
@@ -283,7 +285,7 @@ const Drivers = () => {
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-v-gray" />
           <input
             type="text"
-            placeholder="Buscar por cédula, nombre, licencia..."
+            placeholder={t('drivers.placeholderSearch')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full bg-v-dark border border-v-dark-border focus:border-primary text-v-white text-sm pl-10 pr-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
@@ -294,7 +296,7 @@ const Drivers = () => {
         <div className="flex gap-3">
           <div className="flex items-center gap-1.5 bg-v-dark border border-v-dark-border px-3 py-1.5 rounded-lg shrink-0">
             <SlidersHorizontal size={15} className="text-v-gray" />
-            <span className="text-v-gray text-xs font-medium">Estado:</span>
+            <span className="text-v-gray text-xs font-medium">{t('reports.filters.status')}:</span>
           </div>
 
           <Select
@@ -302,7 +304,7 @@ const Drivers = () => {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="w-40"
           >
-            <option value="">Todos</option>
+            <option value="">{t('drivers.filterAll')}</option>
             {DRIVER_STATUSES.map(st => (
               <option key={st.value} value={st.value}>{st.label}</option>
             ))}
