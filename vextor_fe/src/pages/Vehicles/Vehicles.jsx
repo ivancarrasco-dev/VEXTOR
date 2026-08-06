@@ -18,6 +18,7 @@ import { Button } from '../../components/ui/Button';
 import { Select } from '../../components/ui/Select';
 import { vehicleService } from '../../services/vehicleService';
 import { cn } from '../../utils/cn';
+import { useTranslation } from 'react-i18next';
 
 const VEHICLE_STATUSES = [
   { value: 'DISPONIBLE', label: 'Disponible', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
@@ -29,6 +30,7 @@ const VEHICLE_STATUSES = [
 const VEHICLE_TYPES = ['Automóvil', 'Camioneta', 'Furgón', 'Camión', 'Bus'];
 
 const Vehicles = () => {
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [vehicles, setVehicles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -302,15 +304,15 @@ const Vehicles = () => {
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-v-dark-soft p-6 rounded-2xl border border-v-dark-border">
         <div>
-          <h2 className="text-2xl font-bold text-v-white">Gestión de Vehículos</h2>
-          <p className="text-v-gray text-sm mt-0.5">Monitoree, agregue y administre la flota vehicular operativa.</p>
+          <h2 className="text-2xl font-bold text-v-white">{t('vehicles.title')}</h2>
+          <p className="text-v-gray text-sm mt-0.5">{t('vehicles.subtitle')}</p>
         </div>
         <Button
           variant="primary"
           onClick={handleOpenCreate}
           className="flex items-center gap-2 self-stretch sm:self-auto shrink-0"
         >
-          <Plus size={18} /> Registrar Vehículo
+          <Plus size={18} /> {t('vehicles.addBtn')}
         </Button>
       </div>
 
@@ -321,7 +323,7 @@ const Vehicles = () => {
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-v-gray" />
           <input
             type="text"
-            placeholder="Buscar por placa, marca o modelo..."
+            placeholder={t('vehicles.placeholderSearch')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full bg-v-dark border border-v-dark-border focus:border-primary text-v-white text-sm pl-10 pr-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
@@ -332,7 +334,7 @@ const Vehicles = () => {
         <div className="flex flex-wrap sm:flex-nowrap gap-3">
           <div className="flex items-center gap-1.5 bg-v-dark border border-v-dark-border px-3 py-1.5 rounded-lg shrink-0">
             <SlidersHorizontal size={15} className="text-v-gray" />
-            <span className="text-v-gray text-xs font-medium">Filtros:</span>
+            <span className="text-v-gray text-xs font-medium">{t('reports.filters.status')}:</span>
           </div>
 
           <Select
@@ -340,7 +342,7 @@ const Vehicles = () => {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="w-48"
           >
-            <option value="">Todos los estados</option>
+            <option value="">{t('vehicles.filterAll')}</option>
             {VEHICLE_STATUSES.map(st => (
               <option key={st.value} value={st.value}>{st.label}</option>
             ))}

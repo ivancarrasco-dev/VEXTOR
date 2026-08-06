@@ -24,6 +24,7 @@ import { Select } from '../../components/ui/Select';
 import { maintenanceService } from '../../services/maintenanceService';
 import { vehicleService } from '../../services/vehicleService';
 import { cn } from '../../utils/cn';
+import { useTranslation } from 'react-i18next';
 
 const MAINTENANCE_STATUSES = [
   { value: 'PROGRAMADO', label: 'Programado', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
@@ -35,6 +36,7 @@ const MAINTENANCE_STATUSES = [
 const MAINTENANCE_TYPES = ['PREVENTIVO', 'CORRECTIVO', 'PREDICTIVO'];
 
 const Maintenance = () => {
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [maintenances, setMaintenances] = useState([]);
   const [vehicles, setVehicles] = useState([]);
@@ -272,8 +274,8 @@ const Maintenance = () => {
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-v-dark-soft p-6 rounded-2xl border border-v-dark-border">
         <div>
-          <h2 className="text-2xl font-bold text-v-white">Mantenimientos Preventivos y Correctivos</h2>
-          <p className="text-v-gray text-sm mt-0.5">Gestione y agende las revisiones mecánicas de la flota vehicular.</p>
+          <h2 className="text-2xl font-bold text-v-white">{t('maintenance.title')}</h2>
+          <p className="text-v-gray text-sm mt-0.5">{t('maintenance.subtitle')}</p>
         </div>
         <Button
           variant="primary"
@@ -281,7 +283,7 @@ const Maintenance = () => {
           disabled={vehicles.length === 0}
           className="flex items-center gap-2 self-stretch sm:self-auto shrink-0"
         >
-          <Plus size={18} /> Agendar Mantenimiento
+          <Plus size={18} /> {t('maintenance.addBtn')}
         </Button>
       </div>
 

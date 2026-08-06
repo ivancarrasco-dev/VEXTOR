@@ -23,6 +23,7 @@ import {
   Compass,
   ArrowRight
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
 import { Select } from '../../components/ui/Select';
 import { routeService } from '../../services/routeService';
@@ -41,6 +42,7 @@ const ROUTE_STATUSES = [
 ];
 
 const Routes = () => {
+  const { t } = useTranslation();
   // Data lists
   const [routes, setRoutes] = useState([]);
   const [drivers, setDrivers] = useState([]);
@@ -418,9 +420,9 @@ const Routes = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-v-dark-soft p-6 rounded-2xl border border-v-dark-border">
         <div>
           <h2 className="text-2xl font-bold text-v-white flex items-center gap-2">
-            <RouteIcon className="text-primary" size={24} /> Planificación Avanzada de Rutas
+            <RouteIcon className="text-primary" size={24} /> {t('routes.title')}
           </h2>
-          <p className="text-v-gray text-sm mt-0.5">Gestione y trace recorridos optimizados mediante mapas interactivos y navegación de calles reales.</p>
+          <p className="text-v-gray text-sm mt-0.5">{t('routes.subtitle')}</p>
         </div>
       </div>
 
