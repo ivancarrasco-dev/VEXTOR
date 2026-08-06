@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -46,11 +47,26 @@ const menuItems = [
 const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen }) => {
   const { logout } = useAuth();
   const location = useLocation();
+  const [width, setWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
+
+  useEffect(() => {
+    const handleResize = () => setWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobile = width < 1024;
 
   const sidebarVariants = {
-    expanded: { width: 260 },
-    collapsed: { width: 80 }
+    expanded: { width: 260, x: 0 },
+    collapsed: { width: 80, x: 0 },
+    mobileOpen: { width: 280, x: 0 },
+    mobileClosed: { x: -300 }
   };
+
+  const currentVariant = isMobile
+    ? (isMobileOpen ? 'mobileOpen' : 'mobileClosed')
+    : (isCollapsed ? 'collapsed' : 'expanded');
 
   return (
     <>
@@ -70,20 +86,20 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
       {/* Sidebar Container */}
       <motion.aside
         initial={false}
-        animate={isMobileOpen ? { x: 0 } : (window.innerWidth < 1024 ? { x: -300 } : 'expanded')}
+        animate={currentVariant}
         variants={sidebarVariants}
+        transition={{ type: 'tween', duration: 0.3, ease: 'easeInOut' }}
         className={cn(
-          "fixed top-0 left-0 z-50 h-screen bg-v-dark-soft border-r border-v-dark-border transition-all duration-300 ease-in-out lg:translate-x-0",
-          isCollapsed ? "w-20" : "w-[260px]",
-          isMobileOpen ? "translate-x-0 w-[280px]" : "-translate-x-full lg:translate-x-0"
+          "fixed top-0 left-0 z-50 h-screen bg-v-dark-soft border-r border-v-dark-border",
+          isMobile ? "w-[280px]" : (isCollapsed ? "w-20" : "w-[260px]")
         )}
       >
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="h-20 flex items-center justify-between px-6 border-b border-v-dark-border">
-            <div className={cn("flex items-center overflow-hidden transition-all duration-300", isCollapsed && !isMobileOpen ? "w-10" : "w-auto")}>
+            <div className={cn("flex items-center overflow-hidden transition-all duration-300", isCollapsed && !isMobile ? "w-10" : "w-auto")}>
               <Logo
-                variant={isCollapsed && !isMobileOpen ? "iso" : "full"}
+                variant={isCollapsed && !isMobile ? "iso" : "full"}
                 size="sm"
               />
             </div>
@@ -106,13 +122,14 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
                   "flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group relative",
                   isActive
                     ? "bg-primary/10 text-primary"
-                    : "text-v-gray hover:text-v-white hover:bg-v-dark-border/50"
+                    : "text-v-gray hover:text-v-white hover:bg-v-dark-border/50",
+                  isCollapsed && !isMobile ? "justify-center" : ""
                 )}
               >
                 <item.icon size={22} className={cn("shrink-0 transition-transform duration-200", !isCollapsed && "group-hover:scale-110")} />
 
                 <AnimatePresence>
-                  {(!isCollapsed || isMobileOpen) && (
+                  {(!isCollapsed || isMobile) && (
                     <motion.span
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
@@ -141,11 +158,11 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
               onClick={logout}
               className={cn(
                 "flex items-center gap-3 w-full px-3 py-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-all duration-200",
-                isCollapsed && !isMobileOpen ? "justify-center" : ""
+                isCollapsed && !isMobile ? "justify-center" : ""
               )}
             >
               <LogOut size={22} className="shrink-0" />
-              {(!isCollapsed || isMobileOpen) && <span className="font-medium">Cerrar Sesión</span>}
+              {(!isCollapsed || isMobile) && <span className="font-medium">Cerrar Sesión</span>}
             </button>
           </div>
         </div>
