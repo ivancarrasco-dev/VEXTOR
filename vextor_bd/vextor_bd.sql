@@ -161,3 +161,23 @@ CREATE TABLE REPORTE (
         ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT chk_formato_exportacion CHECK (formato_exportacion IN ('PDF', 'EXCEL', 'CSV'))
 );
+
+
+-- -----------------------------------------------------------------------------
+-- 10. Tabla: MANTENIMIENTO
+-- -----------------------------------------------------------------------------
+CREATE TABLE MANTENIMIENTO (
+    id_mantenimiento UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_vehiculo UUID NOT NULL,
+    tipo_mantenimiento VARCHAR(50) NOT NULL,
+   
+    descripcion_mantenimiento TEXT NOT NULL,
+    fecha_mantenimiento DATE NOT NULL,
+    costo_mantenimiento NUMERIC(10,2) NOT NULL,
+    kilometraje_mantenimiento INT NOT NULL,
+    estado_mantenimiento VARCHAR(20) NOT NULL DEFAULT 'PROGRAMADO',
+    CONSTRAINT fk_mantenimiento_vehiculo FOREIGN KEY (id_vehiculo)
+        REFERENCES VEHICULO (id_vehiculo)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT chk_estado_mantenimiento CHECK (estado_mantenimiento IN ('PROGRAMADO', 'EN_PROCESO', 'COMPLETADA', 'CANCELADO'))
+);
