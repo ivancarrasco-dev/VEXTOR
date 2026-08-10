@@ -1,84 +1,55 @@
-import { initializeDatabase, generateUUID } from './db';
+import axios from 'axios';
 
-// Ensure DB is initialized
-initializeDatabase();
-
-const delay = (ms = 400) => new Promise(resolve => setTimeout(resolve, ms));
+const API_URL = 'http://localhost:8000/api/maintenance';
 
 export const maintenanceService = {
   async getMaintenances() {
-    await delay();
-    return JSON.parse(localStorage.getItem('vextor_db_maintenance') || '[]');
+    try {
+      const response = await axios.get(API_URL);
+      return response.data;
+    } catch (error) {
+      const message = error.response?.data?.detail || 'Error al obtener los registros de mantenimiento.';
+      throw new Error(message);
+    }
   },
 
   async createMaintenance(maintenanceData) {
-    await delay();
-    const maintenances = JSON.parse(localStorage.getItem('vextor_db_maintenance') || '[]');
-
-    const newMaintenance = {
-      id_mantenimiento: generateUUID(),
-      ...maintenanceData,
-      costo_mantenimiento: parseFloat(maintenanceData.costo_mantenimiento),
-      kilometraje_mantenimiento: parseInt(maintenanceData.kilometraje_mantenimiento, 10)
-    };
-
-    maintenances.unshift(newMaintenance);
-    localStorage.setItem('vextor_db_maintenance', JSON.stringify(maintenances));
-
-    // Side effect: if maintenance is EN_PROCESO, maybe we set vehicle's state to MANTENIMIENTO
-    if (newMaintenance.estado_mantenimiento === 'EN_PROCESO') {
-      const vehicles = JSON.parse(localStorage.getItem('vextor_db_vehicles') || '[]');
-      const vIndex = vehicles.findIndex(v => v.id_vehiculo === newMaintenance.id_vehiculo);
-      if (vIndex !== -1) {
-        vehicles[vIndex].estado_vehiculo = 'MANTENIMIENTO';
-        localStorage.setItem('vextor_db_vehicles', JSON.stringify(vehicles));
-      }
+    try {
+      const formattedData = {
+        ...maintenanceData,
+        costo_mantenimiento: parseFloat(maintenanceData.costo_mantenimiento),
+        kilometraje_mantenimiento: parseInt(maintenanceData.kilometraje_mantenimiento, 10)
+      };
+      const response = await axios.post(API_URL, formattedData);
+      return response.data;
+    } catch (error) {
+      const message = error.response?.data?.detail || 'Error al crear el registro de mantenimiento.';
+      throw new Error(message);
     }
-
-    return newMaintenance;
   },
 
   async updateMaintenance(id_mantenimiento, maintenanceData) {
-    await delay();
-    const maintenances = JSON.parse(localStorage.getItem('vextor_db_maintenance') || '[]');
-    const index = maintenances.findIndex(m => m.id_mantenimiento === id_mantenimiento);
-    if (index === -1) {
-      throw new Error('Registro de mantenimiento no encontrado.');
+    try {
+      const formattedData = {
+        ...maintenanceData,
+        costo_mantenimiento: parseFloat(maintenanceData.costo_mantenimiento),
+        kilometraje_mantenimiento: parseInt(maintenanceData.kilometraje_mantenimiento, 10)
+      };
+      const response = await axios.put(`${API_URL}/${id_mantenimiento}`, formattedData);
+      return response.data;
+    } catch (error) {
+      const message = error.response?.data?.detail || 'Error al actualizar el registro de mantenimiento.';
+      throw new Error(message);
     }
-
-    const updatedMaintenance = {
-      ...maintenances[index],
-      ...maintenanceData,
-      costo_mantenimiento: parseFloat(maintenanceData.costo_mantenimiento),
-      kilometraje_mantenimiento: parseInt(maintenanceData.kilometraje_mantenimiento, 10)
-    };
-
-    maintenances[index] = updatedMaintenance;
-    localStorage.setItem('vextor_db_maintenance', JSON.stringify(maintenances));
-
-    // Side effect: if maintenance is EN_PROCESO, we can set vehicle's state to MANTENIMIENTO
-    if (updatedMaintenance.estado_mantenimiento === 'EN_PROCESO') {
-      const vehicles = JSON.parse(localStorage.getItem('vextor_db_vehicles') || '[]');
-      const vIndex = vehicles.findIndex(v => v.id_vehiculo === updatedMaintenance.id_vehiculo);
-      if (vIndex !== -1) {
-        vehicles[vIndex].estado_vehiculo = 'MANTENIMIENTO';
-        localStorage.setItem('vextor_db_vehicles', JSON.stringify(vehicles));
-      }
-    }
-
-    return updatedMaintenance;
   },
 
   async deleteMaintenance(id_mantenimiento) {
-    await delay();
-    let maintenances = JSON.parse(localStorage.getItem('vextor_db_maintenance') || '[]');
-    const exists = maintenances.some(m => m.id_mantenimiento === id_mantenimiento);
-    if (!exists) {
-      throw new Error('Registro de mantenimiento no encontrado.');
+    try {
+      await axios.delete(`${API_URL}/${id_mantenimiento}`);
+      return true;
+    } catch (error) {
+      const message = error.response?.data?.detail || 'Error al eliminar el registro de mantenimiento.';
+      throw new Error(message);
     }
-
-    maintenances = maintenances.filter(m => m.id_mantenimiento !== id_mantenimiento);
-    localStorage.setItem('vextor_db_maintenance', JSON.stringify(maintenances));
-    return true;
   }
 };
