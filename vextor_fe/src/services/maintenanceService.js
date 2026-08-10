@@ -26,6 +26,7 @@ export const maintenanceService = {
       const message = error.response?.data?.detail || 'Error al crear el registro de mantenimiento.';
       throw new Error(message);
     }
+    
   },
 
   async updateMaintenance(id_mantenimiento, maintenanceData) {
