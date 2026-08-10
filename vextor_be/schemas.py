@@ -178,3 +178,4 @@ class Mantenimiento(MantenimientoBase):
 
     class Config:
         from_attributes = True
+

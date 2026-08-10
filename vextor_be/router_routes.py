@@ -132,3 +132,4 @@ def delete_route(id_ruta: UUID, db: Session = Depends(get_db)):
     db.delete(db_route)
     db.commit()
     return {"message": "Ruta eliminada con éxito"}
+

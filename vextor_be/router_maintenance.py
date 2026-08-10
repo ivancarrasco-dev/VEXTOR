@@ -18,6 +18,7 @@ def create_maintenance(maint: schemas.MantenimientoCreate, db: Session = Depends
     db.commit()
     db.refresh(new_m)
 
+
     # Side effect: if maintenance is EN_PROCESO, we can set vehicle's state to MANTENIMIENTO
     if new_m.estado_mantenimiento == "EN_PROCESO":
         v = db.query(models.Vehiculo).filter(models.Vehiculo.id_vehiculo == new_m.id_vehiculo).first()

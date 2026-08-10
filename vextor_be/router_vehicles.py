@@ -5,6 +5,7 @@ from uuid import UUID
 from .database import get_db
 from . import models, schemas
 
+
 router = APIRouter(prefix="/api/vehicles", tags=["Vehicles"])
 
 @router.get("", response_model=List[schemas.Vehiculo])
