@@ -329,3 +329,4 @@ def startup_populate():
 
     finally:
         db.close()
+        

@@ -163,7 +163,6 @@ class MantenimientoBase(BaseModel):
 
 class MantenimientoCreate(MantenimientoBase):
     pass
-
 class MantenimientoUpdate(BaseModel):
     id_vehiculo: Optional[UUID] = None
     tipo_mantenimiento: Optional[str] = Field(None, max_length=50)

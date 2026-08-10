@@ -188,4 +188,3 @@ class Mantenimiento(Base):
     __table_args__ = (
         CheckConstraint("estado_mantenimiento IN ('PROGRAMADO', 'EN_PROCESO', 'COMPLETADA', 'CANCELADO')", name="chk_estado_mantenimiento"),
     )
-

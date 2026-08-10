@@ -21,7 +21,6 @@ def create_driver(driver: schemas.ConductorCreate, db: Session = Depends(get_db)
             detail="La cédula ingresada ya está registrada."
         )
         
-
     # Resolve or create Rol for Conductor
     rol = db.query(models.Rol).filter(models.Rol.nombre_rol == "rol-conductor").first()
     if not rol:
