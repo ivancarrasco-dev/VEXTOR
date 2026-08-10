@@ -4,7 +4,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql+psycopg://vextor_user:vextor_pass@localhost:5432/vextor_db"
+    "postgresql+psycopg://admin_vextor:AdminVextor123@localhost:5432/Vextor_db"
 )
 
 engine = create_engine(DATABASE_URL)
@@ -17,3 +17,4 @@ def get_db():
         yield db
     finally:
         db.close()
+        
