@@ -13,6 +13,7 @@ export const generateUUID = () => {
   });
 };
 
+
 const BRANDS_MODELS = [
   { brand: 'Toyota', model: 'Hilux', type: 'Camioneta', capacity: 5 },
   { brand: 'Chevrolet', model: 'Onix', type: 'Automóvil', capacity: 5 },

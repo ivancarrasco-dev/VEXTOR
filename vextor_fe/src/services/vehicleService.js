@@ -30,6 +30,7 @@ export const vehicleService = {
       throw new Error(message);
     }
   },
+  
 
   async updateVehicle(id_vehiculo, vehicleData) {
     try {
