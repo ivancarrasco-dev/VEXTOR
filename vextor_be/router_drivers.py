@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID, uuid4
-from .database import get_db
-from . import models, schemas
+from database import get_db
+import models, schemas
 
 router = APIRouter(prefix="/api/drivers", tags=["Drivers"])
 

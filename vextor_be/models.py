@@ -3,7 +3,7 @@ from sqlalchemy import Column, String, Integer, Date, DateTime, ForeignKey, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-from .database import Base
+from database import Base
 
 class Rol(Base):
     __tablename__ = "rol"

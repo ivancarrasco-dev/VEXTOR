@@ -1,16 +1,17 @@
 import random
 import uuid
+import unicodedata
 from datetime import date, datetime, timedelta
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from .database import engine, SessionLocal
-from . import models
-from .router_vehicles import router as vehicles_router
-from .router_drivers import router as drivers_router
-from .router_routes import router as routes_router
-from .router_maintenance import router as maintenance_router
+from database import engine, SessionLocal
+import models
+from router_vehicles import router as vehicles_router
+from router_drivers import router as drivers_router
+from router_routes import router as routes_router
+from router_maintenance import router as maintenance_router
 
 app = FastAPI(title="Vextor API", description="Backend para la gestión de flota y transporte de Vextor")
 
@@ -29,7 +30,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 # Include routers
 app.include_router(vehicles_router)
@@ -152,18 +152,22 @@ def startup_populate():
 
             # Special driver
             special_user_id = uuid.UUID("abc12345-6789-4000-b000-000000000001")
-            special_user = models.Usuario(
-                id_usuario=special_user_id,
-                id_rol=rol_conductor.id_rol,
-                nombres_usuario="Juan",
-                apellidos_usuario="Pérez",
-                correo_usuario="juan.perez@vextor.com",
-                contrasenia_usuario="pbkdf2:sha256:123456",
-                telefono_usuario="+593 98 765 4321",
-                estado_usuario="ACTIVO"
-            )
-            db.add(special_user)
-            db.commit()
+            
+            # Validar si el usuario ya existe en la BD antes de intentar insertarlo
+            special_user = db.query(models.Usuario).filter(models.Usuario.id_usuario == special_user_id).first()
+            if not special_user:
+                special_user = models.Usuario(
+                    id_usuario=special_user_id,
+                    id_rol=rol_conductor.id_rol,
+                    nombres_usuario="Juan",
+                    apellidos_usuario="Pérez",
+                    correo_usuario="juan.perez@vextor.com",
+                    contrasenia_usuario="pbkdf2:sha256:123456",
+                    telefono_usuario="+593 98 765 4321",
+                    estado_usuario="ACTIVO"
+                )
+                db.add(special_user)
+                db.commit()
 
             special_cond = models.Conductor(
                 id_conductor=uuid.UUID("abc12345-6789-4000-c000-000000000001"),
@@ -206,7 +210,6 @@ def startup_populate():
                 
                 # Make email unique
                 email = ""
-                import unicodedata
                 while True:
                     email_prefix = f"{f_name.lower()}.{l_name.lower()}"
                     email_prefix = "".join(c for c in unicodedata.normalize("NFD", email_prefix) if unicodedata.category(c) != "Mn")
@@ -277,43 +280,43 @@ def startup_populate():
             vehicles = db.query(models.Vehiculo).all()
             if drivers and vehicles:
                 routes_data = [
-    {
-        "id_ruta": uuid.UUID("11111111-1111-4000-a000-000000000001"),
-        "codigo_ruta": "RUT-101",
-        "nombre_ruta": "Ruta Portal Norte a Andino",
-        "origen": "4.7554, -74.0463",
-        "destino": "4.6669, -74.0528",
-        "fecha_programada": datetime.now() + timedelta(days=1),
-        "estado_ruta": "PROGRAMADA",
-        "id_conductor": drivers[0].id_conductor,
-        "id_vehiculo": vehicles[0].id_vehiculo
-    },
-    {
-        "id_ruta": uuid.UUID("22222222-2222-4000-a000-000000000002"),
-        "codigo_ruta": "RUT-102",
-        "nombre_ruta": "Ruta Portal 80 a Parque de la 93",
-        "origen": "4.7100, -74.1120",
-        "destino": "4.6768, -74.0483",
-        "fecha_programada": datetime.now(),
-        "hora_inicio_real": datetime.now() - timedelta(hours=1),
-        "estado_ruta": "EN_PROCESO",
-        "id_conductor": drivers[min(1, len(drivers)-1)].id_conductor,
-        "id_vehiculo": vehicles[min(1, len(vehicles)-1)].id_vehiculo
-    },
-    {
-        "id_ruta": uuid.UUID("33333333-3333-4000-a000-000000000003"),
-        "codigo_ruta": "RUT-103",
-        "nombre_ruta": "Ruta Terminal Salitre a Aeropuerto",
-        "origen": "4.6534, -74.1158",
-        "destino": "4.6975, -74.1411",
-        "fecha_programada": datetime.now() - timedelta(days=2),
-        "hora_inicio_real": datetime.now() - timedelta(days=2, hours=1),
-        "hora_fin_real": datetime.now() - timedelta(days=2, minutes=30),
-        "estado_ruta": "COMPLETADA",
-        "id_conductor": drivers[min(2, len(drivers)-1)].id_conductor,
-        "id_vehiculo": vehicles[min(2, len(vehicles)-1)].id_vehiculo
-    }
-]
+                    {
+                        "id_ruta": uuid.UUID("11111111-1111-4000-a000-000000000001"),
+                        "codigo_ruta": "RUT-101",
+                        "nombre_ruta": "Ruta Portal Norte a Andino",
+                        "origen": "4.7554, -74.0463",
+                        "destino": "4.6669, -74.0528",
+                        "fecha_programada": datetime.now() + timedelta(days=1),
+                        "estado_ruta": "PROGRAMADA",
+                        "id_conductor": drivers[0].id_conductor,
+                        "id_vehiculo": vehicles[0].id_vehiculo
+                    },
+                    {
+                        "id_ruta": uuid.UUID("22222222-2222-4000-a000-000000000002"),
+                        "codigo_ruta": "RUT-102",
+                        "nombre_ruta": "Ruta Portal 80 a Parque de la 93",
+                        "origen": "4.7100, -74.1120",
+                        "destino": "4.6768, -74.0483",
+                        "fecha_programada": datetime.now(),
+                        "hora_inicio_real": datetime.now() - timedelta(hours=1),
+                        "estado_ruta": "EN_PROCESO",
+                        "id_conductor": drivers[min(1, len(drivers)-1)].id_conductor,
+                        "id_vehiculo": vehicles[min(1, len(vehicles)-1)].id_vehiculo
+                    },
+                    {
+                        "id_ruta": uuid.UUID("33333333-3333-4000-a000-000000000003"),
+                        "codigo_ruta": "RUT-103",
+                        "nombre_ruta": "Ruta Terminal Salitre a Aeropuerto",
+                        "origen": "4.6534, -74.1158",
+                        "destino": "4.6975, -74.1411",
+                        "fecha_programada": datetime.now() - timedelta(days=2),
+                        "hora_inicio_real": datetime.now() - timedelta(days=2, hours=1),
+                        "hora_fin_real": datetime.now() - timedelta(days=2, minutes=30),
+                        "estado_ruta": "COMPLETADA",
+                        "id_conductor": drivers[min(2, len(drivers)-1)].id_conductor,
+                        "id_vehiculo": vehicles[min(2, len(vehicles)-1)].id_vehiculo
+                    }
+                ]
 
                 for rd in routes_data:
                     cond_id = rd.pop("id_conductor")
@@ -329,4 +332,3 @@ def startup_populate():
 
     finally:
         db.close()
-        
