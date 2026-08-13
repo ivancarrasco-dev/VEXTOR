@@ -366,7 +366,7 @@ const Routes = () => {
 
   // Search and Filter logic
   const filteredRoutes = routes.filter(route => {
-    const query = search.toLowerCase();
+    const query = search.trim().toLowerCase();
     const driver = drivers.find(d => d.id_conductor === route.id_conductor);
     const vehicle = vehicles.find(v => v.id_vehiculo === route.id_vehiculo);
     const driverName = driver ? `${driver.nombre_conductor} ${driver.apellido_conductor}`.toLowerCase() : '';

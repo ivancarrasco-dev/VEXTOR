@@ -1,6 +1,10 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import axios from 'axios';
 
 const AuthContext = createContext(undefined);
+
+// Axios Global Configuration
+axios.defaults.withCredentials = true; // Support HTTP-only cookies
 
 /**
  * AuthProvider Component
@@ -11,7 +15,7 @@ const AuthContext = createContext(undefined);
  * Funcionalidades:
  * * Mantener el estado del usuario actual y su estado de autenticación.
  * * Proveer métodos para iniciar sesión, cerrar sesión y registrarse.
- * * Persistencia de sesión mediante localStorage.
+ * * Persistencia de sesión mediante cookie/JWT o consulta directa de /api/auth/me.
  * * Manejo de estados de carga durante la verificación de sesión.
  */
 export const AuthProvider = ({ children }) => {
@@ -19,17 +23,28 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Simular verificación de sesión al cargar
+  // Verificación real de sesión al cargar mediante endpoint /me
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const storedUser = localStorage.getItem('vextor_user');
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
+        // Fallback or explicit authorization header if token is stored in localStorage
+        const storedToken = localStorage.getItem('vextor_auth_token');
+        if (storedToken) {
+          axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+        }
+
+        const response = await axios.get('http://localhost:8000/api/auth/me');
+        if (response.data) {
+          setUser(response.data);
           setIsAuthenticated(true);
         }
       } catch (error) {
-        console.error('Error loading session:', error);
+        console.warn('Sesión no activa o expirada:', error.response?.data?.detail || error.message);
+        // Clear authorization if invalid
+        delete axios.defaults.headers.common['Authorization'];
+        localStorage.removeItem('vextor_auth_token');
+        setUser(null);
+        setIsAuthenticated(false);
       } finally {
         setIsLoading(false);
       }
@@ -38,51 +53,63 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
-  const login = async (email) => {
+  const login = async (email, password) => {
     setIsLoading(true);
-    // Simulación de API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const userData = {
-          id: '1',
-          name: 'Admin Vextor',
-          email: email,
-          role: 'Super Administrador',
-          avatar: 'AV'
-        };
-        setUser(userData);
-        setIsAuthenticated(true);
-        localStorage.setItem('vextor_user', JSON.stringify(userData));
-        setIsLoading(false);
-        resolve(userData);
-      }, 1000);
-    });
+    try {
+      const response = await axios.post('http://localhost:8000/api/auth/login', {
+        email,
+        password
+      });
+      const data = response.data;
+
+      // Store token in localStorage as fallback, and also set authorization headers
+      if (data.token) {
+        localStorage.setItem('vextor_auth_token', data.token);
+        axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
+      }
+
+      setUser(data.user);
+      setIsAuthenticated(true);
+      setIsLoading(false);
+      return data.user;
+    } catch (error) {
+      setIsLoading(false);
+      const message = error.response?.data?.detail || 'Error al iniciar sesión.';
+      throw new Error(message);
+    }
   };
 
   const register = async (userData) => {
     setIsLoading(true);
-    // Simulación de API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const newUser = {
-          id: Math.random().toString(36).substr(2, 9),
-          ...userData,
-          role: 'Administrador',
-          avatar: userData.fullName.split(' ').map(n => n[0]).join('').toUpperCase()
-        };
-        setUser(newUser);
-        setIsAuthenticated(true);
-        localStorage.setItem('vextor_user', JSON.stringify(newUser));
-        setIsLoading(false);
-        resolve(newUser);
-      }, 1000);
-    });
+    try {
+      // Registrar usuario
+      await axios.post('http://localhost:8000/api/auth/register', {
+        fullName: userData.fullName,
+        email: userData.email,
+        password: userData.password
+      });
+
+      // Hacer login automático inmediatamente después del registro
+      const loggedUser = await login(userData.email, userData.password);
+      return loggedUser;
+    } catch (error) {
+      setIsLoading(false);
+      const message = error.response?.data?.detail || 'Error al crear la cuenta.';
+      throw new Error(message);
+    }
   };
 
-  const logout = () => {
-    setUser(null);
-    setIsAuthenticated(false);
-    localStorage.removeItem('vextor_user');
+  const logout = async () => {
+    try {
+      await axios.post('http://localhost:8000/api/auth/logout');
+    } catch (error) {
+      console.error('Error logging out on backend:', error);
+    } finally {
+      delete axios.defaults.headers.common['Authorization'];
+      localStorage.removeItem('vextor_auth_token');
+      setUser(null);
+      setIsAuthenticated(false);
+    }
   };
 
   return (
@@ -93,7 +120,8 @@ export const AuthProvider = ({ children }) => {
         isLoading,
         login,
         logout,
-        register
+        register,
+        setUser
       }}
     >
       {children}

@@ -54,6 +54,8 @@ def update_vehicle(id_vehiculo: UUID, vehicle_data: schemas.VehiculoUpdate, db: 
     db.refresh(db_vehicle)
     return db_vehicle
 
+from sqlalchemy.exc import IntegrityError
+
 @router.delete("/{id_vehiculo}")
 def delete_vehicle(id_vehiculo: UUID, db: Session = Depends(get_db)):
     db_vehicle = db.query(models.Vehiculo).filter(models.Vehiculo.id_vehiculo == id_vehiculo).first()
@@ -68,6 +70,21 @@ def delete_vehicle(id_vehiculo: UUID, db: Session = Depends(get_db)):
             detail="No se puede eliminar el vehículo porque tiene registros de mantenimiento asociados."
         )
 
-    db.delete(db_vehicle)
-    db.commit()
+    # Check if there are routes referenced (asignacion_vehiculo)
+    has_asig = db.query(models.AsignacionVehiculo).filter(models.AsignacionVehiculo.id_vehiculo == id_vehiculo).first()
+    if has_asig:
+        raise HTTPException(
+            status_code=400,
+            detail="No se puede eliminar el vehículo porque está asignado a una o más rutas."
+        )
+
+    try:
+        db.delete(db_vehicle)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="No se puede eliminar el vehículo debido a que tiene relaciones activas en el sistema."
+        )
     return {"message": "Vehículo eliminado con éxito"}

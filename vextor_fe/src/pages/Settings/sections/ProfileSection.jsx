@@ -4,21 +4,33 @@ import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
 
 const ProfileSection = ({ profileData, setProfileData, handleProfileSave, showToast }) => {
+  const handlePhotoUpload = () => {
+    const photoUrl = prompt('Ingrese la URL o cadena Base64 para su foto de perfil:');
+    if (photoUrl !== null) {
+      setProfileData({ ...profileData, photo: photoUrl });
+      showToast('Previsualización de foto cargada.');
+    }
+  };
+
   return (
     <form onSubmit={handleProfileSave} className="space-y-6">
       <div className="flex flex-col sm:flex-row items-center gap-5 bg-v-dark/30 p-4 rounded-xl border border-v-dark-border/40">
         <div className="relative group shrink-0">
-          <div className="h-20 w-20 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center text-primary font-bold text-2xl uppercase overflow-hidden shadow-inner">
-            {profileData.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-          </div>
-          <button type="button" className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center text-v-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+          {profileData.photo ? (
+            <img src={profileData.photo} alt="Foto Perfil" className="h-20 w-20 rounded-full object-cover border-2 border-primary/20" />
+          ) : (
+            <div className="h-20 w-20 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center text-primary font-bold text-2xl uppercase overflow-hidden shadow-inner">
+              {profileData.name ? profileData.name.split(' ').map(n => n[0]).join('').toUpperCase() : 'AV'}
+            </div>
+          )}
+          <button type="button" onClick={handlePhotoUpload} className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center text-v-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
             <Camera size={18} />
           </button>
         </div>
         <div className="text-center sm:text-left">
           <h4 className="font-bold text-v-white">{profileData.name}</h4>
           <p className="text-xs text-v-gray mt-0.5">{profileData.role}</p>
-          <button type="button" className="text-xs font-semibold text-primary hover:underline mt-1.5 inline-block cursor-pointer">Cambiar fotografía de perfil</button>
+          <button type="button" onClick={handlePhotoUpload} className="text-xs font-semibold text-primary hover:underline mt-1.5 inline-block cursor-pointer">Cambiar fotografía de perfil</button>
         </div>
       </div>
 

@@ -71,8 +71,8 @@ const Login = () => {
     try {
       await login(formData.email, formData.password);
       navigate('/dashboard');
-    } catch {
-      setErrors({ form: 'Error al iniciar sesión. Intente de nuevo.' });
+    } catch (err) {
+      setErrors({ form: err.message || 'Error al iniciar sesión. Intente de nuevo.' });
     } finally {
       setIsLoading(false);
     }
@@ -171,6 +171,11 @@ const Login = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            {errors.form && (
+              <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-xl">
+                {errors.form}
+              </div>
+            )}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}

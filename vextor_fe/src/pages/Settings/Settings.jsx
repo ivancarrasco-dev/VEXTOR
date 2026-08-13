@@ -22,6 +22,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import { cn } from '../../utils/cn';
+import axios from 'axios';
 
 // Import modular sections
 import ProfileSection from './sections/ProfileSection';
@@ -97,51 +98,139 @@ const Settings = () => {
   const [profileData, setProfileData] = useState({
     name: user?.name || 'Admin Vextor',
     email: user?.email || 'admin@vextor.com',
-    phone: '+57 321 456 7890',
+    phone: user?.phone || '+57 321 456 7890',
     role: user?.role || 'Super Administrador',
-    photo: null
+    photo: user?.photo || null
   });
 
-  const handleProfileSave = (e) => {
+  useEffect(() => {
+    if (user) {
+      setProfileData({
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        role: user.role || '',
+        photo: user.photo || null
+      });
+    }
+  }, [user]);
+
+  const handleProfileSave = async (e) => {
     e.preventDefault();
-    showToast('¡Información de perfil actualizada con éxito!');
+    try {
+      const response = await axios.put(`http://localhost:8000/api/auth/profile?name=${encodeURIComponent(profileData.name)}&email=${encodeURIComponent(profileData.email)}&phone=${encodeURIComponent(profileData.phone)}&photo=${profileData.photo ? encodeURIComponent(profileData.photo) : ''}`);
+      if (response.data) {
+        showToast('¡Información de perfil actualizada con éxito!');
+        // Update local session
+        const updated = {
+          ...user,
+          name: response.data.name,
+          email: response.data.email,
+          phone: response.data.phone,
+          photo: response.data.photo,
+          avatar: response.data.avatar
+        };
+        localStorage.setItem('vextor_user', JSON.stringify(updated));
+      }
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      showToast('Error al actualizar el perfil.');
+    }
   };
 
   // 2. Company State
   const [companyData, setCompanyData] = useState({
-    name: 'Vextor Transportes S.A.S.',
-    nit: '901.458.125-3',
-    address: 'Calle 100 # 15-42, Oficina 402',
-    city: 'Bogotá, D.C.',
-    email: 'contacto@vextor.com',
-    phone: '+57 (601) 345-6789',
+    name: '',
+    nit: '',
+    address: '',
+    city: '',
+    email: '',
+    phone: '',
     logo: null
   });
 
-  const handleCompanySave = (e) => {
+  useEffect(() => {
+    const fetchCompanyData = async () => {
+      try {
+        const response = await axios.get('http://localhost:8000/api/company');
+        if (response.data) {
+          setCompanyData(response.data);
+        }
+      } catch (error) {
+        console.error('Error fetching company data:', error);
+      }
+    };
+    fetchCompanyData();
+  }, []);
+
+  const handleCompanySave = async (e) => {
     e.preventDefault();
-    showToast('¡Datos de la empresa actualizados correctamente!');
+    try {
+      const response = await axios.put('http://localhost:8000/api/company', companyData);
+      if (response.data) {
+        setCompanyData(response.data);
+        showToast('¡Datos de la empresa actualizados correctamente!');
+      }
+    } catch (error) {
+      console.error('Error updating company data:', error);
+      showToast('Error al actualizar los datos de la empresa.');
+    }
   };
 
   // 3. Users and Roles State
-  const [usersList, setUsersList] = useState([
-    { id: '1', name: 'Juan Pérez', email: 'juan.perez@vextor.com', role: 'Conductor', status: 'ACTIVO' },
-    { id: '2', name: 'María Gómez', email: 'maria.gomez@vextor.com', role: 'Administrador', status: 'ACTIVO' },
-    { id: '3', name: 'Carlos Mendoza', email: 'carlos.mendoza@vextor.com', role: 'Gestor de Flota', status: 'INACTIVO' },
-    { id: '4', name: 'Sofía Rodríguez', email: 'sofia.rodriguez@vextor.com', role: 'Conductor', status: 'ACTIVO' }
-  ]);
+  const [usersList, setUsersList] = useState([]);
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [isEditingUser, setIsEditingUser] = useState(false);
-  const [userForm, setUserForm] = useState({ id: '', name: '', email: '', role: 'Conductor', status: 'ACTIVO' });
+  const [userForm, setUserForm] = useState({
+    id_usuario: '',
+    nombres_usuario: '',
+    apellidos_usuario: '',
+    correo_usuario: '',
+    contrasenia_usuario: '',
+    id_rol: '11111111-2222-3333-4444-555555555552',
+    estado_usuario: 'ACTIVO'
+  });
 
-  const handleUserToggleStatus = (id) => {
-    setUsersList(usersList.map(u => u.id === id ? { ...u, status: u.status === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO' } : u));
-    showToast('Estado del usuario actualizado.');
+  const fetchUsers = async () => {
+    try {
+      const response = await axios.get('http://localhost:8000/api/users');
+      setUsersList(response.data);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const handleUserToggleStatus = async (usr) => {
+    try {
+      const nextStatus = usr.estado_usuario === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO';
+      const response = await axios.put(`http://localhost:8000/api/users/${usr.id_usuario}`, {
+        estado_usuario: nextStatus
+      });
+      if (response.data) {
+        showToast('Estado del usuario actualizado.');
+        fetchUsers();
+      }
+    } catch (error) {
+      console.error('Error toggling user status:', error);
+      showToast('Error al actualizar el estado del usuario.');
+    }
   };
 
   const handleOpenAddUser = () => {
     setIsEditingUser(false);
-    setUserForm({ id: '', name: '', email: '', role: 'Conductor', status: 'ACTIVO' });
+    setUserForm({
+      id_usuario: '',
+      nombres_usuario: '',
+      apellidos_usuario: '',
+      correo_usuario: '',
+      contrasenia_usuario: '',
+      id_rol: '11111111-2222-3333-4444-555555555552',
+      estado_usuario: 'ACTIVO'
+    });
     setUserModalOpen(true);
   };
 
@@ -151,23 +240,46 @@ const Settings = () => {
     setUserModalOpen(true);
   };
 
-  const handleSaveUser = (e) => {
+  const handleSaveUser = async (e) => {
     e.preventDefault();
-    if (!userForm.name || !userForm.email) return;
-
-    if (isEditingUser) {
-      setUsersList(usersList.map(u => u.id === userForm.id ? userForm : u));
-      showToast('Usuario editado correctamente.');
-    } else {
-      setUsersList([...usersList, { ...userForm, id: Date.now().toString() }]);
-      showToast('Usuario creado correctamente.');
+    try {
+      if (isEditingUser) {
+        await axios.put(`http://localhost:8000/api/users/${userForm.id_usuario}`, {
+          nombres_usuario: userForm.nombres_usuario,
+          apellidos_usuario: userForm.apellidos_usuario,
+          correo_usuario: userForm.correo_usuario,
+          id_rol: userForm.id_rol,
+          estado_usuario: userForm.estado_usuario
+        });
+        showToast('Usuario editado correctamente.');
+      } else {
+        await axios.post('http://localhost:8000/api/users', {
+          nombres_usuario: userForm.nombres_usuario,
+          apellidos_usuario: userForm.apellidos_usuario,
+          correo_usuario: userForm.correo_usuario,
+          contrasenia_usuario: userForm.contrasenia_usuario,
+          id_rol: userForm.id_rol,
+          estado_usuario: userForm.estado_usuario
+        });
+        showToast('Usuario creado correctamente.');
+      }
+      setUserModalOpen(false);
+      fetchUsers();
+    } catch (error) {
+      console.error('Error saving user:', error);
+      showToast(error.response?.data?.detail || 'Error al guardar el usuario.');
     }
-    setUserModalOpen(false);
   };
 
-  const handleDeleteUser = (id) => {
-    setUsersList(usersList.filter(u => u.id !== id));
-    showToast('Usuario eliminado del sistema.');
+  const handleDeleteUser = async (id) => {
+    try {
+      await axios.delete(`http://localhost:8000/api/users/${id}`);
+      showToast('Usuario eliminado del sistema.');
+      fetchUsers();
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      showToast(error.response?.data?.detail || 'Error al eliminar el usuario.');
+    }
   };
 
   // 4. Vehicles Config State

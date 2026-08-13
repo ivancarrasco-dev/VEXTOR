@@ -83,8 +83,8 @@ const Register = () => {
         password: formData.password
       });
       navigate('/dashboard');
-    } catch {
-      setErrors({ form: 'Error al crear la cuenta.' });
+    } catch (err) {
+      setErrors({ form: err.message || 'Error al crear la cuenta.' });
     } finally {
       setIsLoading(false);
     }
@@ -180,6 +180,11 @@ const Register = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            {errors.form && (
+              <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-xl">
+                {errors.form}
+              </div>
+            )}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}

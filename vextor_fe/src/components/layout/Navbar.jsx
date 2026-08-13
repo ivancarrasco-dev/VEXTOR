@@ -5,6 +5,7 @@ import { useLocation } from 'react-router-dom';
 import { Logo } from '../ui/Logo';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { useTranslation } from 'react-i18next';
+import NavbarSearch from './NavbarSearch';
 
 /**
  * Navbar Component
@@ -67,16 +68,7 @@ const Navbar = ({ onMenuClick }) => {
         </div>
 
         {/* Global Search */}
-        <div className="flex-1 max-w-md mx-8 hidden md:block">
-          <div className="relative group">
-            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-v-gray group-focus-within:text-primary transition-colors" />
-            <input
-              type="text"
-              placeholder={t('navbar.search')}
-              className="w-full bg-v-dark-soft border border-v-dark-border rounded-xl py-2.5 pl-10 pr-4 text-sm text-v-white placeholder:text-v-gray focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-            />
-          </div>
-        </div>
+        <NavbarSearch />
 
         <div className="flex items-center gap-3">
           <ThemeToggle />

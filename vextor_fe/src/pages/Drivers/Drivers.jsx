@@ -30,12 +30,7 @@ const DRIVER_STATUSES = [
   { value: 'SUSPENDIDO', label: 'Suspendido', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' }
 ];
 
-const LICENSE_TYPES = [
-  'Licencia Profesional Tipo C',
-  'Licencia Profesional Tipo D',
-  'Licencia Profesional Tipo E',
-  'Licencia No Profesional Tipo B'
-];
+const LICENSE_TYPES = ['A1', 'A2', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3'];
 
 const Drivers = () => {
   const { t } = useTranslation();
@@ -60,7 +55,7 @@ const Drivers = () => {
     apellido_conductor: '',
     cedula_conductor: '',
     telefono_conductor: '',
-    licencia: 'Licencia Profesional Tipo C',
+    licencia: 'C2',
     estado_conductor: 'ACTIVO',
     fecha_ingreso: ''
   });
@@ -149,7 +144,7 @@ const Drivers = () => {
       apellido_conductor: '',
       cedula_conductor: '',
       telefono_conductor: '',
-      licencia: 'Licencia Profesional Tipo C',
+      licencia: 'C2',
       estado_conductor: 'ACTIVO',
       fecha_ingreso: new Date().toISOString().split('T')[0]
     });
@@ -229,7 +224,7 @@ const Drivers = () => {
 
   // Filter & Search Logic
   const filteredDrivers = drivers.filter(driver => {
-    const query = search.toLowerCase();
+    const query = search.trim().toLowerCase();
     const matchesSearch =
       driver.nombre_conductor.toLowerCase().includes(query) ||
       driver.apellido_conductor.toLowerCase().includes(query) ||

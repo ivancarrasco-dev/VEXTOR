@@ -77,9 +77,13 @@ const UserMenu = () => {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-3 p-1.5 rounded-xl hover:bg-v-dark-border transition-all duration-200"
       >
-        <div className="h-10 w-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary font-bold border border-primary/20">
-          {user.avatar}
-        </div>
+        {user.photo ? (
+          <img src={user.photo} alt={user.name} className="h-10 w-10 rounded-lg object-cover border border-primary/20" />
+        ) : (
+          <div className="h-10 w-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary font-bold border border-primary/20">
+            {user.avatar}
+          </div>
+        )}
         <div className="hidden lg:block text-left">
           <p className="text-sm font-semibold text-v-white leading-none mb-1">{user.name}</p>
           <p className="text-[11px] text-v-gray font-medium uppercase tracking-wider">{user.role}</p>

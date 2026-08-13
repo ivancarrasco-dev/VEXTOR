@@ -17,6 +17,32 @@ class Rol(RolBase):
     class Config:
         from_attributes = True
 
+# --- EMPRESA ---
+class EmpresaBase(BaseModel):
+    name: str = Field(..., max_length=100)
+    nit: str = Field(..., max_length=50)
+    address: Optional[str] = Field(None, max_length=255)
+    city: Optional[str] = Field(None, max_length=100)
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = Field(None, max_length=50)
+
+class EmpresaCreate(EmpresaBase):
+    pass
+
+class EmpresaUpdate(BaseModel):
+    name: Optional[str] = Field(None, max_length=100)
+    nit: Optional[str] = Field(None, max_length=50)
+    address: Optional[str] = Field(None, max_length=255)
+    city: Optional[str] = Field(None, max_length=100)
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = Field(None, max_length=50)
+
+class Empresa(EmpresaBase):
+    id_empresa: UUID
+
+    class Config:
+        from_attributes = True
+
 
 # --- USUARIO ---
 class UsuarioBase(BaseModel):
@@ -25,6 +51,7 @@ class UsuarioBase(BaseModel):
     correo_usuario: EmailStr
     telefono_usuario: Optional[str] = Field(None, max_length=20)
     estado_usuario: str = Field("ACTIVO", max_length=20)
+    foto_perfil: Optional[str] = None
 
 class UsuarioCreate(UsuarioBase):
     id_rol: UUID
@@ -36,6 +63,7 @@ class UsuarioUpdate(BaseModel):
     correo_usuario: Optional[EmailStr] = None
     telefono_usuario: Optional[str] = Field(None, max_length=20)
     estado_usuario: Optional[str] = Field(None, max_length=20)
+    foto_perfil: Optional[str] = None
 
 class Usuario(UsuarioBase):
     id_usuario: UUID
