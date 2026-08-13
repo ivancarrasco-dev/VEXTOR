@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { vehicleService } from '../../services/vehicleService';
 import { driverService } from '../../services/driverService';
 import { maintenanceService } from '../../services/maintenanceService';
+import { routeService } from '../../services/routeService';
 
 const recentActivity = [
   { id: 1, type: 'route', title: 'Ruta Escolar Norte', user: 'Juan Pérez', status: 'Completada', time: 'hace 15 min', icon: MapPin, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
@@ -33,6 +34,7 @@ const Dashboard = () => {
   const [stats, setStats] = useState({
     activeVehicles: '0',
     driversCount: '0',
+    routesCount: '0',
     maintenanceCount: '0'
   });
   const [isLoading, setIsLoading] = useState(true);
@@ -42,6 +44,7 @@ const Dashboard = () => {
       try {
         const vehicles = await vehicleService.getVehicles();
         const drivers = await driverService.getDrivers();
+        const routes = await routeService.getRoutes();
         const maintenances = await maintenanceService.getMaintenances();
 
         // Calculate active vehicles (excluding INACTIVO)
@@ -50,6 +53,7 @@ const Dashboard = () => {
         setStats({
           activeVehicles: activeVeh.toString(),
           driversCount: drivers.length.toString(),
+          routesCount: routes.length.toString(),
           maintenanceCount: maintenances.length.toString()
         });
       } catch (error) {
@@ -106,7 +110,7 @@ const Dashboard = () => {
         />
         <StatsCard
           title={t('dashboard.stats.routesToday')}
-          value="156"
+          value={isLoading ? '...' : stats.routesCount}
           icon={MapPin}
           trend="down"
           trendValue={2}

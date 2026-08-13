@@ -12,6 +12,9 @@ from router_vehicles import router as vehicles_router
 from router_drivers import router as drivers_router
 from router_routes import router as routes_router
 from router_maintenance import router as maintenance_router
+from router_auth import router as auth_router
+from router_company import router as company_router
+from router_users import router as users_router
 
 app = FastAPI(title="Vextor API", description="Backend para la gestión de flota y transporte de Vextor")
 
@@ -32,6 +35,9 @@ app.add_middleware(
 )
 
 # Include routers
+app.include_router(auth_router)
+app.include_router(company_router)
+app.include_router(users_router)
 app.include_router(vehicles_router)
 app.include_router(drivers_router)
 app.include_router(routes_router)
@@ -176,7 +182,7 @@ def startup_populate():
                 apellido_conductor="Pérez",
                 cedula_conductor="1723456789",
                 telefono_conductor="+593 98 765 4321",
-                licencia="Licencia Profesional Tipo E",
+                licencia="C2",
                 estado_conductor="ACTIVO",
                 fecha_ingreso=date(2021, 3, 15)
             )
@@ -190,7 +196,7 @@ def startup_populate():
                 'Pérez', 'Mendoza', 'Rodríguez', 'Gómez', 'Castillo', 'Altamirano', 'Sánchez', 'López', 'Martínez', 'Ramírez',
                 'González', 'Alvarez', 'Torres', 'Fernández', 'Vargas', 'Herrera', 'Castro', 'Ríos', 'Guerrero', 'Ortega'
             ]
-            licenses = ['Licencia Profesional Tipo C', 'Licencia Profesional Tipo D', 'Licencia Profesional Tipo E', 'Licencia Tipo B']
+            licenses = ['A1', 'A2', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3']
             cond_statuses = ['ACTIVO', 'INACTIVO', 'SUSPENDIDO']
             used_cedulas = {"1723456789"}
             used_emails = {"juan.perez@vextor.com", "admin@vextor.com"}

@@ -267,7 +267,7 @@ const Vehicles = () => {
 
   // Filter & Search Logic
   const filteredVehicles = vehicles.filter(vehicle => {
-    const query = search.toLowerCase();
+    const query = search.trim().toLowerCase();
     const matchesSearch =
       vehicle.placa.toLowerCase().includes(query) ||
       vehicle.marca.toLowerCase().includes(query) ||

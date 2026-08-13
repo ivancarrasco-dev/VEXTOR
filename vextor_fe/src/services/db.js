@@ -40,7 +40,7 @@ const LAST_NAMES = [
   'González', 'Alvarez', 'Torres', 'Fernández', 'Vargas', 'Herrera', 'Castro', 'Ríos', 'Guerrero', 'Ortega'
 ];
 
-const LICENSES = ['Licencia Profesional Tipo C', 'Licencia Profesional Tipo D', 'Licencia Profesional Tipo E', 'Licencia Tipo B'];
+const LICENSES = ['A1', 'A2', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3'];
 const DRIVER_STATUSES = ['ACTIVO', 'INACTIVO', 'SUSPENDIDO'];
 
 export const initializeDatabase = () => {
@@ -128,7 +128,7 @@ export const initializeDatabase = () => {
       apellido_conductor: 'Pérez',
       cedula_conductor: '1723456789',
       telefono_conductor: '+593 98 765 4321',
-      licencia: 'Licencia Profesional Tipo E',
+      licencia: 'C2',
       estado_conductor: 'ACTIVO',
       fecha_ingreso: '2021-03-15'
     };

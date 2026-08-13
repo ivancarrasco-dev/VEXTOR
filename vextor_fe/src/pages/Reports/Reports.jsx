@@ -338,7 +338,7 @@ const Reports = () => {
 
     // 2. Filter: Search text query
     if (filters.search) {
-      const q = filters.search.toLowerCase();
+      const q = filters.search.trim().toLowerCase();
       rawList = rawList.filter(item => item._searchString?.includes(q));
     }
 
@@ -596,37 +596,25 @@ const Reports = () => {
                 className="absolute right-0 mt-2 w-64 bg-v-dark-soft/95 backdrop-blur-md border border-v-dark-border rounded-xl shadow-2xl p-2 z-[60] flex flex-col gap-1 focus:outline-none"
               >
                 <div className="px-3 py-2 text-[11px] font-bold text-v-gray uppercase tracking-wider border-b border-v-dark-border/60 mb-1">
-                  Descargas directas (CSV)
+                  Descargas directas (PDF)
                 </div>
                 <button
-                  onClick={() => handleRunExportSimulation('Resumen General de Flota', 'csv')}
+                  onClick={() => handleRunExportSimulation('Resumen General de Flota', 'pdf')}
                   className="flex items-center gap-2.5 w-full px-3 py-2 text-sm rounded-lg text-v-white hover:bg-primary/10 hover:text-primary hover:translate-x-1 transition-all duration-150 text-left cursor-pointer"
                 >
-                  <BarChart3 size={15} /> Resumen General
+                  <BarChart3 size={15} /> Resumen General (PDF)
                 </button>
                 <button
-                  onClick={() => handleRunExportSimulation('Listado de Vehículos', 'csv')}
+                  onClick={() => handleRunExportSimulation('Listado de Vehículos', 'pdf')}
                   className="flex items-center gap-2.5 w-full px-3 py-2 text-sm rounded-lg text-v-white hover:bg-primary/10 hover:text-primary hover:translate-x-1 transition-all duration-150 text-left cursor-pointer"
                 >
-                  <Truck size={15} /> Todos los Vehículos
+                  <Truck size={15} /> Todos los Vehículos (PDF)
                 </button>
                 <button
-                  onClick={() => handleRunExportSimulation('Listado de Conductores', 'csv')}
+                  onClick={() => handleRunExportSimulation('Listado de Conductores', 'pdf')}
                   className="flex items-center gap-2.5 w-full px-3 py-2 text-sm rounded-lg text-v-white hover:bg-primary/10 hover:text-primary hover:translate-x-1 transition-all duration-150 text-left cursor-pointer"
                 >
-                  <Users size={15} /> Todos los Conductores
-                </button>
-                <button
-                  onClick={() => handleRunExportSimulation('Historial de Rutas', 'csv')}
-                  className="flex items-center gap-2.5 w-full px-3 py-2 text-sm rounded-lg text-v-white hover:bg-primary/10 hover:text-primary hover:translate-x-1 transition-all duration-150 text-left cursor-pointer"
-                >
-                  <MapPin size={15} /> Todas las Rutas
-                </button>
-                <button
-                  onClick={() => handleRunExportSimulation('Auditoría de Mantenimientos', 'csv')}
-                  className="flex items-center gap-2.5 w-full px-3 py-2 text-sm rounded-lg text-v-white hover:bg-primary/10 hover:text-primary hover:translate-x-1 transition-all duration-150 text-left cursor-pointer"
-                >
-                  <Wrench size={15} /> Todos los Mantenimientos
+                  <Users size={15} /> Todos los Conductores (PDF)
                 </button>
               </motion.div>
             )}
@@ -1102,24 +1090,14 @@ const Reports = () => {
                         >
                           <FileText size={15} className="text-red-500" /> Exportar como PDF
                         </button>
-                        <button
-                          onClick={() => handleRunExportSimulation(getActiveReportLabel(), 'xlsx')}
-                          className="flex items-center gap-2.5 w-full px-3 py-2 text-sm rounded-lg text-v-white hover:bg-primary/10 hover:text-primary transition-colors text-left cursor-pointer"
-                        >
-                          <FileSpreadsheet size={15} className="text-emerald-500" /> Exportar como Excel (.xlsx)
-                        </button>
-                        <button
-                          onClick={() => handleRunExportSimulation(getActiveReportLabel(), 'docx')}
-                          className="flex items-center gap-2.5 w-full px-3 py-2 text-sm rounded-lg text-v-white hover:bg-primary/10 hover:text-primary transition-colors text-left cursor-pointer"
-                        >
-                          <FileText size={15} className="text-blue-500" /> Exportar como Word (.docx)
-                        </button>
-                        <button
-                          onClick={() => handleRunExportSimulation(getActiveReportLabel(), 'csv')}
-                          className="flex items-center gap-2.5 w-full px-3 py-2 text-sm rounded-lg text-v-white hover:bg-primary/10 hover:text-primary transition-colors text-left cursor-pointer"
-                        >
-                          <FileSpreadsheet size={15} className="text-amber-500" /> Exportar como CSV
-                        </button>
+                        {user?.role === 'Super Administrador' && (
+                          <button
+                            onClick={() => handleRunExportSimulation(getActiveReportLabel(), 'xlsx')}
+                            className="flex items-center gap-2.5 w-full px-3 py-2 text-sm rounded-lg text-v-white hover:bg-primary/10 hover:text-primary transition-colors text-left cursor-pointer"
+                          >
+                            <FileSpreadsheet size={15} className="text-emerald-500" /> Exportar como Excel (.xlsx)
+                          </button>
+                        )}
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -1353,7 +1331,7 @@ const Reports = () => {
                                   {item.descripcion_mantenimiento}
                                 </td>
                                 <td className="p-4 text-v-gray text-xs">{item.fecha_mantenimiento}</td>
-                                <td className="p-4 text-v-white text-sm font-bold">${item.costo_mantenimiento?.toFixed(2)}</td>
+                                <td className="p-4 text-v-white text-sm font-bold">${item.costo_mantenimiento?.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} COP</td>
                                 <td className="p-4">
                                   <span className={cn("text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider border", STATUS_STYLES[item.estado_mantenimiento])}>
                                     {item.estado_mantenimiento}

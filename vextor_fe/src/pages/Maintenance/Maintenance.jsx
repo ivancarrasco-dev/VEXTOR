@@ -235,7 +235,7 @@ const Maintenance = () => {
   // Filter & Search Logic
   const filteredMaintenances = maintenances.filter(maint => {
     const vInfo = getVehicleInfo(maint.id_vehiculo);
-    const query = search.toLowerCase();
+    const query = search.trim().toLowerCase();
 
     const matchesSearch =
       vInfo.placa.toLowerCase().includes(query) ||
@@ -393,7 +393,7 @@ const Maintenance = () => {
                         <div className="text-v-gray text-xs mt-0.5">{maint.kilometraje_mantenimiento.toLocaleString()} km</div>
                       </td>
                       <td className="p-4 font-mono font-semibold text-v-white text-sm">
-                        ${maint.costo_mantenimiento.toFixed(2)}
+                        ${maint.costo_mantenimiento.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} COP
                       </td>
                       <td className="p-4">
                         <span className={cn("text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wider border", statusInfo.color)}>
@@ -593,18 +593,17 @@ const Maintenance = () => {
 
                   {/* Costo */}
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-v-gray">Costo Estimado ($)</label>
+                    <label className="text-sm font-medium text-v-gray">Costo Estimado (COP)</label>
                     <div className="relative">
-                      <DollarSign size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-v-gray" />
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-v-gray font-bold text-xs">$</span>
                       <input
                         type="number"
-                        step="0.01"
                         name="costo_mantenimiento"
-                        placeholder="0.00"
+                        placeholder="Ej. 150000"
                         value={formData.costo_mantenimiento}
                         onChange={handleInputChange}
                         className={cn(
-                          "w-full bg-v-dark border focus:border-primary text-v-white text-sm pl-10 pr-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all",
+                          "w-full bg-v-dark border focus:border-primary text-v-white text-sm pl-8 pr-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all",
                           formErrors.costo_mantenimiento ? "border-red-500 focus:ring-red-500/10" : "border-v-dark-border"
                         )}
                       />
