@@ -67,6 +67,7 @@ const Routes = () => {
 
   // Live route metrics from Nominatim / OSRM
   const [routeInfo, setRouteInfo] = useState(null);
+  const [isIndicationsOpen, setIsIndicationsOpen] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -319,6 +320,7 @@ const Routes = () => {
     setOrigenSearch('');
     setDestinoSearch('');
     setRouteInfo(null);
+    setIsIndicationsOpen(false);
     setFormData({
       codigo_ruta: '',
       nombre_ruta: '',
@@ -469,18 +471,68 @@ const Routes = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-5 shrink-0">
-                  <div className="space-y-0.5">
-                    <span className="text-[10px] font-bold text-v-gray uppercase tracking-wider block">Distancia</span>
-                    <span className="text-xl font-black text-primary font-mono">{routeInfo.distance} <span className="text-xs">km</span></span>
+                <div className="flex items-center gap-4 shrink-0 flex-wrap sm:flex-nowrap w-full sm:w-auto justify-end">
+                  <div className="flex items-center gap-4">
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] font-bold text-v-gray uppercase tracking-wider block">Distancia</span>
+                      <span className="text-xl font-black text-primary font-mono">{routeInfo.distance} <span className="text-xs">km</span></span>
+                    </div>
+                    <div className="h-8 w-px bg-v-dark-border" />
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] font-bold text-v-gray uppercase tracking-wider block">Tiempo Estimado</span>
+                      <span className="text-xl font-black text-v-white font-mono flex items-baseline gap-1">
+                        {routeInfo.duration} <span className="text-xs text-v-gray font-sans font-medium">min</span>
+                      </span>
+                    </div>
                   </div>
-                  <div className="h-8 w-px bg-v-dark-border" />
-                  <div className="space-y-0.5">
-                    <span className="text-[10px] font-bold text-v-gray uppercase tracking-wider block">Tiempo Estimado</span>
-                    <span className="text-xl font-black text-v-white font-mono flex items-baseline gap-1">
-                      {routeInfo.duration} <span className="text-xs text-v-gray font-sans font-medium">min</span>
-                    </span>
-                  </div>
+                  {routeInfo.instructions && routeInfo.instructions.length > 0 && (
+                    <button
+                      onClick={() => setIsIndicationsOpen(!isIndicationsOpen)}
+                      className="px-3.5 py-1.5 bg-primary text-v-dark-constant rounded-xl text-xs font-bold hover:bg-emerald-600 cursor-pointer flex items-center gap-1.5 transition-all self-stretch sm:self-auto justify-center"
+                    >
+                      <Navigation size={13} className="rotate-45" />
+                      {isIndicationsOpen ? 'Ocultar indicaciones' : 'Ver indicaciones'}
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* indications Collapsible Panel */}
+          <AnimatePresence>
+            {routeInfo && routeInfo.instructions && routeInfo.instructions.length > 0 && isIndicationsOpen && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="bg-v-dark-soft border border-v-dark-border p-5 rounded-2xl shadow-xl overflow-hidden max-h-[300px] overflow-y-auto custom-scrollbar text-left space-y-3"
+              >
+                <div className="flex justify-between items-center border-b border-v-dark-border pb-2">
+                  <h4 className="font-bold text-sm text-v-white flex items-center gap-2">
+                    <Navigation size={14} className="text-primary rotate-45" /> Indicaciones paso a paso
+                  </h4>
+                  <button
+                    onClick={() => setIsIndicationsOpen(false)}
+                    className="p-1 text-v-gray hover:text-v-white hover:bg-v-dark-border/40 rounded transition-colors cursor-pointer"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+                <div className="space-y-3 pl-1">
+                  {routeInfo.instructions.map((step, idx) => (
+                    <div key={idx} className="flex gap-3 text-xs leading-relaxed text-v-gray hover:text-v-white transition-colors">
+                      <span className="font-black text-primary font-mono shrink-0">{idx + 1}.</span>
+                      <div className="flex-1">
+                        <p className="font-medium text-v-white text-sm">{step.text}</p>
+                        {step.distance > 0 && (
+                          <span className="text-[11px] text-v-gray font-mono block mt-0.5">
+                            Durante {step.distance >= 1000 ? `${(step.distance / 1000).toFixed(1)} km` : `${Math.round(step.distance)} m`}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </motion.div>
             )}

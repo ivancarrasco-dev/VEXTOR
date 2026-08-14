@@ -15,6 +15,7 @@ from router_maintenance import router as maintenance_router
 from router_auth import router as auth_router
 from router_company import router as company_router
 from router_users import router as users_router
+from router_activities import router as activities_router
 
 app = FastAPI(title="Vextor API", description="Backend para la gestión de flota y transporte de Vextor")
 
@@ -39,6 +40,7 @@ app.include_router(auth_router)
 app.include_router(company_router)
 app.include_router(users_router)
 app.include_router(vehicles_router)
+app.include_router(activities_router)
 app.include_router(drivers_router)
 app.include_router(routes_router)
 app.include_router(maintenance_router)

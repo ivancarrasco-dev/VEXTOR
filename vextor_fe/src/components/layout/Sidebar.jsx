@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
@@ -18,6 +18,7 @@ import { Logo } from '../ui/Logo';
 import { cn } from '../../utils/cn';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { showConfirm } from '../../utils/sweetalert';
 
 /**
  * Sidebar Component
@@ -48,6 +49,7 @@ const menuItems = [
 const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen }) => {
   const { logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [width, setWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
 
@@ -160,9 +162,22 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
           {/* Footer */}
           <div className="p-4 border-t border-v-dark-border">
             <button
-              onClick={logout}
+              onClick={() => {
+                showConfirm(
+                  t('navbar.logoutConfirm'),
+                  t('navbar.logoutText'),
+                  t('navbar.logoutYes'),
+                  t('common.cancel'),
+                  true
+                ).then((result) => {
+                  if (result.isConfirmed) {
+                    logout();
+                    navigate('/login');
+                  }
+                });
+              }}
               className={cn(
-                "flex items-center gap-3 w-full px-3 py-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-all duration-200",
+                "flex items-center gap-3 w-full px-3 py-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-all duration-200 cursor-pointer",
                 isCollapsed && !isMobile ? "justify-center" : ""
               )}
             >

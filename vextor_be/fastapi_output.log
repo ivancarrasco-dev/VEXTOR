@@ -1,21 +1,50 @@
-INFO:     Started server process [1146102]
+INFO:     Started server process [49204]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     127.0.0.1:45812 - "POST /api/auth/login HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45838 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
-INFO:     127.0.0.1:45848 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
-INFO:     127.0.0.1:45858 - "OPTIONS /api/auth/login HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45848 - "POST /api/auth/login HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45858 - "OPTIONS /api/vehicles HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45848 - "GET /api/vehicles HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45858 - "OPTIONS /api/drivers HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45838 - "GET /api/vehicles HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45848 - "GET /api/drivers HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45858 - "OPTIONS /api/routes HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45848 - "GET /api/drivers HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45838 - "GET /api/routes HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45858 - "OPTIONS /api/maintenance HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45838 - "GET /api/maintenance HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45848 - "GET /api/routes HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45848 - "GET /api/maintenance HTTP/1.1" 200 OK
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:55244 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55256 - "GET /api/dashboard/stats HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58784 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55966 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:55966 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:55976 - "OPTIONS /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55966 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55976 - "OPTIONS /api/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55992 - "OPTIONS /api/dashboard/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55966 - "GET /api/notifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55976 - "OPTIONS /api/dashboard/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56008 - "OPTIONS /api/activities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56018 - "OPTIONS /api/activities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56034 - "GET /api/dashboard/stats HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55966 - "GET /api/activities HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56038 - "GET /api/notifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56034 - "GET /api/activities HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56046 - "GET /api/dashboard/stats HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:47060 - "GET /api/notifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:41480 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:41490 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:41502 - "OPTIONS /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41490 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41502 - "OPTIONS /api/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41490 - "GET /api/notifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:41502 - "OPTIONS /api/dashboard/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41506 - "OPTIONS /api/activities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41490 - "GET /api/dashboard/stats HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:41480 - "GET /api/activities HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:41522 - "GET /api/notifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:41528 - "GET /api/dashboard/stats HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:41490 - "GET /api/activities HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58576 - "GET /api/notifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:36518 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:36532 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:36548 - "OPTIONS /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36532 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36548 - "OPTIONS /api/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36532 - "GET /api/notifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:36558 - "OPTIONS /api/dashboard/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36548 - "OPTIONS /api/activities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36532 - "GET /api/dashboard/stats HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:36518 - "GET /api/notifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:36566 - "GET /api/activities HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:36574 - "GET /api/dashboard/stats HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:36518 - "GET /api/activities HTTP/1.1" 404 Not Found
