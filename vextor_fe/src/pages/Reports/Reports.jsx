@@ -231,9 +231,20 @@ const Reports = () => {
         setExportProgress(steps[currentStep]);
       } else {
         clearInterval(interval);
-        setIsExporting(false);
-        setExportProgress('');
-        addToast(`Reporte "${reportName}" exportado con éxito en formato ${format.toUpperCase()}`);
+        // Save real activity log on backend
+        axios.post('http://localhost:8000/api/reports/log', {
+          report_name: reportName,
+          format: format
+        }).then(() => {
+          setIsExporting(false);
+          setExportProgress('');
+          addToast(`Reporte "${reportName}" exportado con éxito en formato ${format.toUpperCase()}`);
+        }).catch(err => {
+          console.error("Error logging report generation:", err);
+          setIsExporting(false);
+          setExportProgress('');
+          addToast(`Reporte "${reportName}" exportado con éxito en formato ${format.toUpperCase()}`);
+        });
       }
     }, 450);
   };
@@ -1057,7 +1068,7 @@ const Reports = () => {
             </div>
 
             {/* PREVIEW TABLE WITH EXPORT OPTIONS */}
-            <div className="bg-v-dark-soft border border-v-dark-border rounded-2xl overflow-hidden shadow-2xl relative">
+            <div className="bg-v-dark-soft border border-v-dark-border rounded-2xl overflow-visible shadow-2xl relative z-30">
               {/* Header Action Button Area above the Table */}
               <div className="p-4 sm:p-5 border-b border-v-dark-border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-v-dark/20">
                 <div>
@@ -1082,7 +1093,7 @@ const Reports = () => {
                         initial={{ opacity: 0, scale: 0.95, y: 6 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 6 }}
-                        className="absolute right-0 mt-2 w-56 bg-v-dark-soft/95 backdrop-blur-md border border-v-dark-border rounded-xl shadow-2xl p-1.5 z-40 flex flex-col gap-1 focus:outline-none"
+                        className="absolute right-0 mt-2 w-56 bg-v-dark-soft/95 backdrop-blur-md border border-v-dark-border rounded-xl shadow-2xl p-1.5 z-50 flex flex-col gap-1 focus:outline-none"
                       >
                         <button
                           onClick={() => handleRunExportSimulation(getActiveReportLabel(), 'pdf')}

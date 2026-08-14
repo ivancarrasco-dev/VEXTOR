@@ -1,0 +1,9 @@
+INFO:     Started server process [306310]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8080 (Press CTRL+C to quit)
+INFO:     127.0.0.1:53932 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53938 - "POST /api/vehicles HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:53946 - "POST /api/vehicles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53954 - "POST /api/drivers HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:53962 - "POST /api/drivers HTTP/1.1" 400 Bad Request

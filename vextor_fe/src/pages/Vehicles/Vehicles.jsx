@@ -111,11 +111,11 @@ const Vehicles = () => {
     const errors = {};
     const currentYear = new Date().getFullYear();
 
-    // Placa: format of AAA-999 or AAA-9999 (Latinamerican standard plates)
+    // Placa: format of AAA123 or AAA-123 or AAA12A or AAA-12A (Colombian standard plates)
     if (!formData.placa) {
       errors.placa = 'La placa es obligatoria';
-    } else if (!/^[A-Z]{3}-[0-9]{3,4}$/i.test(formData.placa)) {
-      errors.placa = 'Formato inválido. Ejemplo: ABC-1234';
+    } else if (!/^[A-Z]{3}-?([0-9]{3}|[0-9]{2}[A-Z])$/i.test(formData.placa)) {
+      errors.placa = 'Formato de placa inválido en Colombia. Ejemplo: ABC-123 o ABC-12C';
     }
 
     if (!formData.marca.trim()) {

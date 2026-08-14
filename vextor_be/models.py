@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, Integer, Date, DateTime, ForeignKey, Text, Numeric, CheckConstraint
+from sqlalchemy import Column, String, Integer, Date, DateTime, ForeignKey, Text, Numeric, CheckConstraint, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -199,3 +199,25 @@ class Empresa(Base):
     city = Column(String(100), nullable=True)
     email = Column(String(150), nullable=True)
     phone = Column(String(50), nullable=True)
+    retention_days = Column(Integer, default=30, nullable=True)
+
+class Actividad(Base):
+    __tablename__ = "actividad"
+    id_actividad = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id_usuario = Column(UUID(as_uuid=True), ForeignKey("usuario.id_usuario", ondelete="SET NULL", onupdate="CASCADE"), nullable=True)
+    nombres_usuario = Column(String(150), nullable=True)
+    tipo_accion = Column(String(50), nullable=False)
+    modulo = Column(String(50), nullable=False)
+    descripcion = Column(Text, nullable=False)
+    fecha_hora = Column(DateTime, nullable=False, server_default=func.now())
+    id_registro_afectado = Column(String(100), nullable=True)
+
+class Notificacion(Base):
+    __tablename__ = "notificacion"
+    id_notificacion = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id_usuario = Column(UUID(as_uuid=True), ForeignKey("usuario.id_usuario", ondelete="CASCADE", onupdate="CASCADE"), nullable=True)
+    titulo = Column(String(150), nullable=False)
+    descripcion = Column(Text, nullable=False)
+    fecha_hora = Column(DateTime, nullable=False, server_default=func.now())
+    leido = Column(Boolean, default=False, nullable=False)
+    tipo = Column(String(50), nullable=False)

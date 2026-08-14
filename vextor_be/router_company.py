@@ -4,6 +4,8 @@ from uuid import UUID
 from database import get_db
 import models
 import schemas
+from router_auth import get_current_user
+from router_activities import record_activity
 
 router = APIRouter(prefix="/api/company", tags=["Company"])
 
@@ -26,7 +28,7 @@ def get_company(db: Session = Depends(get_db)):
     return company
 
 @router.put("", response_model=schemas.Empresa)
-def update_company(company_data: schemas.EmpresaUpdate, db: Session = Depends(get_db)):
+def update_company(company_data: schemas.EmpresaUpdate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
     company = db.query(models.Empresa).first()
     if not company:
         company = models.Empresa(
@@ -43,4 +45,9 @@ def update_company(company_data: schemas.EmpresaUpdate, db: Session = Depends(ge
 
     db.commit()
     db.refresh(company)
+
+    # Record Activity
+    user_name = f"{current_user.nombres_usuario} {current_user.apellidos_usuario}".strip()
+    record_activity(db, current_user.id_usuario, user_name, "CONFIGURACION", "Configuración", "Modificó la información institucional y configuración de la empresa.", str(company.id_empresa))
+
     return company

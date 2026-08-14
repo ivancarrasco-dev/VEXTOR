@@ -25,6 +25,7 @@ class EmpresaBase(BaseModel):
     city: Optional[str] = Field(None, max_length=100)
     email: Optional[EmailStr] = None
     phone: Optional[str] = Field(None, max_length=50)
+    retention_days: Optional[int] = 30
 
 class EmpresaCreate(EmpresaBase):
     pass
@@ -36,9 +37,48 @@ class EmpresaUpdate(BaseModel):
     city: Optional[str] = Field(None, max_length=100)
     email: Optional[EmailStr] = None
     phone: Optional[str] = Field(None, max_length=50)
+    retention_days: Optional[int] = None
 
 class Empresa(EmpresaBase):
     id_empresa: UUID
+
+    class Config:
+        from_attributes = True
+
+# --- ACTIVIDAD ---
+class ActividadBase(BaseModel):
+    tipo_accion: str
+    modulo: str
+    descripcion: str
+    id_registro_afectado: Optional[str] = None
+
+class ActividadCreate(ActividadBase):
+    id_usuario: Optional[UUID] = None
+    nombres_usuario: Optional[str] = None
+
+class Actividad(ActividadBase):
+    id_actividad: UUID
+    id_usuario: Optional[UUID] = None
+    nombres_usuario: Optional[str] = None
+    fecha_hora: datetime
+
+    class Config:
+        from_attributes = True
+
+# --- NOTIFICACION ---
+class NotificacionBase(BaseModel):
+    titulo: str
+    descripcion: str
+    tipo: str
+
+class NotificacionCreate(NotificacionBase):
+    id_usuario: Optional[UUID] = None
+
+class Notificacion(NotificacionBase):
+    id_notificacion: UUID
+    id_usuario: Optional[UUID] = None
+    fecha_hora: datetime
+    leido: bool
 
     class Config:
         from_attributes = True

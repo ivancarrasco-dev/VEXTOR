@@ -80,6 +80,11 @@
   }
 }
 
+/* Hide default Leaflet routing container list instructions on map */
+.leaflet-routing-container {
+  display: none !important;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

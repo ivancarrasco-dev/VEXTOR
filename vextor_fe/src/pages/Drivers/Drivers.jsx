@@ -121,12 +121,15 @@ const Drivers = () => {
 
     if (!formData.cedula_conductor.trim()) {
       errors.cedula_conductor = 'La cédula es obligatoria';
-    } else if (!/^[0-9]{10,20}$/.test(formData.cedula_conductor.trim())) {
-      errors.cedula_conductor = 'Debe ser numérica de 10 a 20 dígitos';
+    } else if (!/^[0-9]{3,10}$/.test(formData.cedula_conductor.trim())) {
+      errors.cedula_conductor = 'Debe tener entre 3 y 10 dígitos (numéricos únicamente)';
     }
 
-    if (formData.telefono_conductor && formData.telefono_conductor.length > 20) {
-      errors.telefono_conductor = 'Máximo 20 caracteres';
+    if (formData.telefono_conductor) {
+      const cleanPhone = formData.telefono_conductor.replace(/\s+/g, '');
+      if (!/^(\+57|57)?3[0-9]{9}$/.test(cleanPhone)) {
+        errors.telefono_conductor = 'Formato de celular colombiano inválido. Debe tener 10 dígitos y comenzar con 3 (ej. 3123456789).';
+      }
     }
 
     if (!formData.fecha_ingreso) {

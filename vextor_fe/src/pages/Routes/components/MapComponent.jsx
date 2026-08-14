@@ -444,12 +444,18 @@ const MapComponent = ({
             const summary = e.routes[0].summary;
             const distanceKm = (summary.totalDistance / 1000).toFixed(2);
             const durationMins = Math.round(summary.totalTime / 60);
+            const instructions = e.routes[0].instructions || [];
 
             onRouteCalculated?.({
               distance: distanceKm,
               duration: durationMins,
               originAddress: selectedOrigin ? 'Dirección de Origen' : 'Ubicación Origen',
-              destinationAddress: selectedDestination ? 'Dirección de Destino' : 'Ubicación Destino'
+              destinationAddress: selectedDestination ? 'Dirección de Destino' : 'Ubicación Destino',
+              instructions: instructions.map(inst => ({
+                text: inst.text,
+                distance: inst.distance,
+                type: inst.type
+              }))
             });
           }
         });
