@@ -17,6 +17,7 @@ from router_company import router as company_router
 from router_users import router as users_router
 from router_activities import router as activities_router
 from router_security import router as security_router
+from router_reports import router as reports_router
 
 app = FastAPI(title="Vextor API", description="Backend para la gestión de flota y transporte de Vextor")
 
@@ -46,6 +47,7 @@ app.include_router(security_router)
 app.include_router(drivers_router)
 app.include_router(routes_router)
 app.include_router(maintenance_router)
+app.include_router(reports_router)
 
 
 # Database Seeding/Initialization on startup
