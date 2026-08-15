@@ -31,6 +31,7 @@ class Usuario(Base):
     rol = relationship("Rol", back_populates="usuarios")
     conductor = relationship("Conductor", uselist=False, back_populates="usuario")
     reportes = relationship("Reporte", back_populates="usuario")
+    sesiones = relationship("SesionUsuario", back_populates="usuario", cascade="all, delete-orphan")
 
     __table_args__ = (
         CheckConstraint("estado_usuario IN ('ACTIVO', 'INACTIVO')", name="chk_estado_usuario"),
@@ -211,6 +212,25 @@ class Actividad(Base):
     descripcion = Column(Text, nullable=False)
     fecha_hora = Column(DateTime, nullable=False, server_default=func.now())
     id_registro_afectado = Column(String(100), nullable=True)
+    ip_origen = Column(String(45), nullable=True)
+    resultado = Column(String(20), nullable=False, default="EXITOSO")
+
+class SesionUsuario(Base):
+    __tablename__ = "sesion_usuario"
+    id_sesion = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id_usuario = Column(UUID(as_uuid=True), ForeignKey("usuario.id_usuario", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
+    ip_origen = Column(String(45), nullable=True)
+    dispositivo = Column(String(255), nullable=True)
+    user_agent = Column(Text, nullable=True)
+    fecha_inicio = Column(DateTime, nullable=False, server_default=func.now())
+    ultima_actividad = Column(DateTime, nullable=False, server_default=func.now())
+    estado_sesion = Column(String(20), nullable=False, default="ACTIVA")
+
+    usuario = relationship("Usuario", back_populates="sesiones")
+
+    __table_args__ = (
+        CheckConstraint("estado_sesion IN ('ACTIVA', 'CERRADA', 'REVOCADA', 'EXPIRADA')", name="chk_estado_sesion"),
+    )
 
 class Notificacion(Base):
     __tablename__ = "notificacion"

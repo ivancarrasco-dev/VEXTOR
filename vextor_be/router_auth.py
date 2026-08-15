@@ -2,6 +2,7 @@ import jwt
 import bcrypt
 import os
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
@@ -45,18 +46,77 @@ def create_access_token(data: dict) -> str:
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-def get_current_user_from_token(token: str, db: Session) -> models.Usuario:
+def get_client_ip(request: Request) -> str:
+    x_forwarded_for = request.headers.get("x-forwarded-for")
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(",")[0].strip()
+    else:
+        ip = request.client.host if (request and request.client) else "127.0.0.1"
+    if ip == "testclient" or not ip:
+        ip = "127.0.0.1"
+    return ip
+
+def parse_user_agent(user_agent: str) -> str:
+    if not user_agent:
+        return "Navegador web"
+    ua = user_agent.lower()
+
+    browser = "Navegador"
+    if "edg" in ua:
+        browser = "Microsoft Edge"
+    elif "chrome" in ua and "chromium" not in ua and "edg" not in ua:
+        browser = "Chrome"
+    elif "firefox" in ua:
+        browser = "Firefox"
+    elif "safari" in ua and "chrome" not in ua:
+        browser = "Safari"
+    elif "opr" in ua or "opera" in ua:
+        browser = "Opera"
+
+    os_name = "Windows"
+    if "macintosh" in ua or "mac os" in ua:
+        os_name = "macOS"
+    elif "iphone" in ua or "ipad" in ua:
+        os_name = "iOS"
+    elif "android" in ua:
+        os_name = "Android"
+    elif "linux" in ua:
+        os_name = "Linux"
+
+    return f"{browser} — {os_name}"
+
+def get_current_user_from_token(token: str, db: Session, request: Optional[Request] = None) -> models.Usuario:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
+        sid: str = payload.get("sid")
         if email is None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido")
     except jwt.PyJWTError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No se pudieron validar las credenciales")
 
     user = db.query(models.Usuario).filter(models.Usuario.correo_usuario == email).first()
-    if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    if user is None or user.estado_usuario != "ACTIVO":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no encontrado o inactivo")
+
+    if sid:
+        try:
+            session_id_uuid = UUID(sid)
+            session = db.query(models.SesionUsuario).filter(
+                models.SesionUsuario.id_sesion == session_id_uuid,
+                models.SesionUsuario.id_usuario == user.id_usuario
+            ).first()
+            if not session or session.estado_sesion != "ACTIVA":
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="La sesión ha sido revocada o cerró sesión.")
+
+            # Update last activity
+            session.ultima_actividad = datetime.now()
+            db.commit()
+            if request:
+                request.state.current_session_id = str(session.id_sesion)
+        except ValueError:
+            pass
+
     return user
 
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> models.Usuario:
@@ -69,7 +129,7 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> models.
 
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
-    return get_current_user_from_token(token, db)
+    return get_current_user_from_token(token, db, request=request)
 
 @router.post("/register")
 def register_user(req: RegisterRequest, db: Session = Depends(get_db)):
@@ -116,23 +176,70 @@ def register_user(req: RegisterRequest, db: Session = Depends(get_db)):
     return {"message": "Usuario creado correctamente"}
 
 @router.post("/login")
-def login_user(req: LoginRequest, response: Response, db: Session = Depends(get_db)):
+def login_user(req: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)):
+    from router_activities import record_activity
     email_clean = req.email.strip().lower()
+    client_ip = get_client_ip(request)
 
     user = db.query(models.Usuario).filter(models.Usuario.correo_usuario == email_clean).first()
     if not user or not verify_password(req.password, user.contrasenia_usuario):
-        # Prevent user enumeration by keeping this generic
+        user_name_fail = f"{user.nombres_usuario} {user.apellidos_usuario}".strip() if user else email_clean
+        record_activity(
+            db,
+            user.id_usuario if user else None,
+            user_name_fail,
+            "LOGIN_FAILED",
+            "Seguridad",
+            f"Intento fallido de inicio de sesión para el usuario '{email_clean}'.",
+            None,
+            ip_origen=client_ip,
+            resultado="FALLIDO"
+        )
         raise HTTPException(status_code=400, detail="Credenciales incorrectas o el usuario no existe.")
 
     if user.estado_usuario != "ACTIVO":
+        user_name_fail = f"{user.nombres_usuario} {user.apellidos_usuario}".strip()
+        record_activity(
+            db,
+            user.id_usuario,
+            user_name_fail,
+            "LOGIN_FAILED",
+            "Seguridad",
+            f"Intento de inicio de sesión en cuenta inactiva '{email_clean}'.",
+            str(user.id_usuario),
+            ip_origen=client_ip,
+            resultado="FALLIDO"
+        )
         raise HTTPException(status_code=403, detail="Su cuenta de usuario se encuentra inactiva.")
 
     # Resolve Rol Name
     rol = db.query(models.Rol).filter(models.Rol.id_rol == user.id_rol).first()
     role_name = rol.nombre_rol if rol else "Usuario"
 
-    # Create JWT Token
-    token = create_access_token(data={"sub": user.correo_usuario, "role": role_name})
+    # Create Real Active Session in DB
+    ua_str = request.headers.get("user-agent", "")
+    device_info = parse_user_agent(ua_str)
+
+    new_session = models.SesionUsuario(
+        id_sesion=uuid4(),
+        id_usuario=user.id_usuario,
+        ip_origen=client_ip,
+        dispositivo=device_info,
+        user_agent=ua_str,
+        fecha_inicio=datetime.now(),
+        ultima_actividad=datetime.now(),
+        estado_sesion="ACTIVA"
+    )
+    db.add(new_session)
+    db.commit()
+    db.refresh(new_session)
+
+    # Create JWT Token with Session ID (sid)
+    token = create_access_token(data={
+        "sub": user.correo_usuario,
+        "role": role_name,
+        "sid": str(new_session.id_sesion)
+    })
 
     # Set Cookie HttpOnly
     response.set_cookie(
@@ -144,6 +251,19 @@ def login_user(req: LoginRequest, response: Response, db: Session = Depends(get_
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60
     )
 
+    user_name = f"{user.nombres_usuario} {user.apellidos_usuario}".strip()
+    record_activity(
+        db,
+        user.id_usuario,
+        user_name,
+        "LOGIN",
+        "Seguridad",
+        f"Inicio de sesión exitoso desde {device_info}.",
+        str(new_session.id_sesion),
+        ip_origen=client_ip,
+        resultado="EXITOSO"
+    )
+
     avatar = f"{user.nombres_usuario[0]}{user.apellidos_usuario[0]}" if user.apellidos_usuario else user.nombres_usuario[0]
     avatar = avatar.upper()
 
@@ -151,7 +271,7 @@ def login_user(req: LoginRequest, response: Response, db: Session = Depends(get_
         "token": token,
         "user": {
             "id": str(user.id_usuario),
-            "name": f"{user.nombres_usuario} {user.apellidos_usuario}".strip(),
+            "name": user_name,
             "email": user.correo_usuario,
             "role": role_name,
             "avatar": avatar,
@@ -161,7 +281,44 @@ def login_user(req: LoginRequest, response: Response, db: Session = Depends(get_
     }
 
 @router.post("/logout")
-def logout_user(response: Response):
+def logout_user(request: Request, response: Response, db: Session = Depends(get_db)):
+    from router_activities import record_activity
+    token = request.cookies.get("vextor_auth_token")
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+
+    if token:
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            sid = payload.get("sid")
+            email = payload.get("sub")
+            if sid:
+                session = db.query(models.SesionUsuario).filter(models.SesionUsuario.id_sesion == UUID(sid)).first()
+                if session and session.estado_sesion == "ACTIVA":
+                    session.estado_sesion = "CERRADA"
+                    db.commit()
+
+            if email:
+                user = db.query(models.Usuario).filter(models.Usuario.correo_usuario == email).first()
+                if user:
+                    user_name = f"{user.nombres_usuario} {user.apellidos_usuario}".strip()
+                    client_ip = get_client_ip(request)
+                    record_activity(
+                        db,
+                        user.id_usuario,
+                        user_name,
+                        "LOGOUT",
+                        "Seguridad",
+                        "Cierre de sesión de usuario.",
+                        sid,
+                        ip_origen=client_ip,
+                        resultado="EXITOSO"
+                    )
+        except Exception as e:
+            print(f"Error closing session on logout: {e}")
+
     response.delete_cookie(key="vextor_auth_token")
     return {"message": "Sesión cerrada correctamente"}
 

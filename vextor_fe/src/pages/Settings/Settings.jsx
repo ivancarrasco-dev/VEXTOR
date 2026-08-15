@@ -675,13 +675,8 @@ const Settings = () => {
               {/* 10. Seguridad */}
               {activeCategory === 'security' && (
                 <SecuritySection
-                  passwordForm={passwordForm}
-                  setPasswordForm={setPasswordForm}
-                  handlePasswordChange={handlePasswordChange}
                   is2FAEnabled={is2FAEnabled}
                   setIs2FAEnabled={setIs2FAEnabled}
-                  activeSessions={activeSessions}
-                  handleRevokeSession={handleRevokeSession}
                   showToast={showToast}
                 />
               )}
@@ -711,8 +706,6 @@ const Settings = () => {
               {/* 13. Auditoría */}
               {activeCategory === 'audit' && (
                 <AuditSection
-                  auditLogs={auditLogs}
-                  setAuditLogs={setAuditLogs}
                   showToast={showToast}
                 />
               )}

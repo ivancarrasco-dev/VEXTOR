@@ -51,6 +51,8 @@ class ActividadBase(BaseModel):
     modulo: str
     descripcion: str
     id_registro_afectado: Optional[str] = None
+    ip_origen: Optional[str] = None
+    resultado: str = "EXITOSO"
 
 class ActividadCreate(ActividadBase):
     id_usuario: Optional[UUID] = None
@@ -64,6 +66,25 @@ class Actividad(ActividadBase):
 
     class Config:
         from_attributes = True
+
+# --- SESION USUARIO ---
+class SesionUsuarioOut(BaseModel):
+    id_sesion: UUID
+    id_usuario: UUID
+    ip_origen: Optional[str] = None
+    dispositivo: Optional[str] = None
+    user_agent: Optional[str] = None
+    fecha_inicio: datetime
+    ultima_actividad: datetime
+    estado_sesion: str
+    is_current: bool = False
+
+    class Config:
+        from_attributes = True
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
 
 # --- NOTIFICACION ---
 class NotificacionBase(BaseModel):

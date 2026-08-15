@@ -18,7 +18,9 @@ def record_activity(
     tipo_accion: str,
     modulo: str,
     descripcion: str,
-    id_registro_afectado: Optional[str] = None
+    id_registro_afectado: Optional[str] = None,
+    ip_origen: Optional[str] = None,
+    resultado: str = "EXITOSO"
 ):
     try:
         new_activity = models.Actividad(
@@ -29,7 +31,9 @@ def record_activity(
             modulo=modulo,
             descripcion=descripcion,
             fecha_hora=datetime.now(),
-            id_registro_afectado=id_registro_afectado
+            id_registro_afectado=id_registro_afectado,
+            ip_origen=ip_origen,
+            resultado=resultado
         )
         db.add(new_activity)
         db.commit()
@@ -73,12 +77,84 @@ def cleanup_old_activities(db: Session):
         db.rollback()
         print(f"Error cleaning up old activities: {e}")
 
-@router.get("/api/activities", response_model=List[schemas.Actividad])
-def get_activities(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+@router.get("/api/activities")
+def get_activities(
+    search: Optional[str] = None,
+    user_id: Optional[uuid.UUID] = None,
+    tipo_accion: Optional[str] = None,
+    modulo: Optional[str] = None,
+    resultado: Optional[str] = None,
+    fecha_inicio: Optional[str] = None,
+    fecha_fin: Optional[str] = None,
+    page: Optional[int] = None,
+    limit: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(get_current_user)
+):
     # Run cleanup of old activities first
     cleanup_old_activities(db)
-    # Fetch remaining activities
-    return db.query(models.Actividad).order_by(models.Actividad.fecha_hora.desc()).all()
+
+    # Base query
+    query = db.query(models.Actividad)
+
+    # Role check: Standard users only see their own activity records
+    user_role = current_user.rol.nombre_rol if current_user.rol else ""
+    if user_role not in ["Super Administrador", "Administrador"]:
+        query = query.filter(models.Actividad.id_usuario == current_user.id_usuario)
+    elif user_id:
+        query = query.filter(models.Actividad.id_usuario == user_id)
+
+    # Search filter
+    if search and search.strip():
+        s_term = f"%{search.strip()}%"
+        query = query.filter(
+            (models.Actividad.descripcion.ilike(s_term)) |
+            (models.Actividad.nombres_usuario.ilike(s_term)) |
+            (models.Actividad.tipo_accion.ilike(s_term)) |
+            (models.Actividad.modulo.ilike(s_term))
+        )
+
+    # Specific filters
+    if tipo_accion and tipo_accion != "TODOS":
+        query = query.filter(models.Actividad.tipo_accion == tipo_accion)
+
+    if modulo and modulo != "TODOS":
+        query = query.filter(models.Actividad.modulo == modulo)
+
+    if resultado and resultado != "TODOS":
+        query = query.filter(models.Actividad.resultado == resultado)
+
+    if fecha_inicio:
+        try:
+            d_start = datetime.strptime(fecha_inicio, "%Y-%m-%d")
+            query = query.filter(models.Actividad.fecha_hora >= d_start)
+        except ValueError:
+            pass
+
+    if fecha_fin:
+        try:
+            d_end = datetime.strptime(fecha_fin, "%Y-%m-%d") + timedelta(days=1)
+            query = query.filter(models.Actividad.fecha_hora < d_end)
+        except ValueError:
+            pass
+
+    query = query.order_by(models.Actividad.fecha_hora.desc())
+
+    if page is not None and limit is not None:
+        total = query.count()
+        offset = (page - 1) * limit
+        items = query.offset(offset).limit(limit).all()
+        import math
+        pages = math.ceil(total / limit) if limit > 0 else 1
+        return {
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "pages": pages,
+            "items": [schemas.Actividad.model_validate(i) for i in items]
+        }
+
+    return [schemas.Actividad.model_validate(i) for i in query.all()]
 
 @router.get("/api/notifications", response_model=List[schemas.Notificacion])
 def get_notifications(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
