@@ -11,6 +11,8 @@ import RoutesPage from '../pages/Routes/Routes';
 import Maintenance from '../pages/Maintenance/Maintenance';
 import Reports from '../pages/Reports/Reports';
 import Settings from '../pages/Settings/Settings';
+import MyRoutes from '../pages/Driver/MyRoutes';
+import ActiveRoutePage from '../pages/Driver/ActiveRoutePage';
 import DashboardLayout from '../layouts/DashboardLayout';
 import ProtectedRoute from './ProtectedRoute';
 
@@ -48,6 +50,8 @@ const AppRouter = () => {
           <Route path="/maintenance" element={<Maintenance />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/driver/my-routes" element={<MyRoutes />} />
+          <Route path="/driver/active-route/:idRuta?" element={<ActiveRoutePage />} />
         </Route>
       </Route>
 

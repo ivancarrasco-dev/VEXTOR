@@ -2,9 +2,11 @@ import random
 import uuid
 import unicodedata
 from datetime import date, datetime, timedelta
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from sqlalchemy import text
+from typing import List
 
 from database import engine, SessionLocal
 import models
@@ -20,6 +22,103 @@ from router_security import router as security_router
 from router_reports import router as reports_router
 
 app = FastAPI(title="Vextor API", description="Backend para la gestión de flota y transporte de Vextor")
+
+# Real-time WebSocket Connection Manager
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: dict):
+        for connection in list(self.active_connections):
+            try:
+                await connection.send_json(message)
+            except Exception:
+                self.disconnect(connection)
+
+ws_manager = ConnectionManager()
+
+@app.websocket("/ws/tracking")
+async def websocket_tracking(websocket: WebSocket):
+    await ws_manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_json()
+            if data.get("type") == "location_update":
+                id_ruta_str = data.get("id_ruta")
+                lat = data.get("latitud")
+                lng = data.get("longitud")
+                speed = data.get("velocidad", 0.0)
+                heading = data.get("heading", 0.0)
+
+                if id_ruta_str and lat is not None and lng is not None:
+                    db = SessionLocal()
+                    try:
+                        id_ruta = uuid.UUID(id_ruta_str)
+                        seg = db.query(models.SeguimientoRuta).filter(models.SeguimientoRuta.id_ruta == id_ruta).first()
+                        now = datetime.now()
+                        if seg:
+                            seg.latitud = lat
+                            seg.longitud = lng
+                            seg.velocidad = speed
+                            seg.heading = heading
+                            seg.ultima_actualizacion = now
+                            seg.estado_seguimiento = "ACTIVO"
+                            db.commit()
+
+                            hist = models.HistorialUbicacion(
+                                id_seguimiento=seg.id_seguimiento,
+                                id_ruta=id_ruta,
+                                latitud=lat,
+                                longitud=lng,
+                                velocidad=speed,
+                                fecha_hora=now
+                            )
+                            db.add(hist)
+                            db.commit()
+
+                            route = db.query(models.Ruta).filter(models.Ruta.id_ruta == id_ruta).first()
+                            conductor = db.query(models.Conductor).filter(models.Conductor.id_conductor == seg.id_conductor).first()
+                            vehiculo = db.query(models.Vehiculo).filter(models.Vehiculo.id_vehiculo == seg.id_vehiculo).first()
+
+                            broadcast_payload = {
+                                "type": "location_broadcast",
+                                "id_ruta": id_ruta_str,
+                                "codigo_ruta": route.codigo_ruta if route else "",
+                                "nombre_ruta": route.nombre_ruta if route else "",
+                                "latitud": float(lat),
+                                "longitud": float(lng),
+                                "velocidad": float(speed),
+                                "heading": float(heading),
+                                "ultima_actualizacion": now.isoformat(),
+                                "conductor": {
+                                    "id_conductor": str(conductor.id_conductor) if conductor else None,
+                                    "nombre": f"{conductor.nombre_conductor} {conductor.apellido_conductor}" if conductor else "Conductor"
+                                },
+                                "vehiculo": {
+                                    "id_vehiculo": str(vehiculo.id_vehiculo) if vehiculo else None,
+                                    "placa": vehiculo.placa if vehiculo else "N/A"
+                                }
+                            }
+                            await ws_manager.broadcast(broadcast_payload)
+                    except Exception as e:
+                        print(f"Error updating location via WS: {e}")
+                    finally:
+                        db.close()
+            elif data.get("type") == "ping":
+                await websocket.send_json({"type": "pong"})
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket)
+    except Exception as e:
+        print(f"WebSocket exception: {e}")
+        ws_manager.disconnect(websocket)
 
 @app.get("/")
 def root():
@@ -53,6 +152,21 @@ app.include_router(reports_router)
 # Database Seeding/Initialization on startup
 @app.on_event("startup")
 def startup_populate():
+    # Automatically create missing database tables in PostgreSQL
+    try:
+        models.Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        print("Table creation note:", e)
+
+    # Update DB Constraints for Conductor table if necessary
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE conductor DROP CONSTRAINT IF EXISTS chk_estado_conductor;"))
+            conn.execute(text("ALTER TABLE conductor ADD CONSTRAINT chk_estado_conductor CHECK (estado_conductor IN ('DISPONIBLE', 'EN_RUTA', 'NO_DISPONIBLE', 'ACTIVO', 'INACTIVO', 'SUSPENDIDO'));"))
+            conn.commit()
+    except Exception as e:
+        print("Constraint migration note:", e)
+
     db = SessionLocal()
     try:
         # Check if Rol has any records
@@ -189,7 +303,7 @@ def startup_populate():
                 cedula_conductor="1723456789",
                 telefono_conductor="+593 98 765 4321",
                 licencia="C2",
-                estado_conductor="ACTIVO",
+                estado_conductor="DISPONIBLE",
                 fecha_ingreso=date(2021, 3, 15)
             )
             drivers_to_add.append(special_cond)
@@ -203,7 +317,6 @@ def startup_populate():
                 'González', 'Alvarez', 'Torres', 'Fernández', 'Vargas', 'Herrera', 'Castro', 'Ríos', 'Guerrero', 'Ortega'
             ]
             licenses = ['A1', 'A2', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3']
-            cond_statuses = ['ACTIVO', 'INACTIVO', 'SUSPENDIDO']
             used_cedulas = {"1723456789"}
             used_emails = {"juan.perez@vextor.com", "admin@vextor.com"}
 
@@ -251,13 +364,36 @@ def startup_populate():
                     cedula_conductor=cedula,
                     telefono_conductor=u.telefono_usuario,
                     licencia=random.choice(licenses),
-                    estado_conductor=random.choice(cond_statuses),
+                    estado_conductor="DISPONIBLE",
                     fecha_ingreso=date.today() - timedelta(days=random.randint(10, 1000))
                 )
                 drivers_to_add.append(c)
 
             db.add_all(drivers_to_add)
             db.commit()
+
+        # Normalize driver statuses for existing drivers
+        existing_drivers = db.query(models.Conductor).all()
+        for d in existing_drivers:
+            # Check if running active route
+            active_asig = db.query(models.AsignacionConductor).filter(
+                models.AsignacionConductor.id_conductor == d.id_conductor
+            ).all()
+            is_in_route = False
+            for asig in active_asig:
+                r = db.query(models.Ruta).filter(
+                    models.Ruta.id_ruta == asig.id_ruta,
+                    models.Ruta.estado_ruta == "EN_PROCESO"
+                ).first()
+                if r:
+                    is_in_route = True
+                    break
+
+            if is_in_route:
+                d.estado_conductor = "EN_RUTA"
+            elif d.estado_conductor in ("ACTIVO", None, "", "DESCONOCIDO"):
+                d.estado_conductor = "DISPONIBLE"
+        db.commit()
 
         # Seed Maintenances if empty
         if db.query(models.Mantenimiento).count() == 0:

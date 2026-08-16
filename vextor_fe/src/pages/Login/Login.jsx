@@ -69,8 +69,12 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      await login(formData.email, formData.password);
-      navigate('/dashboard');
+      const user = await login(formData.email, formData.password);
+      if (user?.role === 'rol-conductor' || user?.role === 'Conductor') {
+        navigate('/driver/my-routes');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setErrors({ form: err.message || 'Error al iniciar sesión. Intente de nuevo.' });
     } finally {
