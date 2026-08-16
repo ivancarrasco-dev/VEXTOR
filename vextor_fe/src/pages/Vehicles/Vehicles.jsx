@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Select } from '../../components/ui/Select';
-import { vehicleService } from '../../services/vehicleService';
+import { vehicleService } from './services/vehicleService';
 import { cn } from '../../utils/cn';
 import { useTranslation } from 'react-i18next';
 

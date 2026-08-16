@@ -1,4 +1,4 @@
-import { reportService } from '../../../services/reportService';
+import { reportService } from '../services/reportService';
 
 /**
  * Executes full export workflow with error handling and backend logging.
