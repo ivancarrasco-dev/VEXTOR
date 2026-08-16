@@ -1,6 +1,8 @@
 import jwt
 import bcrypt
 import os
+import secrets
+import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
@@ -10,10 +12,12 @@ from uuid import UUID, uuid4
 from database import get_db
 import models
 import schemas
+from email_utils import send_recovery_email
 
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "vextor_super_secret_key_1234567890!")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440 # 24 hours
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -25,6 +29,16 @@ class RegisterRequest(BaseModel):
     fullName: str
     email: EmailStr
     password: str
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class VerifyResetTokenRequest(BaseModel):
+    token: str
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    newPassword: str
 
 def hash_password(password: str) -> str:
     salt = bcrypt.gensalt()
@@ -137,6 +151,21 @@ def register_user(req: RegisterRequest, db: Session = Depends(get_db)):
     email_clean = req.email.strip().lower()
     name_clean = req.fullName.strip()
 
+    if not name_clean or len(name_clean) < 2:
+        raise HTTPException(status_code=400, detail="El nombre completo es obligatorio y debe tener al menos 2 caracteres.")
+
+    # Password policy validation: min 8 chars, uppercase, lowercase, number
+    if (
+        len(req.password) < 8
+        or not any(c.isupper() for c in req.password)
+        or not any(c.islower() for c in req.password)
+        or not any(c.isdigit() for c in req.password)
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="La contraseña debe tener al menos 8 caracteres, e incluir letras mayúsculas, minúsculas y un número."
+        )
+
     # Check if exists
     existing = db.query(models.Usuario).filter(models.Usuario.correo_usuario == email_clean).first()
     if existing:
@@ -145,13 +174,10 @@ def register_user(req: RegisterRequest, db: Session = Depends(get_db)):
     # Resolve role (Default to Administrador)
     rol = db.query(models.Rol).filter(models.Rol.nombre_rol == "Administrador").first()
     if not rol:
-        # Fallback to Super Administrador or create Admin
-        rol = db.query(models.Rol).filter(models.Rol.nombre_rol == "Super Administrador").first()
-        if not rol:
-            rol = models.Rol(id_rol=uuid4(), nombre_rol="Administrador", descripcion_rol="Administrador de la flota")
-            db.add(rol)
-            db.commit()
-            db.refresh(rol)
+        rol = models.Rol(id_rol=uuid4(), nombre_rol="Administrador", descripcion_rol="Administrador de la flota")
+        db.add(rol)
+        db.commit()
+        db.refresh(rol)
 
     # Name split
     parts = name_clean.split(" ", 1)
@@ -278,6 +304,161 @@ def login_user(req: LoginRequest, request: Request, response: Response, db: Sess
             "phone": user.telefono_usuario or "",
             "photo": user.foto_perfil
         }
+    }
+
+@router.post("/forgot-password")
+def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    from router_activities import record_activity
+    email_clean = req.email.strip().lower()
+
+    # Find user
+    user = db.query(models.Usuario).filter(models.Usuario.correo_usuario == email_clean).first()
+    if user and user.estado_usuario == "ACTIVO":
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_token.encode('utf-8')).hexdigest()
+        exp_time = (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()
+
+        # Store token hash and expiration ISO string in token_recuperacion
+        user.token_recuperacion = f"{token_hash}|{exp_time}"
+        db.commit()
+
+        reset_link = f"{FRONTEND_URL}/reset-password?token={raw_token}"
+        send_recovery_email(user.correo_usuario, reset_link)
+
+        user_name = f"{user.nombres_usuario} {user.apellidos_usuario}".strip()
+        record_activity(
+            db,
+            user.id_usuario,
+            user_name,
+            "RECUPERACION_SOLICITADA",
+            "Seguridad",
+            f"Solicitud de restablecimiento de contraseña enviada para '{email_clean}'.",
+            str(user.id_usuario)
+        )
+
+    # Always return a generic response to prevent account enumeration
+    return {
+        "message": "Si existe una cuenta asociada a este correo, recibirás instrucciones para restablecer tu contraseña."
+    }
+
+@router.post("/verify-reset-token")
+def verify_reset_token(req: VerifyResetTokenRequest, db: Session = Depends(get_db)):
+    if not req.token or not req.token.strip():
+        raise HTTPException(status_code=400, detail="El token de recuperación es requerido.")
+
+    token_hash = hashlib.sha256(req.token.strip().encode('utf-8')).hexdigest()
+
+    # Find user whose token_recuperacion starts with token_hash + "|"
+    users = db.query(models.Usuario).filter(models.Usuario.token_recuperacion.isnot(None)).all()
+    user = None
+    exp_iso = None
+    for u in users:
+        if u.token_recuperacion and u.token_recuperacion.startswith(f"{token_hash}|"):
+            user = u
+            parts = u.token_recuperacion.split("|", 1)
+            if len(parts) == 2:
+                exp_iso = parts[1]
+            break
+
+    if not user or not exp_iso:
+        raise HTTPException(
+            status_code=400,
+            detail="El enlace de recuperación es inválido o ya ha sido utilizado."
+        )
+
+    try:
+        exp_dt = datetime.fromisoformat(exp_iso)
+        if exp_dt.tzinfo is None:
+            exp_dt = exp_dt.replace(tzinfo=timezone.utc)
+        if exp_dt < datetime.now(timezone.utc):
+            raise HTTPException(
+                status_code=400,
+                detail="El enlace de recuperación ha expirado. Por favor, solicita uno nuevo."
+            )
+    except ValueError:
+        raise HTTPException(status_code=400, detail="El enlace de recuperación es inválido.")
+
+    return {
+        "valid": True,
+        "email": user.correo_usuario
+    }
+
+@router.post("/reset-password")
+def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
+    from router_activities import record_activity
+
+    if not req.token or not req.token.strip():
+        raise HTTPException(status_code=400, detail="El token de recuperación es requerido.")
+
+    # Password policy validation
+    if (
+        len(req.newPassword) < 8
+        or not any(c.isupper() for c in req.newPassword)
+        or not any(c.islower() for c in req.newPassword)
+        or not any(c.isdigit() for c in req.newPassword)
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="La nueva contraseña debe tener al menos 8 caracteres, e incluir letras mayúsculas, minúsculas y un número."
+        )
+
+    token_hash = hashlib.sha256(req.token.strip().encode('utf-8')).hexdigest()
+
+    users = db.query(models.Usuario).filter(models.Usuario.token_recuperacion.isnot(None)).all()
+    user = None
+    exp_iso = None
+    for u in users:
+        if u.token_recuperacion and u.token_recuperacion.startswith(f"{token_hash}|"):
+            user = u
+            parts = u.token_recuperacion.split("|", 1)
+            if len(parts) == 2:
+                exp_iso = parts[1]
+            break
+
+    if not user or not exp_iso:
+        raise HTTPException(
+            status_code=400,
+            detail="El enlace de recuperación es inválido o ya ha sido utilizado."
+        )
+
+    try:
+        exp_dt = datetime.fromisoformat(exp_iso)
+        if exp_dt.tzinfo is None:
+            exp_dt = exp_dt.replace(tzinfo=timezone.utc)
+        if exp_dt < datetime.now(timezone.utc):
+            raise HTTPException(
+                status_code=400,
+                detail="El enlace de recuperación ha expirado. Por favor, solicita uno nuevo."
+            )
+    except ValueError:
+        raise HTTPException(status_code=400, detail="El enlace de recuperación es inválido.")
+
+    # Update password
+    user.contrasenia_usuario = hash_password(req.newPassword)
+    # Clear single-use recovery token
+    user.token_recuperacion = None
+
+    # Revoke all active sessions for this user
+    db.query(models.SesionUsuario).filter(
+        models.SesionUsuario.id_usuario == user.id_usuario,
+        models.SesionUsuario.estado_sesion == "ACTIVA"
+    ).update({"estado_sesion": "REVOCADA"}, synchronize_session=False)
+
+    db.commit()
+
+    user_name = f"{user.nombres_usuario} {user.apellidos_usuario}".strip()
+    record_activity(
+        db,
+        user.id_usuario,
+        user_name,
+        "CAMBIO_CONTRASENIA",
+        "Seguridad",
+        "Contraseña restablecida exitosamente mediante enlace de recuperación.",
+        str(user.id_usuario)
+    )
+
+    return {
+        "message": "Su contraseña ha sido actualizada correctamente. Inicie sesión con su nueva clave."
     }
 
 @router.post("/logout")

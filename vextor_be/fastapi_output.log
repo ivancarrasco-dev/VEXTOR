@@ -1,61 +1,30 @@
-INFO:     Started server process [369506]
+INFO:     Started server process [297655]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     127.0.0.1:60368 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:40298 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
-INFO:     127.0.0.1:40298 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
-INFO:     127.0.0.1:40300 - "OPTIONS /api/auth/login HTTP/1.1" 200 OK
-INFO:     127.0.0.1:40298 - "POST /api/auth/login HTTP/1.1" 200 OK
-INFO:     127.0.0.1:40300 - "OPTIONS /api/notifications HTTP/1.1" 200 OK
-INFO:     127.0.0.1:40300 - "OPTIONS /api/activities HTTP/1.1" 200 OK
-INFO:     127.0.0.1:40302 - "OPTIONS /api/dashboard/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:40314 - "OPTIONS /api/dashboard/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:40324 - "OPTIONS /api/activities HTTP/1.1" 200 OK
-INFO:     127.0.0.1:40298 - "GET /api/notifications HTTP/1.1" 200 OK
-INFO:     127.0.0.1:40334 - "GET /api/activities HTTP/1.1" 200 OK
-INFO:     127.0.0.1:40324 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
-INFO:     127.0.0.1:40314 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
-INFO:     127.0.0.1:40334 - "GET /api/auth/me HTTP/1.1" 200 OK
-INFO:     127.0.0.1:40314 - "OPTIONS /api/company HTTP/1.1" 200 OK
-INFO:     127.0.0.1:40324 - "OPTIONS /api/users HTTP/1.1" 200 OK
-INFO:     127.0.0.1:40382 - "GET /api/company HTTP/1.1" 200 OK
-INFO:     127.0.0.1:40396 - "GET /api/users HTTP/1.1" 200 OK
-INFO:     127.0.0.1:40372 - "GET /api/auth/me HTTP/1.1" 200 OK
-INFO:     127.0.0.1:40382 - "GET /api/users HTTP/1.1" 200 OK
-INFO:     127.0.0.1:40334 - "GET /api/notifications HTTP/1.1" 200 OK
-INFO:     127.0.0.1:40408 - "GET /api/company HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39570 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
-INFO:     127.0.0.1:39582 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
-INFO:     127.0.0.1:39584 - "OPTIONS /api/auth/login HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39582 - "POST /api/auth/login HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39584 - "OPTIONS /api/notifications HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39592 - "OPTIONS /api/dashboard/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39596 - "OPTIONS /api/activities HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39582 - "GET /api/notifications HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39612 - "GET /api/activities HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39570 - "GET /api/dashboard/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39616 - "GET /api/notifications HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39582 - "GET /api/activities HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39596 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39592 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39582 - "GET /api/auth/me HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39592 - "OPTIONS /api/company HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39596 - "OPTIONS /api/users HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39584 - "OPTIONS /api/company HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39592 - "OPTIONS /api/users HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39570 - "GET /api/company HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39626 - "GET /api/users HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39634 - "GET /api/company HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39570 - "GET /api/users HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39616 - "GET /api/auth/me HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39582 - "GET /api/notifications HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39592 - "OPTIONS /api/security/sessions HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39584 - "OPTIONS /api/security/sessions HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39616 - "GET /api/notifications HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39582 - "GET /api/security/sessions HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39616 - "GET /api/security/sessions HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39584 - "OPTIONS /api/activities?page=1&limit=10 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39592 - "OPTIONS /api/activities?page=1&limit=10 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39616 - "GET /api/activities?page=1&limit=10 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39582 - "GET /api/activities?page=1&limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38736 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:38736 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:38742 - "OPTIONS /api/auth/forgot-password HTTP/1.1" 200 OK
+
+=======================================================
+[VEXTOR DEV RECOVERY LINK]
+Destination Email: admin@vextor.com
+Recovery URL     : http://localhost:5173/reset-password?token=4ARa9i5I1R5fEAdYsKHYbrSPvd_T43vXt9pUGPfHT08
+=======================================================
+
+INFO:     127.0.0.1:38736 - "POST /api/auth/forgot-password HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38736 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:53974 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:38742 - "OPTIONS /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53974 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38742 - "OPTIONS /api/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38742 - "OPTIONS /api/dashboard/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53990 - "OPTIONS /api/activities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53998 - "OPTIONS /api/dashboard/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54012 - "OPTIONS /api/activities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53974 - "GET /api/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38736 - "GET /api/dashboard/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54022 - "GET /api/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54020 - "GET /api/activities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54022 - "GET /api/activities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53974 - "GET /api/dashboard/stats HTTP/1.1" 200 OK

@@ -55,7 +55,7 @@ const UsersSection = ({
                     <td className="p-3 text-v-gray text-sm">{usr.correo_usuario}</td>
                     <td className="p-3 text-v-white text-sm">
                       <span className="px-2.5 py-1 bg-v-dark border border-v-dark-border rounded-lg text-xs font-medium text-primary">
-                        {usr.id_rol === '11111111-2222-3333-4444-555555555551' ? 'Super Administrador' : 'Conductor'}
+                        {usr.id_rol === '11111111-2222-3333-4444-555555555551' ? 'Administrador' : 'Conductor'}
                       </span>
                     </td>
                     <td className="p-3">
@@ -144,7 +144,7 @@ const UsersSection = ({
                     value={userForm.id_rol}
                     onChange={(e) => setUserForm({ ...userForm, id_rol: e.target.value })}
                   >
-                    <option value="11111111-2222-3333-4444-555555555551">Super Administrador</option>
+                    <option value="11111111-2222-3333-4444-555555555551">Administrador</option>
                     <option value="11111111-2222-3333-4444-555555555552">Conductor</option>
                   </Select>
                 </div>

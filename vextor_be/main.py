@@ -59,8 +59,8 @@ def startup_populate():
         if db.query(models.Rol).count() == 0:
             rol_admin = models.Rol(
                 id_rol=uuid.UUID("11111111-2222-3333-4444-555555555551"),
-                nombre_rol="Super Administrador",
-                descripcion_rol="Administrador de todo el sistema Vextor"
+                nombre_rol="Administrador",
+                descripcion_rol="Administrador del sistema Vextor"
             )
             rol_conductor = models.Rol(
                 id_rol=uuid.UUID("11111111-2222-3333-4444-555555555552"),
@@ -72,7 +72,7 @@ def startup_populate():
 
         # Check if Usuario has any records
         if db.query(models.Usuario).count() == 0:
-            rol_admin = db.query(models.Rol).filter(models.Rol.nombre_rol == "Super Administrador").first()
+            rol_admin = db.query(models.Rol).filter(models.Rol.nombre_rol == "Administrador").first()
             admin_user = models.Usuario(
                 id_usuario=uuid.UUID("abc12345-6789-4000-b000-000000000002"),
                 id_rol=rol_admin.id_rol,

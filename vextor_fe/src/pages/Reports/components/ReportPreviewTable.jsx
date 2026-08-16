@@ -98,7 +98,7 @@ export const ReportPreviewTable = ({
                 >
                   <FileText size={15} className="text-red-500" /> Exportar como PDF
                 </button>
-                {user?.role === 'Super Administrador' && (
+                {user?.role === 'Administrador' && (
                   <button
                     type="button"
                     onClick={() => handleExportClick('xlsx')}

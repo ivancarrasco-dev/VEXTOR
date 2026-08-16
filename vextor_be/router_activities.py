@@ -99,7 +99,7 @@ def get_activities(
 
     # Role check: Standard users only see their own activity records
     user_role = current_user.rol.nombre_rol if current_user.rol else ""
-    if user_role not in ["Super Administrador", "Administrador"]:
+    if user_role not in ["Administrador"]:
         query = query.filter(models.Actividad.id_usuario == current_user.id_usuario)
     elif user_id:
         query = query.filter(models.Actividad.id_usuario == user_id)
@@ -168,6 +168,16 @@ def mark_notification_read(id_notificacion: uuid.UUID, db: Session = Depends(get
     if not notif:
         raise HTTPException(status_code=404, detail="Notificación no encontrada")
     notif.leido = True
+    db.commit()
+    db.refresh(notif)
+    return notif
+
+@router.put("/api/notifications/{id_notificacion}/unread", response_model=schemas.Notificacion)
+def mark_notification_unread(id_notificacion: uuid.UUID, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    notif = db.query(models.Notificacion).filter(models.Notificacion.id_notificacion == id_notificacion).first()
+    if not notif:
+        raise HTTPException(status_code=404, detail="Notificación no encontrada")
+    notif.leido = False
     db.commit()
     db.refresh(notif)
     return notif

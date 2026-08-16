@@ -61,7 +61,7 @@ const ProfileSection = ({ profileData, setProfileData, handleProfileSave, showTo
         />
         <Input
           label="Cargo Administrativo"
-          placeholder="Super Administrador"
+          placeholder="Administrador"
           value={profileData.role}
           disabled
           className="opacity-70 bg-v-dark cursor-not-allowed"
