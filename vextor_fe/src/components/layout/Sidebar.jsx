@@ -102,7 +102,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
         transition={{ type: 'tween', duration: 0.3, ease: 'easeInOut' }}
         className={cn(
           "fixed top-0 left-0 z-50 h-screen bg-v-dark-soft border-r border-v-dark-border",
-          isMobile ? "w-[280px]" : (isCollapsed ? "w-20" : "w-[260px]")
+          isMobile ? "w-70" : (isCollapsed ? "w-20" : "w-65")
         )}
       >
         <div className="flex flex-col h-full">

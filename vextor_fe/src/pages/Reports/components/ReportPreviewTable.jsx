@@ -143,7 +143,7 @@ export const ReportPreviewTable = ({
           ))}
         </div>
       ) : totalItems === 0 ? (
-        <div className="flex flex-col items-center justify-center min-h-[300px] p-8 text-center bg-v-dark/10">
+        <div className="flex flex-col items-center justify-center min-h-75 p-8 text-center bg-v-dark/10">
           <div className="h-14 w-14 rounded-full bg-v-dark border border-v-dark-border text-v-gray flex items-center justify-center mb-4">
             <Info size={24} />
           </div>
@@ -152,7 +152,7 @@ export const ReportPreviewTable = ({
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[700px]">
+          <table className="w-full text-left border-collapse min-w-175">
             <thead>
               <tr className="border-b border-v-dark-border bg-v-dark/30">
                 {activeReport === 'vehicles' && (
@@ -308,7 +308,7 @@ export const ReportPreviewTable = ({
                             <Truck size={12} /> {item.extra || 'Sin vehículo'}
                           </div>
                         </td>
-                        <td className="p-4 space-y-0.5 max-w-[200px] truncate">
+                        <td className="p-4 space-y-0.5 max-w-50 truncate">
                           <div className="text-xs text-v-white truncate">O: {item.origen}</div>
                           <div className="text-[11px] text-v-gray truncate">D: {item.destino}</div>
                         </td>
@@ -360,7 +360,7 @@ export const ReportPreviewTable = ({
                         <td className="p-4 text-v-white text-sm font-medium">{item.detalle}</td>
                         <td className="p-4 text-v-gray text-xs">{item.fecha ? String(item.fecha).replace('T', ' ') : ''}</td>
                         <td className="p-4 text-v-white text-xs font-semibold">{item.responsable}</td>
-                        <td className="p-4 text-v-gray text-xs truncate max-w-[150px]">{item.extra}</td>
+                        <td className="p-4 text-v-gray text-xs truncate max-w-37.5">{item.extra}</td>
                         <td className="p-4">
                           <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border", STATUS_STYLES[item.estado] || 'bg-v-dark-border/40 text-v-white border-v-dark-border')}>
                             {item.estado}

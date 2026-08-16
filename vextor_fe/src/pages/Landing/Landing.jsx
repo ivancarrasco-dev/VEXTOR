@@ -29,7 +29,7 @@ const Landing = () => {
 
         {/* Subtle separator */}
         <div className="container mx-auto px-6">
-          <div className="h-px bg-gradient-to-r from-transparent via-v-dark-border to-transparent" />
+          <div className="h-px bg-linear-to-r from-transparent via-v-dark-border to-transparent" />
         </div>
 
         <ProblemSection />

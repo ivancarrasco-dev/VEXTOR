@@ -380,14 +380,14 @@ const Dashboard = () => {
                             return (
                               <div key={act.id_actividad} className="relative">
                                 {/* Timeline Bullet dot */}
-                                <div className={cn("absolute -left-[25px] top-1 h-3.5 w-3.5 rounded-full border border-v-dark-soft flex items-center justify-center ring-4 ring-v-dark-soft", meta.color, meta.bg)}>
+                                <div className={cn("absolute -left-6.25 top-1 h-3.5 w-3.5 rounded-full border border-v-dark-soft flex items-center justify-center ring-4 ring-v-dark-soft", meta.color, meta.bg)}>
                                   <div className="h-1.5 w-1.5 rounded-full bg-current" />
                                 </div>
                                 <div className="space-y-1">
                                   <span className="text-[10px] text-v-gray font-bold font-mono uppercase">
                                     {actTime} — {act.nombres_usuario || 'Sistema'} — <span className="text-primary font-sans font-bold">{act.modulo}</span>
                                   </span>
-                                  <p className="text-sm text-v-white font-medium leading-relaxed leading-snug">
+                                  <p className="text-sm text-v-white font-medium leading-relaxed ">
                                     {act.descripcion}
                                   </p>
                                 </div>

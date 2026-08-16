@@ -509,7 +509,7 @@ const Routes = () => {
         /* VISTA "CONDUCTORES EN RUTA" EN TIEMPO REAL */
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start text-left animate-in fade-in duration-300">
           {/* Active Drivers Map (2 Columns) */}
-          <div className="lg:col-span-2 h-[550px] lg:h-[700px] relative rounded-3xl overflow-hidden border border-v-dark-border shadow-2xl">
+          <div className="lg:col-span-2 h-137.5 lg:h-175 relative rounded-3xl overflow-hidden border border-v-dark-border shadow-2xl">
             <MapComponent
               routes={routes}
               activeRoute={selectedTracking ? {
@@ -544,7 +544,7 @@ const Routes = () => {
                   <p>No hay conductores ejecutando rutas en este momento.</p>
                 </div>
               ) : (
-                <div className="space-y-3 max-h-[580px] overflow-y-auto custom-scrollbar pr-1">
+                <div className="space-y-3 max-h-145 overflow-y-auto custom-scrollbar pr-1">
                   {activeTrackings.map((tr) => (
                     <div
                       key={tr.id_seguimiento}
@@ -602,7 +602,7 @@ const Routes = () => {
 
         {/* PANEL IZQUIERDO: Mapa Interactivo (60% width on LG screen) */}
         <div className="lg:col-span-3 flex flex-col gap-4">
-          <div className="h-[450px] lg:h-[680px]">
+          <div className="h-112.5 lg:h-170">
             <MapComponent
               routes={routes}
               activeRoute={selectedRoute}
@@ -629,11 +629,11 @@ const Routes = () => {
                   <div className="space-y-0.5 overflow-hidden">
                     <span className="text-xs font-bold text-v-gray uppercase tracking-wider block">Indicadores de Trayecto Real</span>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-v-white text-sm font-semibold truncate max-w-[200px]" title={origenSearch || 'Origen'}>
+                      <span className="text-v-white text-sm font-semibold truncate max-w-50" title={origenSearch || 'Origen'}>
                         {(origenSearch || 'Origen').split(',')[0]}
                       </span>
                       <ArrowRight size={14} className="text-v-gray shrink-0" />
-                      <span className="text-v-white text-sm font-semibold truncate max-w-[200px]" title={destinoSearch || 'Destino'}>
+                      <span className="text-v-white text-sm font-semibold truncate max-w-50" title={destinoSearch || 'Destino'}>
                         {(destinoSearch || 'Destino').split(',')[0]}
                       </span>
                     </div>
@@ -675,7 +675,7 @@ const Routes = () => {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="bg-v-dark-soft border border-v-dark-border p-5 rounded-2xl shadow-xl overflow-hidden max-h-[300px] overflow-y-auto custom-scrollbar text-left space-y-3"
+                className="bg-v-dark-soft border border-v-dark-border p-5 rounded-2xl shadow-xl overflow-hidden max-h-75 overflow-y-auto custom-scrollbar text-left space-y-3"
               >
                 <div className="flex justify-between items-center border-b border-v-dark-border pb-2">
                   <h4 className="font-bold text-sm text-v-white flex items-center gap-2">

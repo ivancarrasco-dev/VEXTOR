@@ -81,7 +81,7 @@ const Reports = () => {
   return (
     <div className="space-y-8 animate-in fade-in duration-700 relative">
       {/* Toast Manager Overlay */}
-      <div className="fixed top-6 right-6 z-[120] flex flex-col gap-3 pointer-events-none">
+      <div className="fixed top-6 right-6 z-120 flex flex-col gap-3 pointer-events-none">
         <AnimatePresence>
           {toasts.map((toast) => (
             <motion.div
@@ -123,7 +123,7 @@ const Reports = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[110] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4"
+            className="fixed inset-0 z-110 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4"
           >
             <motion.div
               initial={{ scale: 0.95, y: 15 }}
@@ -235,7 +235,7 @@ const Reports = () => {
             key="empty-prompt"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex flex-col items-center justify-center min-h-[300px] border border-dashed border-v-dark-border rounded-3xl p-12 text-center bg-v-dark-soft/40"
+            className="flex flex-col items-center justify-center min-h-75 border border-dashed border-v-dark-border rounded-3xl p-12 text-center bg-v-dark-soft/40"
           >
             <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center text-primary mb-5 shadow-inner">
               <BarChart3 size={28} />

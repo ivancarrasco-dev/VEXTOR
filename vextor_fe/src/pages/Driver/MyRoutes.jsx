@@ -117,7 +117,7 @@ const MyRoutes = () => {
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-12">
       {/* Header Banner for Driver */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-v-dark-soft via-v-dark-soft to-v-dark border border-v-dark-border p-6 sm:p-8 shadow-2xl">
+      <div className="relative overflow-hidden rounded-3xl bg-linear-to-r from-v-dark-soft via-v-dark-soft to-v-dark border border-v-dark-border p-6 sm:p-8 shadow-2xl">
         <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
           <Radio size={200} className="text-primary" />
         </div>
@@ -166,7 +166,7 @@ const MyRoutes = () => {
             </span>
           </div>
 
-          <div className="p-6 sm:p-8 bg-gradient-to-br from-blue-950/40 via-v-dark-soft to-v-dark border-2 border-blue-500/40 shadow-2xl relative overflow-hidden rounded-3xl">
+          <div className="p-6 sm:p-8 bg-linear-to-br from-blue-950/40 via-v-dark-soft to-v-dark border-2 border-blue-500/40 shadow-2xl relative overflow-hidden rounded-3xl">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
               <div className="space-y-4">
                 <div className="flex items-center gap-3">

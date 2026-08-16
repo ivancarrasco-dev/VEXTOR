@@ -527,7 +527,7 @@ const MapComponent = ({
     <div className="relative w-full h-full rounded-2xl overflow-hidden border border-v-dark-border shadow-2xl transition-all duration-300">
       
       {/* Real Map Canvas */}
-      <div ref={mapContainerRef} className="w-full h-full min-h-[400px] lg:min-h-[600px] z-10" />
+      <div ref={mapContainerRef} className="w-full h-full min-h-100 lg:min-h-150 z-10" />
 
       {/* Modern custom tile loader overlay */}
       {isTilesLoading && (
@@ -606,7 +606,7 @@ const MapComponent = ({
       </div>
 
       {/* Interactive Overlay Info Instructions */}
-      <div className="absolute bottom-4 left-4 bg-v-dark-soft/95 backdrop-blur-md border border-v-dark-border px-3.5 py-2.5 rounded-2xl text-xs text-v-white z-20 pointer-events-none shadow-xl space-y-1 max-w-[280px] text-left">
+      <div className="absolute bottom-4 left-4 bg-v-dark-soft/95 backdrop-blur-md border border-v-dark-border px-3.5 py-2.5 rounded-2xl text-xs text-v-white z-20 pointer-events-none shadow-xl space-y-1 max-w-70 text-left">
         <div className="font-bold text-emerald-400 flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
           Navegación Interactiva Gratis

@@ -140,7 +140,7 @@ const NotificationButton = () => {
                 )}
               </div>
 
-              <div className="max-h-[350px] overflow-y-auto custom-scrollbar">
+              <div className="max-h-87.5 overflow-y-auto custom-scrollbar">
                 {isLoading ? (
                   <div className="p-8 text-center text-v-gray flex flex-col items-center gap-2">
                     <Loader2 size={24} className="animate-spin text-primary" />

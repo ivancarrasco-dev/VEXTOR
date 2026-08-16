@@ -44,7 +44,7 @@ const DashboardLayout = () => {
 
       <div
         className={`flex-1 flex flex-col transition-all duration-300 ${
-          isCollapsed ? 'lg:pl-20' : 'lg:pl-[260px]'
+          isCollapsed ? 'lg:pl-20' : 'lg:pl-65'
         }`}
       >
         <Navbar onMenuClick={() => setIsMobileOpen(true)} />

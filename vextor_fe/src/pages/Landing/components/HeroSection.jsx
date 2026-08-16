@@ -120,7 +120,7 @@ const HeroSection = () => {
               className="absolute -bottom-10 -left-10 z-20 bg-v-dark-soft border border-v-white/10 p-4 rounded-2xl shadow-2xl flex items-center gap-4"
             >
               <div className="h-12 w-12 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-500">
-                <ChevronRight className="rotate-[-90deg]" />
+                <ChevronRight className="-rotate-90" />
               </div>
               <div>
                 <p className="text-v-white font-bold">Ahorro Costos</p>
