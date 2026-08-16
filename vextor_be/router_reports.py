@@ -78,10 +78,10 @@ def export_report_file(
     Generates and downloads a real file (PDF/CSV/XLSX) with filtered report data.
     """
     # Enforce role restriction for Excel/XLSX
-    if format.lower() in ["xlsx", "excel"] and current_user.rol.nombre_rol != "Super Administrador":
+    if format.lower() in ["xlsx", "excel"] and current_user.rol.nombre_rol != "Administrador":
         raise HTTPException(
             status_code=403,
-            detail="Solo los usuarios con rol 'Super Administrador' pueden exportar en formato Excel."
+            detail="Solo los usuarios con rol 'Administrador' pueden exportar en formato Excel."
         )
 
     items = fetch_filtered_report_data(db, report_type, status, search, date_start, date_end, type_filter)

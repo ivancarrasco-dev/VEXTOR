@@ -2,6 +2,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Landing from '../pages/Landing/Landing';
 import Login from '../pages/Login/Login';
 import Register from '../pages/Register/Register';
+import ForgotPassword from '../pages/ForgotPassword/ForgotPassword';
+import ResetPassword from '../pages/ResetPassword/ResetPassword';
 import Dashboard from '../pages/Dashboard/Dashboard';
 import Vehicles from '../pages/Vehicles/Vehicles';
 import Drivers from '../pages/Drivers/Drivers';
@@ -33,6 +35,8 @@ const AppRouter = () => {
       {/* Public Auth Routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       {/* Private Dashboard Routes */}
       <Route element={<ProtectedRoute />}>

@@ -158,7 +158,35 @@ def change_password(
         )
         raise HTTPException(status_code=400, detail="La contraseña actual ingresada no es correcta.")
 
+    # Validate new password policy
+    if (
+        len(req.new_password) < 8
+        or not any(c.isupper() for c in req.new_password)
+        or not any(c.islower() for c in req.new_password)
+        or not any(c.isdigit() for c in req.new_password)
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="La nueva contraseña debe tener al menos 8 caracteres, e incluir letras mayúsculas, minúsculas y un número."
+        )
+
     current_user.contrasenia_usuario = hash_password(req.new_password)
+
+    # Invalidate other active sessions upon password change
+    current_sid = getattr(request.state, "current_session_id", None)
+    sess_query = db.query(models.SesionUsuario).filter(
+        models.SesionUsuario.id_usuario == current_user.id_usuario,
+        models.SesionUsuario.estado_sesion == "ACTIVA"
+    )
+    if current_sid:
+        try:
+            sess_query = sess_query.filter(models.SesionUsuario.id_sesion != uuid.UUID(current_sid))
+        except ValueError:
+            pass
+
+    for s in sess_query.all():
+        s.estado_sesion = "REVOCADA"
+
     db.commit()
 
     record_activity(
@@ -167,7 +195,7 @@ def change_password(
         user_name,
         "CAMBIO_CONTRASENA",
         "Seguridad",
-        "Cambió exitosamente la contraseña de su cuenta.",
+        "Cambió exitosamente la contraseña de su cuenta y revocó otras sesiones activas.",
         str(current_user.id_usuario),
         ip_origen=client_ip,
         resultado="EXITOSO"

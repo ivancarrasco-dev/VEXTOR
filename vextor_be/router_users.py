@@ -24,8 +24,7 @@ def create_admin_user(user: schemas.UsuarioCreate, db: Session = Depends(get_db)
     # Check if id_rol is specified or use a fallback
     id_rol = user.id_rol
     if not id_rol:
-        # Fallback to Admin or Super Admin
-        rol = db.query(models.Rol).filter(models.Rol.nombre_rol == "Super Administrador").first()
+        rol = db.query(models.Rol).filter(models.Rol.nombre_rol == "Administrador").first()
         if rol:
             id_rol = rol.id_rol
 

@@ -99,7 +99,7 @@ const Settings = () => {
     name: user?.name || 'Admin Vextor',
     email: user?.email || 'admin@vextor.com',
     phone: user?.phone || '+57 321 456 7890',
-    role: user?.role || 'Super Administrador',
+    role: user?.role || 'Administrador',
     photo: user?.photo || null
   });
 
