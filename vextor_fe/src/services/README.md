@@ -1,14 +1,23 @@
-# Servicios (`src/services`)
+# Servicios del Frontend - `src/services/` y Módulos
 
-En esta arquitectura por características (*feature-based architecture*), los servicios específicos de cada módulo se encuentran ubicados directamente dentro del directorio de su respectiva funcionalidad en `src/pages/<Modulo>/services/`.
+Los servicios del frontend aíslan la lógica de comunicación HTTP REST y WebSockets entre los componentes de React y FastAPI.
 
-## Servicios Colocados por Módulo
+---
 
-- **Vehículos**: `src/pages/Vehicles/services/vehicleService.js` (CRUD de vehículos en FastAPI / Supabase).
-- **Conductores**: `src/pages/Drivers/services/driverService.js` (CRUD y estados operativos de conductores).
-- **Rutas**: `src/pages/Routes/services/routeService.js` (Gestión de rutas y geolocalización en tiempo real via WebSockets).
-- **Mantenimientos**: `src/pages/Maintenance/services/maintenanceService.js` (Gestión y programación de mantenimientos preventivos y correctivos).
-- **Reportes**: `src/pages/Reports/services/reportService.js` (Descarga de reportes PDF, CSV, XLSX y registro de bitácora).
+## 1. Inventario de Servicios
 
-## Servicios Globales
-Si en el futuro se requiere un servicio transversal a toda la aplicación no ligado a un dominio de negocio específico (p. ej. cliente HTTP global o websocket client), se ubicará en esta carpeta.
+| Servicio | Ubicación | Responsabilidad / Endpoints | Utilizado por |
+| :--- | :--- | :--- | :--- |
+| `vehicleService.js` | `src/pages/Vehicles/services/` | Operaciones CRUD en `/api/vehicles`. | `Vehicles.jsx`, `Routes.jsx`, `Maintenance.jsx` |
+| `driverService.js` | `src/pages/Drivers/services/` | Operaciones CRUD en `/api/drivers`. | `Drivers.jsx`, `Routes.jsx` |
+| `routeService.js` | `src/pages/Routes/services/` | Peticiones a `/api/routes` y acciones de estado. | `Routes.jsx`, `MyRoutes.jsx`, `ActiveRoutePage.jsx` |
+| `maintenanceService.js` | `src/pages/Maintenance/services/` | Gestión de órdenes en `/api/maintenance`. | `Maintenance.jsx` |
+| `reportService.js` | `src/pages/Reports/services/` | Peticiones a `/api/reports/data` y `/export`. | `Reports.jsx`, `useReports.js` |
+
+---
+
+## 2. Flujo Típico de Comunicación
+
+```text
+[ React Component ] ──► [ Service Function ] ──► [ Fetch / Cookie JWT ] ──► [ FastAPI Endpoint ]
+```
