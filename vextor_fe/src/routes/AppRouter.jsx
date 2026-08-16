@@ -40,15 +40,20 @@ const AppRouter = () => {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
-      {/* Private Dashboard Routes */}
+      {/* Private Routes */}
       <Route element={<ProtectedRoute />}>
         <Route element={<DashboardLayout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/vehicles" element={<Vehicles />} />
-          <Route path="/drivers" element={<Drivers />} />
-          <Route path="/routes" element={<RoutesPage />} />
-          <Route path="/maintenance" element={<Maintenance />} />
-          <Route path="/reports" element={<Reports />} />
+          {/* Admin Only Routes */}
+          <Route element={<ProtectedRoute adminOnly />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/vehicles" element={<Vehicles />} />
+            <Route path="/drivers" element={<Drivers />} />
+            <Route path="/routes" element={<RoutesPage />} />
+            <Route path="/maintenance" element={<Maintenance />} />
+            <Route path="/reports" element={<Reports />} />
+          </Route>
+
+          {/* Common / Driver Routes */}
           <Route path="/settings" element={<Settings />} />
           <Route path="/driver/my-routes" element={<MyRoutes />} />
           <Route path="/driver/active-route/:idRuta?" element={<ActiveRoutePage />} />

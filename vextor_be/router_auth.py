@@ -538,6 +538,15 @@ def update_profile(
         "photo": current_user.foto_perfil
     }
 
+def require_admin(current_user: models.Usuario = Depends(get_current_user)) -> models.Usuario:
+    role_name = current_user.rol.nombre_rol if current_user.rol else ""
+    if role_name in ("rol-conductor", "Conductor"):
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado. Se requieren permisos administrativos."
+        )
+    return current_user
+
 @router.get("/me")
 def get_me(current_user: models.Usuario = Depends(get_current_user), db: Session = Depends(get_db)):
     rol = db.query(models.Rol).filter(models.Rol.id_rol == current_user.id_rol).first()

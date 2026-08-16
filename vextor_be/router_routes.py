@@ -4,7 +4,7 @@ from typing import List
 from uuid import UUID
 from database import get_db
 import models, schemas
-from router_auth import get_current_user
+from router_auth import get_current_user, require_admin
 from router_activities import record_activity, create_notification
 from datetime import datetime
 
@@ -16,19 +16,19 @@ router = APIRouter(prefix="/api/routes", tags=["Routes"])
 def get_driver_my_routes(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
     conductor = db.query(models.Conductor).filter(models.Conductor.id_usuario == current_user.id_usuario).first()
     if not conductor:
-        # Fallback for testing: if user is admin, grab the first conductor or return empty
-        conductor = db.query(models.Conductor).first()
-        if not conductor:
-            return {
-                "conductor": {
-                    "id_conductor": None,
-                    "nombre_conductor": f"{current_user.nombres_usuario} {current_user.apellidos_usuario}",
-                    "estado_conductor": "DISPONIBLE"
-                },
-                "active_route": None,
-                "assigned_routes": [],
-                "history_routes": []
-            }
+        user_full_name = f"{current_user.nombres_usuario} {current_user.apellidos_usuario}".strip()
+        return {
+            "conductor": {
+                "id_conductor": None,
+                "nombre_conductor": user_full_name,
+                "estado_conductor": "DISPONIBLE",
+                "cedula": "",
+                "licencia": ""
+            },
+            "active_route": None,
+            "assigned_routes": [],
+            "history_routes": []
+        }
 
     # Query driver's assigned routes
     asigs = db.query(models.AsignacionConductor).filter(
@@ -102,9 +102,7 @@ def get_driver_my_routes(db: Session = Depends(get_db), current_user: models.Usu
 def start_route(id_ruta: UUID, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
     conductor = db.query(models.Conductor).filter(models.Conductor.id_usuario == current_user.id_usuario).first()
     if not conductor:
-        conductor = db.query(models.Conductor).first()
-        if not conductor:
-            raise HTTPException(status_code=400, detail="No se encontró un perfil de conductor asociado a esta cuenta.")
+        raise HTTPException(status_code=400, detail="No se encontró un perfil de conductor asociado a esta cuenta.")
 
     route = db.query(models.Ruta).filter(models.Ruta.id_ruta == id_ruta).first()
     if not route:
@@ -218,7 +216,7 @@ def start_route(id_ruta: UUID, db: Session = Depends(get_db), current_user: mode
 def finish_route(id_ruta: UUID, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
     conductor = db.query(models.Conductor).filter(models.Conductor.id_usuario == current_user.id_usuario).first()
     if not conductor:
-        conductor = db.query(models.Conductor).first()
+        raise HTTPException(status_code=400, detail="No se encontró un perfil de conductor asociado a esta cuenta.")
 
     route = db.query(models.Ruta).filter(models.Ruta.id_ruta == id_ruta).first()
     if not route:
@@ -380,7 +378,7 @@ def get_routes(db: Session = Depends(get_db)):
     return routes
 
 @router.post("", response_model=schemas.Ruta)
-def create_route(route: schemas.RutaCreate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+def create_route(route: schemas.RutaCreate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_admin)):
     # Check duplicate code
     db_route = db.query(models.Ruta).filter(models.Ruta.codigo_ruta == route.codigo_ruta.strip().upper()).first()
     if db_route:
@@ -425,7 +423,7 @@ def create_route(route: schemas.RutaCreate, db: Session = Depends(get_db), curre
     return new_r
 
 @router.put("/{id_ruta}", response_model=schemas.Ruta)
-def update_route(id_ruta: UUID, route_data: schemas.RutaUpdate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+def update_route(id_ruta: UUID, route_data: schemas.RutaUpdate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_admin)):
     db_route = db.query(models.Ruta).filter(models.Ruta.id_ruta == id_ruta).first()
     if not db_route:
         raise HTTPException(status_code=404, detail="Ruta no encontrada.")
@@ -488,7 +486,7 @@ def update_route(id_ruta: UUID, route_data: schemas.RutaUpdate, db: Session = De
     return db_route
 
 @router.delete("/{id_ruta}")
-def delete_route(id_ruta: UUID, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+def delete_route(id_ruta: UUID, db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_admin)):
     db_route = db.query(models.Ruta).filter(models.Ruta.id_ruta == id_ruta).first()
     if not db_route:
         raise HTTPException(status_code=404, detail="Ruta no encontrada.")

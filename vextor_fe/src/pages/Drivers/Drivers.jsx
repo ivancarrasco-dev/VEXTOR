@@ -25,9 +25,12 @@ import { cn } from '../../utils/cn';
 import { useTranslation } from 'react-i18next';
 
 const DRIVER_STATUSES = [
-  { value: 'ACTIVO', label: 'Activo', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
-  { value: 'INACTIVO', label: 'Inactivo', color: 'bg-red-500/10 text-red-500 border-red-500/20' },
-  { value: 'SUSPENDIDO', label: 'Suspendido', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' }
+  { value: 'DISPONIBLE', label: 'Disponible', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
+  { value: 'EN_RUTA', label: 'En Ruta', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+  { value: 'NO_DISPONIBLE', label: 'No Disponible', color: 'bg-slate-500/10 text-slate-400 border-slate-500/20' },
+  { value: 'ACTIVO', label: 'Activo', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
+  { value: 'INACTIVO', label: 'Inactivo', color: 'bg-red-500/10 text-red-400 border-red-500/20' },
+  { value: 'SUSPENDIDO', label: 'Suspendido', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20' }
 ];
 
 const LICENSE_TYPES = ['A1', 'A2', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3'];
@@ -56,7 +59,7 @@ const Drivers = () => {
     cedula_conductor: '',
     telefono_conductor: '',
     licencia: 'C2',
-    estado_conductor: 'ACTIVO',
+    estado_conductor: 'DISPONIBLE',
     fecha_ingreso: ''
   });
   const [formErrors, setFormErrors] = useState({});
@@ -148,7 +151,7 @@ const Drivers = () => {
       cedula_conductor: '',
       telefono_conductor: '',
       licencia: 'C2',
-      estado_conductor: 'ACTIVO',
+      estado_conductor: 'DISPONIBLE',
       fecha_ingreso: new Date().toISOString().split('T')[0]
     });
     setFormErrors({});
