@@ -315,6 +315,29 @@ const ActiveRoutePage = () => {
         </div>
       )}
 
+      {/* HUD Navigation Banner */}
+      {routeMetrics.instructions.length > 0 && (
+        <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center justify-between gap-4 shadow-xl">
+          <div className="flex items-center gap-3.5">
+            <div className="p-3 bg-emerald-500/20 text-emerald-400 rounded-2xl border border-emerald-500/30">
+              <Navigation size={22} className="-rotate-45" />
+            </div>
+            <div>
+              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest block">Próxima Indicación</span>
+              <p className="text-sm sm:text-base font-extrabold text-v-white">
+                {routeMetrics.instructions[0]?.text || 'Sigue la ruta marcada en el mapa'}
+              </p>
+            </div>
+          </div>
+          <div className="text-right shrink-0">
+            <span className="text-[10px] text-v-gray block uppercase font-bold">Velocidad</span>
+            <span className="text-xl font-extrabold text-emerald-400">
+              {((currentPosition?.speed || 0) * 3.6).toFixed(0)} <span className="text-xs font-normal text-v-gray">km/h</span>
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Main Grid: Map & Navigation Metrics */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* Map Container (Takes 2 Columns) */}
@@ -322,6 +345,8 @@ const ActiveRoutePage = () => {
           <MapComponent
             routes={[]}
             activeRoute={activeRoute}
+            driverPosition={currentPosition}
+            isNavigationMode={true}
             onRouteCalculated={handleRouteCalculated}
           />
         </div>

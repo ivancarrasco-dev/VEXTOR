@@ -70,6 +70,27 @@ const createMarkerIcon = (type, label = '') => {
   });
 };
 
+// Vehicle marker icon with heading rotation
+const createVehicleIcon = (heading = 0) => {
+  return L.divIcon({
+    html: `<div class="relative flex items-center justify-center w-10 h-10 transition-transform duration-300 ease-out" style="transform: rotate(${heading}deg);">
+             <span class="animate-ping absolute inline-flex h-8 w-8 rounded-full bg-emerald-500 opacity-40"></span>
+             <div class="relative flex items-center justify-center w-8 h-8 rounded-full bg-v-dark border-2 border-emerald-400 shadow-2xl text-emerald-400">
+               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                 <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/>
+                 <path d="M15 18H9"/>
+                 <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/>
+                 <circle cx="6.5" cy="17.5" r="2.5"/>
+                 <circle cx="16.5" cy="17.5" r="2.5"/>
+               </svg>
+             </div>
+           </div>`,
+    className: 'custom-vehicle-marker-div',
+    iconSize: [40, 40],
+    iconAnchor: [20, 20]
+  });
+};
+
 const createOtherMarkerIcon = (colorClass) => {
   return L.divIcon({
     html: `<div class="w-3.5 h-3.5 rounded-full ${colorClass} border border-white shadow-md"></div>`,
@@ -106,6 +127,8 @@ const MapComponent = ({
   activeRoute = null,
   selectedOrigin = '',
   selectedDestination = '',
+  driverPosition = null,
+  isNavigationMode = false,
   onSelectPoints,
   onRouteCalculated,
 }) => {
@@ -118,10 +141,14 @@ const MapComponent = ({
   const [isTilesLoading, setIsTilesLoading] = useState(false);
   const [hasTileError, setHasTileError] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isAutoFollowing, setIsAutoFollowing] = useState(true);
 
   // References to active layers and tile layer
   const tileLayerRef = useRef(null);
   const activeLayersRef = useRef([]);
+  const vehicleMarkerRef = useRef(null);
+  const pathHistoryRef = useRef([]);
+  const completedPolylineRef = useRef(null);
   const routingControlRef = useRef(null);
   const myLocationMarkerRef = useRef(null);
 
@@ -171,6 +198,11 @@ const MapComponent = ({
     // Load initial tile layer based on current theme
     const initialTileId = theme === 'dark' ? 'carto-dark' : 'carto-positron';
     switchTileLayer(initialTileId);
+
+    // Pause auto-following when user interacts with map manually
+    map.on('dragstart zoomstart', () => {
+      setIsAutoFollowing(false);
+    });
 
     // Handle map clicks for selecting points
     map.on('click', (e) => {
@@ -512,10 +544,55 @@ const MapComponent = ({
     });
   };
 
+  // Update vehicle position marker and center view when autoFollow is active
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !driverPosition || !driverPosition.lat || !driverPosition.lng) return;
+
+    const { lat, lng, heading } = driverPosition;
+    const vehicleLatLng = [lat, lng];
+
+    // Update path history array
+    pathHistoryRef.current.push(vehicleLatLng);
+
+    if (!vehicleMarkerRef.current) {
+      vehicleMarkerRef.current = L.marker(vehicleLatLng, { icon: createVehicleIcon(heading || 0) })
+        .bindPopup('<b>Vehículo en Ruta</b>')
+        .addTo(map);
+    } else {
+      vehicleMarkerRef.current.setLatLng(vehicleLatLng);
+      vehicleMarkerRef.current.setIcon(createVehicleIcon(heading || 0));
+    }
+
+    // Draw completed path polyline in solid emerald
+    if (pathHistoryRef.current.length > 1) {
+      if (completedPolylineRef.current) {
+        completedPolylineRef.current.setLatLngs(pathHistoryRef.current);
+      } else {
+        completedPolylineRef.current = L.polyline(pathHistoryRef.current, {
+          color: '#059669',
+          weight: 7,
+          opacity: 0.95
+        }).addTo(map);
+      }
+    }
+
+    if (isAutoFollowing) {
+      map.setView(vehicleLatLng, map.getZoom() < 15 ? 15 : map.getZoom(), { animate: true, duration: 0.5 });
+    }
+  }, [driverPosition, isAutoFollowing]);
+
   const handleRecenter = () => {
     const map = mapInstanceRef.current;
     if (!map) return;
-    map.setView([4.7110, -74.0721], 12, { animate: true });
+
+    if (driverPosition && driverPosition.lat && driverPosition.lng) {
+      setIsAutoFollowing(true);
+      map.setView([driverPosition.lat, driverPosition.lng], 16, { animate: true });
+    } else {
+      map.setView([4.7110, -74.0721], 12, { animate: true });
+    }
+
     setTimeout(() => {
       map.invalidateSize();
     }, 150);
@@ -537,44 +614,72 @@ const MapComponent = ({
         </div>
       )}
 
-      {/* Premium Floating Dropdown: Style Selector */}
-      <div ref={dropdownRef} className="absolute top-4 left-4 z-20">
-        <button
-          onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          className="flex items-center gap-2 px-3 py-2 bg-v-dark-soft/95 backdrop-blur-md border border-v-dark-border rounded-xl shadow-2xl text-xs font-semibold text-v-white hover:border-primary/40 transition-all cursor-pointer hover:scale-105 active:scale-95"
-        >
-          <Layers size={14} className="text-primary" />
-          <span>Estilo: {activeProvider?.label}</span>
-          {isDropdownOpen ? <ChevronUp size={13} className="text-v-gray" /> : <ChevronDown size={13} className="text-v-gray" />}
-        </button>
+      {/* Premium Floating Controls (Top Left) */}
+      <div ref={dropdownRef} className="absolute top-4 left-4 z-20 flex items-center gap-2">
+        {/* Style Selector Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="flex items-center gap-2 px-3 py-2 bg-v-dark-soft/95 backdrop-blur-md border border-v-dark-border rounded-xl shadow-2xl text-xs font-semibold text-v-white hover:border-primary/40 transition-all cursor-pointer hover:scale-105 active:scale-95"
+          >
+            <Layers size={14} className="text-primary" />
+            <span>Estilo: {activeProvider?.label}</span>
+            {isDropdownOpen ? <ChevronUp size={13} className="text-v-gray" /> : <ChevronDown size={13} className="text-v-gray" />}
+          </button>
 
-        {isDropdownOpen && (
-          <div className="absolute left-0 mt-1.5 w-44 bg-v-dark-soft/95 backdrop-blur-md border border-v-dark-border rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
-            <div className="p-1 flex flex-col gap-0.5">
-              {TILE_PROVIDERS.map(provider => (
-                <button
-                  key={provider.id}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    switchTileLayer(provider.id);
-                    setIsDropdownOpen(false);
-                  }}
-                  className={cn(
-                    "w-full px-3 py-2 rounded-lg text-left text-xs font-medium transition-all flex items-center justify-between cursor-pointer",
-                    activeTileId === provider.id
-                      ? "bg-primary/20 text-primary font-bold"
-                      : "text-v-gray hover:text-v-white hover:bg-v-dark/50"
-                  )}
-                >
-                  <span>{provider.name.replace(' Standard', '').replace(' World Imagery', '')}</span>
-                  {activeTileId === provider.id && (
-                    <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                  )}
-                </button>
-              ))}
+          {isDropdownOpen && (
+            <div className="absolute left-0 mt-1.5 w-44 bg-v-dark-soft/95 backdrop-blur-md border border-v-dark-border rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+              <div className="p-1 flex flex-col gap-0.5">
+                {TILE_PROVIDERS.map(provider => (
+                  <button
+                    key={provider.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      switchTileLayer(provider.id);
+                      setIsDropdownOpen(false);
+                    }}
+                    className={cn(
+                      "w-full px-3 py-2 rounded-lg text-left text-xs font-medium transition-all flex items-center justify-between cursor-pointer",
+                      activeTileId === provider.id
+                        ? "bg-primary/20 text-primary font-bold"
+                        : "text-v-gray hover:text-v-white hover:bg-v-dark/50"
+                    )}
+                  >
+                    <span>{provider.name.replace(' Standard', '').replace(' World Imagery', '')}</span>
+                    {activeTileId === provider.id && (
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Traffic & Incidents Info Control */}
+        <div className="relative group">
+          <button
+            type="button"
+            className="px-3 py-2 bg-v-dark-soft/95 backdrop-blur-md border border-v-dark-border rounded-xl shadow-2xl text-xs font-semibold text-v-white hover:border-amber-500/40 transition-all cursor-pointer flex items-center gap-1.5"
+          >
+            <span>🚦 Tráfico</span>
+          </button>
+
+          {/* Info Card Tooltip on Hover */}
+          <div className="absolute left-0 top-full mt-2 hidden group-hover:block w-72 p-4 bg-v-dark-soft/95 backdrop-blur-xl border border-v-dark-border rounded-2xl shadow-2xl z-50 text-left space-y-2 pointer-events-auto animate-in fade-in duration-200">
+            <div className="flex items-center gap-2 text-amber-400 font-bold text-xs">
+              <span>🚦</span>
+              <span>Información de Tráfico VEXTOR</span>
+            </div>
+            <p className="text-[11px] text-v-gray leading-relaxed">
+              Las rutas y tiempos estimados se calculan con <strong>OSRM / OpenStreetMap</strong> basándose en las jerarquías de vías y velocidades promedio permitidas.
+            </p>
+            <div className="p-2.5 rounded-xl bg-v-dark/80 border border-v-dark-border text-[10px] text-v-gray space-y-1">
+              <span className="font-bold text-v-white block">Transparencia de Datos:</span>
+              <p>No simulamos tráfico ni incidentes falsos. Para integrar una capa de tráfico vehicular en tiempo real o alertas de incidentes sin costo adicional, el sistema está optimizado para conectarse a un proveedor de telemetría vial directo.</p>
             </div>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Active Layer Legend Indicator (Bottom-Center) */}
@@ -586,6 +691,28 @@ const MapComponent = ({
 
       {/* Floating Action Controls Block (Bottom Right) */}
       <div className="absolute bottom-4 right-4 z-20 flex flex-col gap-2">
+        {/* Follow Vehicle / Auto-center button when driverPosition is present */}
+        {driverPosition && (
+          <button
+            onClick={() => {
+              setIsAutoFollowing(true);
+              if (mapInstanceRef.current && driverPosition.lat && driverPosition.lng) {
+                mapInstanceRef.current.setView([driverPosition.lat, driverPosition.lng], 16, { animate: true });
+              }
+            }}
+            className={cn(
+              "px-3 py-2 bg-v-dark-soft/95 backdrop-blur-sm border rounded-xl shadow-xl flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer hover:scale-105 active:scale-95",
+              isAutoFollowing
+                ? "border-emerald-500/50 text-emerald-400 bg-emerald-500/10"
+                : "border-v-dark-border text-v-gray hover:text-v-white"
+            )}
+            title="Seguir posición del vehículo"
+          >
+            <Compass size={15} className={cn("shrink-0", isAutoFollowing && "animate-spin text-emerald-400")} />
+            <span>{isAutoFollowing ? "Seguimiento Activo" : "🎯 Seguir vehículo"}</span>
+          </button>
+        )}
+
         {/* Find My Location Button */}
         <button
           onClick={handleMyLocation}
@@ -599,7 +726,7 @@ const MapComponent = ({
         <button
           onClick={handleRecenter}
           className="p-3 bg-v-dark-soft/95 backdrop-blur-sm border border-v-dark-border rounded-xl text-v-gray hover:text-v-white hover:border-primary/40 shadow-lg cursor-pointer transition-all hover:scale-105 active:scale-95"
-          title="Centrar en Bogotá"
+          title="Centrar mapa"
         >
           <Navigation size={16} className="rotate-45" />
         </button>
