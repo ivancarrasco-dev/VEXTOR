@@ -5,17 +5,17 @@ from uuid import UUID, uuid4
 from database import get_db
 import models
 import schemas
-from router_auth import hash_password, get_current_user
+from router_auth import hash_password, get_current_user, require_admin
 from router_activities import record_activity, create_notification
 
 router = APIRouter(prefix="/api/users", tags=["Users Admin"])
 
 @router.get("", response_model=List[schemas.Usuario])
-def get_users(db: Session = Depends(get_db)):
+def get_users(db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_admin)):
     return db.query(models.Usuario).all()
 
 @router.post("", response_model=schemas.Usuario)
-def create_admin_user(user: schemas.UsuarioCreate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+def create_admin_user(user: schemas.UsuarioCreate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_admin)):
     # Check if duplicate email
     db_u = db.query(models.Usuario).filter(models.Usuario.correo_usuario == user.correo_usuario.strip().lower()).first()
     if db_u:
@@ -52,7 +52,7 @@ def create_admin_user(user: schemas.UsuarioCreate, db: Session = Depends(get_db)
     return new_user
 
 @router.put("/{id_usuario}", response_model=schemas.Usuario)
-def update_user(id_usuario: UUID, user_data: schemas.UsuarioUpdate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+def update_user(id_usuario: UUID, user_data: schemas.UsuarioUpdate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_admin)):
     db_user = db.query(models.Usuario).filter(models.Usuario.id_usuario == id_usuario).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado.")
@@ -82,7 +82,7 @@ def update_user(id_usuario: UUID, user_data: schemas.UsuarioUpdate, db: Session 
     return db_user
 
 @router.delete("/{id_usuario}")
-def delete_user(id_usuario: UUID, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+def delete_user(id_usuario: UUID, db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_admin)):
     db_user = db.query(models.Usuario).filter(models.Usuario.id_usuario == id_usuario).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado.")

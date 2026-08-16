@@ -4,7 +4,7 @@ from typing import List
 from uuid import UUID
 from database import get_db
 import models, schemas
-from router_auth import get_current_user
+from router_auth import get_current_user, require_admin
 from router_activities import record_activity, create_notification
 
 import re
@@ -24,7 +24,7 @@ def get_vehicles(db: Session = Depends(get_db)):
     return db.query(models.Vehiculo).all()
 
 @router.post("", response_model=schemas.Vehiculo)
-def create_vehicle(vehicle: schemas.VehiculoCreate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+def create_vehicle(vehicle: schemas.VehiculoCreate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_admin)):
     # Colombian plate validation
     validate_colombian_plate(vehicle.placa)
 
@@ -49,7 +49,7 @@ def create_vehicle(vehicle: schemas.VehiculoCreate, db: Session = Depends(get_db
     return new_v
 
 @router.put("/{id_vehiculo}", response_model=schemas.Vehiculo)
-def update_vehicle(id_vehiculo: UUID, vehicle_data: schemas.VehiculoUpdate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+def update_vehicle(id_vehiculo: UUID, vehicle_data: schemas.VehiculoUpdate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_admin)):
     db_vehicle = db.query(models.Vehiculo).filter(models.Vehiculo.id_vehiculo == id_vehiculo).first()
     if not db_vehicle:
         raise HTTPException(status_code=404, detail="Vehículo no encontrado.")
@@ -85,31 +85,42 @@ def update_vehicle(id_vehiculo: UUID, vehicle_data: schemas.VehiculoUpdate, db: 
 from sqlalchemy.exc import IntegrityError
 
 @router.delete("/{id_vehiculo}")
-def delete_vehicle(id_vehiculo: UUID, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+def delete_vehicle(id_vehiculo: UUID, db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_admin)):
     db_vehicle = db.query(models.Vehiculo).filter(models.Vehiculo.id_vehiculo == id_vehiculo).first()
     if not db_vehicle:
         raise HTTPException(status_code=404, detail="Vehículo no encontrado.")
 
-    # Check if there are maintenances referenced
-    has_maint = db.query(models.Mantenimiento).filter(models.Mantenimiento.id_vehiculo == id_vehiculo).first()
-    if has_maint:
+    # 1. Check if assigned to an active or scheduled route
+    active_route_asig = db.query(models.AsignacionVehiculo).join(models.Ruta).filter(
+        models.AsignacionVehiculo.id_vehiculo == id_vehiculo,
+        models.Ruta.estado_ruta.in_(["PROGRAMADA", "EN_PROCESO", "EN_CURSO"])
+    ).first()
+    if active_route_asig:
         raise HTTPException(
             status_code=400,
-            detail="No se puede eliminar el vehículo porque tiene registros de mantenimiento asociados."
+            detail="No se puede eliminar el vehículo porque está asignado a una ruta activa o programada actualmente."
         )
 
-    # Check if there are routes referenced (asignacion_vehiculo)
-    has_asig = db.query(models.AsignacionVehiculo).filter(models.AsignacionVehiculo.id_vehiculo == id_vehiculo).first()
-    if has_asig:
+    # 2. Check if assigned to active/in-process maintenance
+    active_maint = db.query(models.Mantenimiento).filter(
+        models.Mantenimiento.id_vehiculo == id_vehiculo,
+        models.Mantenimiento.estado_mantenimiento.in_(["PROGRAMADO", "EN_PROCESO"])
+    ).first()
+    if active_maint:
         raise HTTPException(
             status_code=400,
-            detail="No se puede eliminar el vehículo porque está asignado a una o más rutas."
+            detail="No se puede eliminar el vehículo porque tiene un mantenimiento activo o programado actualmente."
         )
 
     placa_deleted = db_vehicle.placa
     marca_deleted = db_vehicle.marca
     modelo_deleted = db_vehicle.modelo
     try:
+        # Clean up historical assignments and finished maintenance logs for this vehicle
+        db.query(models.AsignacionVehiculo).filter(models.AsignacionVehiculo.id_vehiculo == id_vehiculo).delete()
+        db.query(models.Mantenimiento).filter(models.Mantenimiento.id_vehiculo == id_vehiculo).delete()
+        db.query(models.SeguimientoRuta).filter(models.SeguimientoRuta.id_vehiculo == id_vehiculo).delete()
+
         db.delete(db_vehicle)
         db.commit()
 
@@ -122,6 +133,6 @@ def delete_vehicle(id_vehiculo: UUID, db: Session = Depends(get_db), current_use
         db.rollback()
         raise HTTPException(
             status_code=400,
-            detail="No se puede eliminar el vehículo debido a que tiene relaciones activas en el sistema."
+            detail="No se puede eliminar el vehículo debido a restricciones relacionales en el sistema."
         )
     return {"message": "Vehículo eliminado con éxito"}

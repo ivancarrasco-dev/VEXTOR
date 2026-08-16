@@ -4,7 +4,7 @@ from typing import List
 from uuid import UUID
 from database import get_db
 import models, schemas
-from router_auth import get_current_user
+from router_auth import get_current_user, require_admin
 from router_activities import record_activity, create_notification
 
 router = APIRouter(prefix="/api/maintenance", tags=["Maintenance"])
@@ -14,7 +14,7 @@ def get_maintenances(db: Session = Depends(get_db)):
     return db.query(models.Mantenimiento).all()
 
 @router.post("", response_model=schemas.Mantenimiento)
-def create_maintenance(maint: schemas.MantenimientoCreate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+def create_maintenance(maint: schemas.MantenimientoCreate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_admin)):
     new_m = models.Mantenimiento(**maint.model_dump())
     db.add(new_m)
     db.commit()
@@ -37,7 +37,7 @@ def create_maintenance(maint: schemas.MantenimientoCreate, db: Session = Depends
     return new_m
 
 @router.put("/{id_mantenimiento}", response_model=schemas.Mantenimiento)
-def update_maintenance(id_mantenimiento: UUID, maint_data: schemas.MantenimientoUpdate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+def update_maintenance(id_mantenimiento: UUID, maint_data: schemas.MantenimientoUpdate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_admin)):
     db_maint = db.query(models.Mantenimiento).filter(models.Mantenimiento.id_mantenimiento == id_mantenimiento).first()
     if not db_maint:
         raise HTTPException(status_code=404, detail="Registro de mantenimiento no encontrado.")
@@ -65,7 +65,7 @@ def update_maintenance(id_mantenimiento: UUID, maint_data: schemas.Mantenimiento
     return db_maint
 
 @router.delete("/{id_mantenimiento}")
-def delete_maintenance(id_mantenimiento: UUID, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+def delete_maintenance(id_mantenimiento: UUID, db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_admin)):
     db_maint = db.query(models.Mantenimiento).filter(models.Mantenimiento.id_mantenimiento == id_mantenimiento).first()
     if not db_maint:
         raise HTTPException(status_code=404, detail="Registro de mantenimiento no encontrado.")

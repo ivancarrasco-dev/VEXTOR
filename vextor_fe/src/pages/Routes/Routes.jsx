@@ -105,17 +105,17 @@ const Routes = () => {
       const dData = await driverService.getDrivers();
       const vData = await vehicleService.getVehicles();
 
-      setDrivers(dData.filter(d => d.estado_conductor === 'ACTIVO'));
-      setVehicles(vData.filter(v => v.estado_vehiculo !== 'INACTIVO'));
+      setDrivers(dData);
+      setVehicles(vData);
       setRoutes(rData);
 
-      const activeDrivers = dData.filter(d => d.estado_conductor === 'ACTIVO');
-      const activeVehicles = vData.filter(v => v.estado_vehiculo !== 'INACTIVO');
+      const availableDrivers = dData.filter(d => d.estado_conductor === 'DISPONIBLE' || d.estado_conductor === 'ACTIVO');
+      const availableVehicles = vData.filter(v => v.estado_vehiculo === 'DISPONIBLE');
 
       setFormData(prev => ({
         ...prev,
-        id_conductor: activeDrivers[0]?.id_conductor || '',
-        id_vehiculo: activeVehicles[0]?.id_vehiculo || ''
+        id_conductor: prev.id_conductor || availableDrivers[0]?.id_conductor || '',
+        id_vehiculo: prev.id_vehiculo || availableVehicles[0]?.id_vehiculo || ''
       }));
 
     } catch (err) {
@@ -365,6 +365,8 @@ const Routes = () => {
     setDestinoSearch('');
     setRouteInfo(null);
     setIsIndicationsOpen(false);
+    const availableDrivers = drivers.filter(d => d.estado_conductor === 'DISPONIBLE' || d.estado_conductor === 'ACTIVO');
+    const availableVehicles = vehicles.filter(v => v.estado_vehiculo === 'DISPONIBLE');
     setFormData({
       codigo_ruta: '',
       nombre_ruta: '',
@@ -375,8 +377,8 @@ const Routes = () => {
       hora_fin_real: '',
       estado_ruta: 'PROGRAMADA',
       motivo_suspension: '',
-      id_conductor: drivers[0]?.id_conductor || '',
-      id_vehiculo: vehicles[0]?.id_vehiculo || ''
+      id_conductor: availableDrivers[0]?.id_conductor || '',
+      id_vehiculo: availableVehicles[0]?.id_vehiculo || ''
     });
     setFormErrors({});
   };
@@ -848,9 +850,9 @@ const Routes = () => {
                     onChange={handleInputChange}
                   >
                     <option value="">Seleccione Conductor...</option>
-                    {drivers.map(d => (
+                    {drivers.filter(d => d.estado_conductor === 'DISPONIBLE' || d.estado_conductor === 'ACTIVO' || d.id_conductor === formData.id_conductor).map(d => (
                       <option key={d.id_conductor} value={d.id_conductor}>
-                        {d.nombre_conductor} {d.apellido_conductor}
+                        {d.nombre_conductor} {d.apellido_conductor} ({d.estado_conductor})
                       </option>
                     ))}
                   </Select>
@@ -868,7 +870,7 @@ const Routes = () => {
                     onChange={handleInputChange}
                   >
                     <option value="">Seleccione Vehículo...</option>
-                    {vehicles.map(v => (
+                    {vehicles.filter(v => v.estado_vehiculo === 'DISPONIBLE' || v.id_vehiculo === formData.id_vehiculo).map(v => (
                       <option key={v.id_vehiculo} value={v.id_vehiculo}>
                         {v.placa} — {v.marca} {v.modelo}
                       </option>

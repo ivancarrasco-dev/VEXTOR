@@ -63,17 +63,29 @@ const Settings = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const isConductor = user?.role === 'rol-conductor' || user?.role === 'Conductor';
+  const driverCategories = ['profile', 'notifications', 'appearance', 'security'];
+  const visibleCategories = isConductor
+    ? categories.filter(cat => driverCategories.includes(cat.id))
+    : categories;
+
   const [activeCategory, setActiveCategory] = useState(() => {
     const locState = location.state?.section;
-    if (locState && categories.some(cat => cat.id === locState)) {
+    if (locState && visibleCategories.some(cat => cat.id === locState)) {
       return locState;
     }
     const savedTab = localStorage.getItem('vextor_active_settings_tab');
-    if (savedTab && categories.some(cat => cat.id === savedTab)) {
+    if (savedTab && visibleCategories.some(cat => cat.id === savedTab)) {
       return savedTab;
     }
     return 'profile';
   });
+
+  useEffect(() => {
+    if (isConductor && !driverCategories.includes(activeCategory)) {
+      setActiveCategory('profile');
+    }
+  }, [isConductor, activeCategory]);
 
   useEffect(() => {
     if (location.state?.section && categories.some(cat => cat.id === location.state.section)) {
@@ -96,10 +108,10 @@ const Settings = () => {
 
   // 1. Profile State
   const [profileData, setProfileData] = useState({
-    name: user?.name || 'Admin Vextor',
-    email: user?.email || 'admin@vextor.com',
-    phone: user?.phone || '+57 321 456 7890',
-    role: user?.role || 'Administrador',
+    name: user?.name || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    role: user?.role || '',
     photo: user?.photo || null
   });
 
@@ -503,7 +515,7 @@ const Settings = () => {
         <div className="lg:col-span-3 bg-v-dark-soft border border-v-dark-border rounded-2xl p-4 space-y-1 overflow-hidden">
           <p className="text-xs font-bold text-v-gray uppercase tracking-wider px-3 mb-3">{t('common.all')}</p>
           <div className="space-y-1 max-h-[70vh] overflow-y-auto custom-scrollbar pr-1">
-            {categories.map((cat) => {
+            {visibleCategories.map((cat) => {
               const Icon = cat.icon;
               const isActive = activeCategory === cat.id;
               return (

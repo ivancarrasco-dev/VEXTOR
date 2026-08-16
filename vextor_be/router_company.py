@@ -4,7 +4,7 @@ from uuid import UUID
 from database import get_db
 import models
 import schemas
-from router_auth import get_current_user
+from router_auth import get_current_user, require_admin
 from router_activities import record_activity
 
 router = APIRouter(prefix="/api/company", tags=["Company"])
@@ -28,7 +28,7 @@ def get_company(db: Session = Depends(get_db)):
     return company
 
 @router.put("", response_model=schemas.Empresa)
-def update_company(company_data: schemas.EmpresaUpdate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+def update_company(company_data: schemas.EmpresaUpdate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_admin)):
     company = db.query(models.Empresa).first()
     if not company:
         company = models.Empresa(
