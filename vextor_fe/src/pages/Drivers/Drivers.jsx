@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Select } from '../../components/ui/Select';
-import { driverService } from '../../services/driverService';
+import { driverService } from './services/driverService';
 import { cn } from '../../utils/cn';
 import { useTranslation } from 'react-i18next';
 

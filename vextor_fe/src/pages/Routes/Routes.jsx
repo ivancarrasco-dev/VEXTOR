@@ -26,9 +26,9 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
 import { Select } from '../../components/ui/Select';
-import { routeService } from '../../services/routeService';
-import { driverService } from '../../services/driverService';
-import { vehicleService } from '../../services/vehicleService';
+import { routeService } from './services/routeService';
+import { driverService } from '../Drivers/services/driverService';
+import { vehicleService } from '../Vehicles/services/vehicleService';
 import MapComponent from './components/MapComponent';
 import NominatimAutocomplete from './components/NominatimAutocomplete';
 import { cn } from '../../utils/cn';

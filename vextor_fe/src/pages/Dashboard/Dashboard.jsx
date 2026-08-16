@@ -20,8 +20,8 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { cn } from '../../utils/cn';
-import StatsCard from '../../components/dashboard/StatsCard';
-import QuickActionCard from '../../components/dashboard/QuickActionCard';
+import StatsCard from './components/StatsCard';
+import QuickActionCard from './components/QuickActionCard';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 

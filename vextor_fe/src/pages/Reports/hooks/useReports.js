@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { vehicleService } from '../../../services/vehicleService';
-import { driverService } from '../../../services/driverService';
-import { routeService } from '../../../services/routeService';
-import { maintenanceService } from '../../../services/maintenanceService';
+import { vehicleService } from '../../Vehicles/services/vehicleService';
+import { driverService } from '../../Drivers/services/driverService';
+import { routeService } from '../../Routes/services/routeService';
+import { maintenanceService } from '../../Maintenance/services/maintenanceService';
 
 export const useReports = () => {
   const [activeReport, setActiveReport] = useState(null);
