@@ -68,5 +68,15 @@ export const routeService = {
       const message = error.response?.data?.detail || 'Error al eliminar la ruta.';
       throw new Error(message);
     }
+  },
+
+  async getActiveTracking() {
+    try {
+      const response = await axios.get(`${API_URL}/active-tracking`);
+      return response.data;
+    } catch (error) {
+      console.warn('Error fetching active trackings:', error);
+      return [];
+    }
   }
 };

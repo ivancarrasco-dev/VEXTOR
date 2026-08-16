@@ -36,18 +36,25 @@ import { showConfirm } from '../../utils/sweetalert';
  * * Manejo de marca (Logo/Isotipo) según estado.
  * * Indicador visual de ruta activa.
  */
-const menuItems = [
-  { path: '/dashboard', icon: LayoutDashboard },
-  { path: '/vehicles', icon: Truck },
-  { path: '/drivers', icon: Users },
-  { path: '/routes', icon: MapPin },
-  { path: '/maintenance', icon: Wrench },
-  { path: '/reports', icon: BarChart3 },
-  { path: '/settings', icon: Settings },
+const adminMenuItems = [
+  { path: '/dashboard', labelKey: 'sidebar.dashboard', icon: LayoutDashboard },
+  { path: '/vehicles', labelKey: 'sidebar.vehicles', icon: Truck },
+  { path: '/drivers', labelKey: 'sidebar.drivers', icon: Users },
+  { path: '/routes', labelKey: 'sidebar.routes', icon: MapPin },
+  { path: '/maintenance', labelKey: 'sidebar.maintenance', icon: Wrench },
+  { path: '/reports', labelKey: 'sidebar.reports', icon: BarChart3 },
+  { path: '/settings', labelKey: 'sidebar.settings', icon: Settings },
+];
+
+const driverMenuItems = [
+  { path: '/driver/my-routes', labelText: 'Mis Rutas', icon: MapPin },
+  { path: '/settings', labelText: 'Configuración', icon: Settings },
 ];
 
 const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen }) => {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
+  const isConductor = user?.role === 'rol-conductor' || user?.role === 'Conductor';
+  const currentMenuItems = isConductor ? driverMenuItems : adminMenuItems;
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -118,8 +125,8 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
 
           {/* Navigation */}
           <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto custom-scrollbar">
-            {menuItems.map((item) => {
-              const labelKey = item.path.replace('/', '');
+            {currentMenuItems.map((item) => {
+              const label = item.labelText || t(item.labelKey);
               return (
                 <NavLink
                   key={item.path}
@@ -142,7 +149,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
                         exit={{ opacity: 0, x: -10 }}
                         className="font-medium whitespace-nowrap"
                       >
-                        {t(`sidebar.${labelKey}`)}
+                        {label}
                       </motion.span>
                     )}
                   </AnimatePresence>

@@ -240,6 +240,35 @@ class Ruta(RutaBase):
         from_attributes = True
 
 
+# --- SEGUIMIENTO Y UBICACION ---
+class UbicacionUpdate(BaseModel):
+    id_ruta: UUID
+    latitud: float
+    longitud: float
+    velocidad: Optional[float] = 0.0
+    heading: Optional[float] = 0.0
+
+class SeguimientoRutaOut(BaseModel):
+    id_seguimiento: UUID
+    id_ruta: UUID
+    id_conductor: UUID
+    id_vehiculo: UUID
+    latitud: float
+    longitud: float
+    velocidad: Optional[float] = 0.0
+    heading: Optional[float] = 0.0
+    ultima_actualizacion: datetime
+    estado_seguimiento: str
+    nombre_conductor: Optional[str] = None
+    placa_vehiculo: Optional[str] = None
+    nombre_ruta: Optional[str] = None
+    codigo_ruta: Optional[str] = None
+    origen: Optional[str] = None
+    destino: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
 # --- MANTENIMIENTO ---
 class MantenimientoBase(BaseModel):
     id_vehiculo: UUID
