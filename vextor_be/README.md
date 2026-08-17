@@ -16,6 +16,8 @@ vextor_be/
 ├── router_vehicles.py      # CRUD de vehículos, filtrado y validación de borrado seguro
 ├── router_drivers.py       # CRUD de conductores, licencias y estados operativos
 ├── router_routes.py        # Gestión de rutas, asignación, estados y servidor WebSocket para GPS (/ws/tracking)
+├── router_routing.py       # API de routing que adapta la instancia OSRM propia para el frontend
+├── services/osrm_client.py # Cliente HTTP aislado de OSRM y su configuración de entorno
 ├── router_maintenance.py   # Registro de mantenimientos preventivos/correctivos en COP
 ├── router_reports.py       # Generación de reportes tabulares y exportación binaria (PDF, CSV, Excel)
 ├── router_company.py       # Configuración y consulta de información corporativa
@@ -39,6 +41,7 @@ vextor_be/
 | `schemas.py` | Schemas | Validaciones Pydantic de entrada/salida para la API, incluyendo validadores de placas, celulares y cédulas. | `models.py`, `router_*.py` |
 | `router_auth.py` | Router | Controla la autenticación JWT, hashing bcrypt y gestión de cookies HttpOnly. | `schemas.py`, `models.py` |
 | `router_routes.py` | Router & WS | Administra la lógica de rutas y aloja el endpoint WebSocket `/ws/tracking` para recepción y retransmisión de GPS. | `models.py`, `vextor_fe/src/pages/Routes/` |
+| `router_routing.py` | Router | Expone `/api/routing/health` y `/api/routing/route` sin revelar la URL interna de OSRM. | `services/osrm_client.py`, `schemas.py` |
 | `email_utils.py` | Utilidad | Maneja la configuración SMTP para el envío de enlaces de recuperación de contraseña. | `router_auth.py` |
 
 ---

@@ -206,6 +206,10 @@ const ActiveRoutePage = () => {
   };
 
   const handleRouteCalculated = (metrics) => {
+    if (!metrics) {
+      setRouteMetrics({ distance: '--', duration: '--', instructions: [] });
+      return;
+    }
     setRouteMetrics({
       distance: metrics.distance || '--',
       duration: metrics.duration || '--',

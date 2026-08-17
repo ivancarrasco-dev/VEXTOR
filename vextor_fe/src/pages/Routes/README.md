@@ -8,9 +8,9 @@ Módulo avanzado para la programación de rutas logísticas y monitoreo geográf
 | Archivo | Tipo | Función | Utilizado por |
 | :--- | :--- | :--- | :--- |
 | `Routes.jsx` | Página | Vista principal de gestión de rutas y mapa en vivo para administradores. | `AppRouter.jsx` |
-| `components/MapComponent.jsx` | Componente | Mapa Leaflet interactivo que cambia automáticamente a modo oscuro con el tema de la App. | `Routes.jsx` |
+| `components/MapComponent.jsx` | Componente | Mapa Leaflet interactivo que cambia automáticamente a modo oscuro y dibuja la geometría entregada por FastAPI. | `Routes.jsx`, `ActiveRoutePage.jsx` |
 | `components/NominatimAutocomplete.jsx` | Componente | Input con autocompletado de geocodificación mediante OpenStreetMap Nominatim. | `Routes.jsx` |
-| `services/routeService.js` | Servicio | Peticiones HTTP a `/api/routes` y gestión de llamadas a API de rutas. | `Routes.jsx`, `MyRoutes.jsx` |
+| `services/routeService.js` | Servicio | Peticiones HTTP a `/api/routes` y a `/api/routing/route`; el navegador no accede a OSRM directamente. | `Routes.jsx`, `MapComponent.jsx` |
 
 ## 3. Representación Visual (`¿Dónde se muestra?`)
 - **Ruta:** `/rutas`

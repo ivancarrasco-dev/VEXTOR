@@ -14,7 +14,11 @@ import models
 import schemas
 from email_utils import send_recovery_email
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "vextor_super_secret_key_1234567890!")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError(
+        "JWT_SECRET_KEY no está configurada. Crea vextor_be/.env a partir de .env.example."
+    )
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440 # 24 hours
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")

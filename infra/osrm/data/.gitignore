@@ -1,0 +1,3 @@
+# Los extractos OSM y los archivos procesados pueden ocupar varios GB.
+*
+!.gitignore

@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 const API_URL = 'http://localhost:8000/api/routes';
+const ROUTING_API_URL = 'http://localhost:8000/api/routing';
 
 export const routeService = {
   async getRoutes() {
@@ -77,6 +78,20 @@ export const routeService = {
     } catch (error) {
       console.warn('Error fetching active trackings:', error);
       return [];
+    }
+  },
+
+  async calculateRoute({ origin, destination, profile = 'driving' }) {
+    try {
+      const response = await axios.post(`${ROUTING_API_URL}/route`, {
+        origin: { lat: origin[0], lng: origin[1] },
+        destination: { lat: destination[0], lng: destination[1] },
+        profile
+      });
+      return response.data;
+    } catch (error) {
+      const message = error.response?.data?.detail || 'No fue posible calcular la ruta.';
+      throw new Error(message);
     }
   }
 };

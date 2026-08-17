@@ -2,11 +2,17 @@ import random
 import uuid
 import unicodedata
 from datetime import date, datetime, timedelta
+from pathlib import Path
+from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import List
+
+# Carga la configuración local antes de inicializar la base de datos y los servicios.
+# Las variables ya definidas por el entorno tienen prioridad sobre el archivo .env.
+load_dotenv(Path(__file__).with_name(".env"))
 
 from database import engine, SessionLocal
 import models
@@ -20,6 +26,7 @@ from router_users import router as users_router
 from router_activities import router as activities_router
 from router_security import router as security_router
 from router_reports import router as reports_router
+from router_routing import router as routing_router
 
 app = FastAPI(title="Vextor API", description="Backend para la gestión de flota y transporte de Vextor")
 
@@ -145,6 +152,7 @@ app.include_router(activities_router)
 app.include_router(security_router)
 app.include_router(drivers_router)
 app.include_router(routes_router)
+app.include_router(routing_router)
 app.include_router(maintenance_router)
 app.include_router(reports_router)
 

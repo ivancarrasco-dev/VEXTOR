@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field
 from uuid import UUID
 from datetime import date, datetime
-from typing import Optional, List
+from typing import Literal, Optional, List
 
 # --- ROL ---
 class RolBase(BaseModel):
@@ -268,6 +268,41 @@ class SeguimientoRutaOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# --- ROUTING / OSRM ---
+class RoutingPoint(BaseModel):
+    lat: float = Field(..., ge=-90, le=90)
+    lng: float = Field(..., ge=-180, le=180)
+
+
+class RoutingRouteRequest(BaseModel):
+    origin: RoutingPoint
+    destination: RoutingPoint
+    profile: Literal["driving", "cycling", "walking"] = "driving"
+
+
+class RoutingInstruction(BaseModel):
+    text: str
+    distance: float
+    duration: float
+    type: str
+
+
+class RoutingGeometry(BaseModel):
+    type: Literal["LineString"]
+    coordinates: List[List[float]]
+
+
+class RoutingRouteResponse(BaseModel):
+    distance: float
+    duration: float
+    geometry: RoutingGeometry
+    instructions: List[RoutingInstruction]
+
+
+class RoutingHealth(BaseModel):
+    status: Literal["available"]
 
 # --- MANTENIMIENTO ---
 class MantenimientoBase(BaseModel):
