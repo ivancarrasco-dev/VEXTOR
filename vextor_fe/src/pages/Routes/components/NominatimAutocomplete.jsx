@@ -53,7 +53,7 @@ const NominatimAutocomplete = ({
     fetch(url, {
       headers: {
         'Accept-Language': 'es',
-        'User-Agent': 'VextorFleetApp/1.0 (contact: info@vextor.com)' // Good practice for Nominatim API usage
+        'User-Agent': 'VextorFleetApp/1.0 (contact: info@vextor.com)'
       }
     })
       .then((res) => {
@@ -62,14 +62,19 @@ const NominatimAutocomplete = ({
       })
       .then((data) => {
         if (Array.isArray(data)) {
-          // Normalize structure to mimic what we expect in the app
-          const formatted = data.map((item) => ({
-            id: item.place_id,
-            display_name: item.display_name,
-            name: item.name || item.display_name.split(',')[0],
-            lat: parseFloat(item.lat),
-            lon: parseFloat(item.lon),
-          }));
+          const formatted = data.map((item) => {
+            const addr = item.address || {};
+            const mainTitle = item.name || addr.road || addr.suburb || addr.city || item.display_name.split(',')[0];
+            const category = addr.city || addr.town || addr.state || 'Colombia';
+            return {
+              id: item.place_id,
+              display_name: item.display_name,
+              name: mainTitle,
+              category: category,
+              lat: parseFloat(item.lat),
+              lon: parseFloat(item.lon),
+            };
+          });
           setSuggestions(formatted);
         } else {
           setSuggestions([]);

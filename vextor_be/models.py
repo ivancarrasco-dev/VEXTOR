@@ -1,9 +1,9 @@
 import uuid
-from sqlalchemy import Column, String, Integer, Date, DateTime, ForeignKey, Text, Numeric, CheckConstraint
+from sqlalchemy import Column, String, Integer, Date, DateTime, ForeignKey, Text, Numeric, CheckConstraint, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-from .database import Base
+from database import Base
 
 class Rol(Base):
     __tablename__ = "rol"
@@ -26,10 +26,12 @@ class Usuario(Base):
     estado_usuario = Column(String(20), nullable=False, default="ACTIVO")
     fecha_creacion = Column(DateTime, nullable=False, server_default=func.now())
     token_recuperacion = Column(String(255), nullable=True)
+    foto_perfil = Column(Text, nullable=True)
 
     rol = relationship("Rol", back_populates="usuarios")
     conductor = relationship("Conductor", uselist=False, back_populates="usuario")
     reportes = relationship("Reporte", back_populates="usuario")
+    sesiones = relationship("SesionUsuario", back_populates="usuario", cascade="all, delete-orphan")
 
     __table_args__ = (
         CheckConstraint("estado_usuario IN ('ACTIVO', 'INACTIVO')", name="chk_estado_usuario"),
@@ -45,7 +47,7 @@ class Conductor(Base):
     cedula_conductor = Column(String(20), nullable=False, unique=True)
     telefono_conductor = Column(String(20), nullable=True)
     licencia = Column(String(50), nullable=False)
-    estado_conductor = Column(String(20), nullable=False, default="ACTIVO")
+    estado_conductor = Column(String(20), nullable=False, default="DISPONIBLE")
     fecha_ingreso = Column(Date, nullable=False)
 
     usuario = relationship("Usuario", back_populates="conductor")
@@ -53,7 +55,7 @@ class Conductor(Base):
     novedades = relationship("Novedad", back_populates="conductor")
 
     __table_args__ = (
-        CheckConstraint("estado_conductor IN ('ACTIVO', 'INACTIVO', 'SUSPENDIDO')", name="chk_estado_conductor"),
+        CheckConstraint("estado_conductor IN ('DISPONIBLE', 'EN_RUTA', 'NO_DISPONIBLE', 'ACTIVO', 'INACTIVO', 'SUSPENDIDO')", name="chk_estado_conductor"),
     )
 
 
@@ -189,3 +191,89 @@ class Mantenimiento(Base):
         CheckConstraint("estado_mantenimiento IN ('PROGRAMADO', 'EN_PROCESO', 'COMPLETADA', 'CANCELADO')", name="chk_estado_mantenimiento"),
     )
 
+class Empresa(Base):
+    __tablename__ = "empresa"
+    id_empresa = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(100), nullable=False)
+    nit = Column(String(50), nullable=False, unique=True)
+    address = Column(String(255), nullable=True)
+    city = Column(String(100), nullable=True)
+    email = Column(String(150), nullable=True)
+    phone = Column(String(50), nullable=True)
+    retention_days = Column(Integer, default=30, nullable=True)
+
+class Actividad(Base):
+    __tablename__ = "actividad"
+    id_actividad = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id_usuario = Column(UUID(as_uuid=True), ForeignKey("usuario.id_usuario", ondelete="SET NULL", onupdate="CASCADE"), nullable=True)
+    nombres_usuario = Column(String(150), nullable=True)
+    tipo_accion = Column(String(50), nullable=False)
+    modulo = Column(String(50), nullable=False)
+    descripcion = Column(Text, nullable=False)
+    fecha_hora = Column(DateTime, nullable=False, server_default=func.now())
+    id_registro_afectado = Column(String(100), nullable=True)
+    ip_origen = Column(String(45), nullable=True)
+    resultado = Column(String(20), nullable=False, default="EXITOSO")
+
+class SesionUsuario(Base):
+    __tablename__ = "sesion_usuario"
+    id_sesion = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id_usuario = Column(UUID(as_uuid=True), ForeignKey("usuario.id_usuario", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
+    ip_origen = Column(String(45), nullable=True)
+    dispositivo = Column(String(255), nullable=True)
+    user_agent = Column(Text, nullable=True)
+    fecha_inicio = Column(DateTime, nullable=False, server_default=func.now())
+    ultima_actividad = Column(DateTime, nullable=False, server_default=func.now())
+    estado_sesion = Column(String(20), nullable=False, default="ACTIVA")
+
+    usuario = relationship("Usuario", back_populates="sesiones")
+
+    __table_args__ = (
+        CheckConstraint("estado_sesion IN ('ACTIVA', 'CERRADA', 'REVOCADA', 'EXPIRADA')", name="chk_estado_sesion"),
+    )
+
+class Notificacion(Base):
+    __tablename__ = "notificacion"
+    id_notificacion = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id_usuario = Column(UUID(as_uuid=True), ForeignKey("usuario.id_usuario", ondelete="CASCADE", onupdate="CASCADE"), nullable=True)
+    titulo = Column(String(150), nullable=False)
+    descripcion = Column(Text, nullable=False)
+    fecha_hora = Column(DateTime, nullable=False, server_default=func.now())
+    leido = Column(Boolean, default=False, nullable=False)
+    tipo = Column(String(50), nullable=False)
+
+
+class SeguimientoRuta(Base):
+    __tablename__ = "seguimiento_ruta"
+    id_seguimiento = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id_ruta = Column(UUID(as_uuid=True), ForeignKey("ruta.id_ruta", ondelete="CASCADE", onupdate="CASCADE"), nullable=False, unique=True)
+    id_conductor = Column(UUID(as_uuid=True), ForeignKey("conductor.id_conductor", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
+    id_vehiculo = Column(UUID(as_uuid=True), ForeignKey("vehiculo.id_vehiculo", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
+    latitud = Column(Numeric(10, 6), nullable=False)
+    longitud = Column(Numeric(10, 6), nullable=False)
+    velocidad = Column(Numeric(5, 2), nullable=True, default=0.0)
+    heading = Column(Numeric(5, 2), nullable=True, default=0.0)
+    ultima_actualizacion = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+    estado_seguimiento = Column(String(20), nullable=False, default="ACTIVO")
+
+    ruta = relationship("Ruta")
+    conductor = relationship("Conductor")
+    vehiculo = relationship("Vehiculo")
+
+    __table_args__ = (
+        CheckConstraint("estado_seguimiento IN ('ACTIVO', 'FINALIZADO')", name="chk_estado_seguimiento"),
+    )
+
+
+class HistorialUbicacion(Base):
+    __tablename__ = "historial_ubicacion"
+    id_historial = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id_seguimiento = Column(UUID(as_uuid=True), ForeignKey("seguimiento_ruta.id_seguimiento", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
+    id_ruta = Column(UUID(as_uuid=True), ForeignKey("ruta.id_ruta", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
+    latitud = Column(Numeric(10, 6), nullable=False)
+    longitud = Column(Numeric(10, 6), nullable=False)
+    velocidad = Column(Numeric(5, 2), nullable=True)
+    fecha_hora = Column(DateTime, nullable=False, server_default=func.now())
+
+    seguimiento = relationship("SeguimientoRuta")
+    ruta = relationship("Ruta")

@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, User, Settings, LogOut, Shield } from 'lucide-react';
-import Swal from 'sweetalert2';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { showConfirm } from '../../utils/sweetalert';
 
 /**
  * UserMenu Component
@@ -45,25 +45,13 @@ const UserMenu = () => {
 
   const handleLogoutClick = () => {
     setIsOpen(false);
-    Swal.fire({
-      title: t('navbar.logoutConfirm'),
-      text: t('navbar.logoutText'),
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: t('navbar.logoutYes'),
-      cancelButtonText: t('common.cancel'),
-      buttonsStyling: false,
-      background: 'var(--v-bg-soft)',
-      color: 'var(--v-text)',
-      customClass: {
-        popup: 'bg-v-dark-soft border border-v-dark-border rounded-2xl p-6 shadow-2xl max-w-sm',
-        title: 'text-xl font-bold text-v-white',
-        htmlContainer: 'text-sm text-v-gray mt-2 leading-relaxed',
-        actions: 'flex gap-3 justify-end mt-6 w-full',
-        confirmButton: 'px-4 py-2 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors cursor-pointer focus:outline-none',
-        cancelButton: 'px-4 py-2 text-sm font-semibold text-v-white bg-v-dark border border-v-dark-border hover:bg-v-dark-border rounded-xl transition-colors cursor-pointer focus:outline-none',
-      },
-    }).then((result) => {
+    showConfirm(
+      t('navbar.logoutConfirm'),
+      t('navbar.logoutText'),
+      t('navbar.logoutYes'),
+      t('common.cancel'),
+      true
+    ).then((result) => {
       if (result.isConfirmed) {
         logout();
         navigate('/login');
@@ -77,9 +65,13 @@ const UserMenu = () => {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-3 p-1.5 rounded-xl hover:bg-v-dark-border transition-all duration-200"
       >
-        <div className="h-10 w-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary font-bold border border-primary/20">
-          {user.avatar}
-        </div>
+        {user.photo ? (
+          <img src={user.photo} alt={user.name} className="h-10 w-10 rounded-lg object-cover border border-primary/20" />
+        ) : (
+          <div className="h-10 w-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary font-bold border border-primary/20">
+            {user.avatar}
+          </div>
+        )}
         <div className="hidden lg:block text-left">
           <p className="text-sm font-semibold text-v-white leading-none mb-1">{user.name}</p>
           <p className="text-[11px] text-v-gray font-medium uppercase tracking-wider">{user.role}</p>

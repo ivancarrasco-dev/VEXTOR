@@ -150,7 +150,7 @@ const FeaturesSection = () => {
                 ))}
               </ul>
             </div>
-            <div className="bg-gradient-to-br from-primary/10 to-transparent p-12 flex items-center justify-center">
+            <div className="bg-linear-to-br from-primary/10 to-transparent p-12 flex items-center justify-center">
               <div className="relative w-full max-w-md aspect-square bg-v-dark-soft rounded-3xl border border-v-dark-border shadow-2xl overflow-hidden">
                 <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10" />
                 <div className="relative p-8 h-full flex flex-col">

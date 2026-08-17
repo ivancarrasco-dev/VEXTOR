@@ -1,109 +1,30 @@
-INFO:     Started server process [81344]
+INFO:     Started server process [297655]
 INFO:     Waiting for application startup.
-ERROR:    Traceback (most recent call last):
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1969, in _exec_single_context
-    self.dialect.do_execute(
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
-    cursor.execute(statement, parameters)
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/psycopg/cursor.py", line 117, in execute
-    raise ex.with_traceback(None)
-psycopg.errors.UniqueViolation: duplicate key value violates unique constraint "usuario_pkey"
-DETAIL:  Key (id_usuario)=(abc12345-6789-4000-b000-000000000001) already exists.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:38736 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:38736 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:38742 - "OPTIONS /api/auth/forgot-password HTTP/1.1" 200 OK
 
-The above exception was the direct cause of the following exception:
+=======================================================
+[VEXTOR DEV RECOVERY LINK]
+Destination Email: admin@vextor.com
+Recovery URL     : http://localhost:5173/reset-password?token=4ARa9i5I1R5fEAdYsKHYbrSPvd_T43vXt9pUGPfHT08
+=======================================================
 
-Traceback (most recent call last):
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/starlette/routing.py", line 648, in lifespan
-    async with self.lifespan_context(app) as maybe_state:
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/contextlib.py", line 210, in __aenter__
-    return await anext(self.gen)
-           ^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/fastapi/routing.py", line 240, in merged_lifespan
-    async with original_context(app) as maybe_original_state:
-               ^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/contextlib.py", line 210, in __aenter__
-    return await anext(self.gen)
-           ^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/fastapi/routing.py", line 240, in merged_lifespan
-    async with original_context(app) as maybe_original_state:
-               ^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/contextlib.py", line 210, in __aenter__
-    return await anext(self.gen)
-           ^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/fastapi/routing.py", line 240, in merged_lifespan
-    async with original_context(app) as maybe_original_state:
-               ^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/contextlib.py", line 210, in __aenter__
-    return await anext(self.gen)
-           ^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/fastapi/routing.py", line 240, in merged_lifespan
-    async with original_context(app) as maybe_original_state:
-               ^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/fastapi/routing.py", line 265, in __aenter__
-    await self._router._startup()
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/fastapi/routing.py", line 6377, in _startup
-    handler()
-  File "/app/vextor_be/main.py", line 158, in startup_populate
-    db.commit()
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2035, in commit
-    trans.commit(_to_root=True)
-  File "<string>", line 2, in commit
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py", line 137, in _go
-    ret_value = fn(self, *arg, **kw)
-                ^^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 1316, in commit
-    self._prepare_impl()
-  File "<string>", line 2, in _prepare_impl
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py", line 137, in _go
-    ret_value = fn(self, *arg, **kw)
-                ^^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 1290, in _prepare_impl
-    self.session.flush()
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 4353, in flush
-    self._flush(objects)
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 4488, in _flush
-    with util.safe_reraise():
-         ^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
-    raise exc_value.with_traceback(exc_tb)
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 4449, in _flush
-    flush_context.execute()
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py", line 465, in execute
-    rec.execute(self)
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py", line 641, in execute
-    util.preloaded.orm_persistence.save_obj(
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py", line 94, in save_obj
-    _emit_insert_statements(
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py", line 1234, in _emit_insert_statements
-    result = connection.execute(
-             ^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1421, in execute
-    return meth(
-           ^^^^^
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 526, in _execute_on_connection
-    return connection._execute_clauseelement(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1643, in _execute_clauseelement
-    ret = self._execute_context(
-          ^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1848, in _execute_context
-    return self._exec_single_context(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1988, in _exec_single_context
-    self._handle_dbapi_exception(
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2365, in _handle_dbapi_exception
-    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1969, in _exec_single_context
-    self.dialect.do_execute(
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
-    cursor.execute(statement, parameters)
-  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/psycopg/cursor.py", line 117, in execute
-    raise ex.with_traceback(None)
-sqlalchemy.exc.IntegrityError: (psycopg.errors.UniqueViolation) duplicate key value violates unique constraint "usuario_pkey"
-DETAIL:  Key (id_usuario)=(abc12345-6789-4000-b000-000000000001) already exists.
-[SQL: INSERT INTO usuario (id_usuario, id_rol, nombres_usuario, apellidos_usuario, correo_usuario, contrasenia_usuario, telefono_usuario, estado_usuario, token_recuperacion) VALUES (%(id_usuario)s::UUID, %(id_rol)s::UUID, %(nombres_usuario)s::VARCHAR, %(apellidos_usuario)s::VARCHAR, %(correo_usuario)s::VARCHAR, %(contrasenia_usuario)s::VARCHAR, %(telefono_usuario)s::VARCHAR, %(estado_usuario)s::VARCHAR, %(token_recuperacion)s::VARCHAR) RETURNING usuario.fecha_creacion]
-[parameters: {'id_usuario': UUID('abc12345-6789-4000-b000-000000000001'), 'id_rol': UUID('11111111-2222-3333-4444-555555555552'), 'nombres_usuario': 'Juan', 'apellidos_usuario': 'Pérez', 'correo_usuario': 'juan.perez@vextor.com', 'contrasenia_usuario': 'pbkdf2:sha256:123456', 'telefono_usuario': '+593 98 765 4321', 'estado_usuario': 'ACTIVO', 'token_recuperacion': None}]
-(Background on this error at: https://sqlalche.me/e/20/gkpj)
-
-ERROR:    Application startup failed. Exiting.
+INFO:     127.0.0.1:38736 - "POST /api/auth/forgot-password HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38736 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:53974 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:38742 - "OPTIONS /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53974 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38742 - "OPTIONS /api/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38742 - "OPTIONS /api/dashboard/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53990 - "OPTIONS /api/activities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53998 - "OPTIONS /api/dashboard/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54012 - "OPTIONS /api/activities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53974 - "GET /api/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38736 - "GET /api/dashboard/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54022 - "GET /api/notifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54020 - "GET /api/activities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54022 - "GET /api/activities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53974 - "GET /api/dashboard/stats HTTP/1.1" 200 OK

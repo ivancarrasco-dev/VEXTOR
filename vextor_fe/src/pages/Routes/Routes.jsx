@@ -26,9 +26,9 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
 import { Select } from '../../components/ui/Select';
-import { routeService } from '../../services/routeService';
-import { driverService } from '../../services/driverService';
-import { vehicleService } from '../../services/vehicleService';
+import { routeService } from './services/routeService';
+import { driverService } from '../Drivers/services/driverService';
+import { vehicleService } from '../Vehicles/services/vehicleService';
 import MapComponent from './components/MapComponent';
 import NominatimAutocomplete from './components/NominatimAutocomplete';
 import { cn } from '../../utils/cn';
@@ -52,6 +52,13 @@ const Routes = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
 
+  // Active Tab: 'gestion' or 'tracking'
+  const [activeTab, setActiveTab] = useState('gestion');
+
+  // Real-time tracking state for admins
+  const [activeTrackings, setActiveTrackings] = useState([]);
+  const [selectedTracking, setSelectedTracking] = useState(null);
+
   // Search & Filters state
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -67,6 +74,7 @@ const Routes = () => {
 
   // Live route metrics from Nominatim / OSRM
   const [routeInfo, setRouteInfo] = useState(null);
+  const [isIndicationsOpen, setIsIndicationsOpen] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -97,17 +105,17 @@ const Routes = () => {
       const dData = await driverService.getDrivers();
       const vData = await vehicleService.getVehicles();
 
-      setDrivers(dData.filter(d => d.estado_conductor === 'ACTIVO'));
-      setVehicles(vData.filter(v => v.estado_vehiculo !== 'INACTIVO'));
+      setDrivers(dData);
+      setVehicles(vData);
       setRoutes(rData);
 
-      const activeDrivers = dData.filter(d => d.estado_conductor === 'ACTIVO');
-      const activeVehicles = vData.filter(v => v.estado_vehiculo !== 'INACTIVO');
+      const availableDrivers = dData.filter(d => d.estado_conductor === 'DISPONIBLE' || d.estado_conductor === 'ACTIVO');
+      const availableVehicles = vData.filter(v => v.estado_vehiculo === 'DISPONIBLE');
 
       setFormData(prev => ({
         ...prev,
-        id_conductor: activeDrivers[0]?.id_conductor || '',
-        id_vehiculo: activeVehicles[0]?.id_vehiculo || ''
+        id_conductor: prev.id_conductor || availableDrivers[0]?.id_conductor || '',
+        id_vehiculo: prev.id_vehiculo || availableVehicles[0]?.id_vehiculo || ''
       }));
 
     } catch (err) {
@@ -118,8 +126,45 @@ const Routes = () => {
     }
   };
 
+  // Load active driver trackings for admins
+  const fetchActiveTrackings = async () => {
+    try {
+      const res = await routeService.getActiveTracking();
+      setActiveTrackings(res || []);
+    } catch (err) {
+      console.warn('Error fetching active trackings:', err);
+    }
+  };
+
   useEffect(() => {
     loadData();
+    fetchActiveTrackings();
+
+    // Setup periodic polling for admin tracking map
+    const interval = setInterval(fetchActiveTrackings, 10000);
+
+    // Setup WebSocket for live updates
+    let ws = null;
+    try {
+      ws = new WebSocket('ws://localhost:8000/ws/tracking');
+      ws.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.type === 'location_broadcast') {
+            fetchActiveTrackings();
+          }
+        } catch (e) {
+          console.warn('WS message parse error:', e);
+        }
+      };
+    } catch (err) {
+      console.warn('WS error on admin routes:', err);
+    }
+
+    return () => {
+      clearInterval(interval);
+      if (ws) ws.close();
+    };
   }, []);
 
   const showFeedback = (type, message) => {
@@ -319,6 +364,9 @@ const Routes = () => {
     setOrigenSearch('');
     setDestinoSearch('');
     setRouteInfo(null);
+    setIsIndicationsOpen(false);
+    const availableDrivers = drivers.filter(d => d.estado_conductor === 'DISPONIBLE' || d.estado_conductor === 'ACTIVO');
+    const availableVehicles = vehicles.filter(v => v.estado_vehiculo === 'DISPONIBLE');
     setFormData({
       codigo_ruta: '',
       nombre_ruta: '',
@@ -329,8 +377,8 @@ const Routes = () => {
       hora_fin_real: '',
       estado_ruta: 'PROGRAMADA',
       motivo_suspension: '',
-      id_conductor: drivers[0]?.id_conductor || '',
-      id_vehiculo: vehicles[0]?.id_vehiculo || ''
+      id_conductor: availableDrivers[0]?.id_conductor || '',
+      id_vehiculo: availableVehicles[0]?.id_vehiculo || ''
     });
     setFormErrors({});
   };
@@ -366,7 +414,7 @@ const Routes = () => {
 
   // Search and Filter logic
   const filteredRoutes = routes.filter(route => {
-    const query = search.toLowerCase();
+    const query = search.trim().toLowerCase();
     const driver = drivers.find(d => d.id_conductor === route.id_conductor);
     const vehicle = vehicles.find(v => v.id_vehiculo === route.id_vehiculo);
     const driverName = driver ? `${driver.nombre_conductor} ${driver.apellido_conductor}`.toLowerCase() : '';
@@ -424,14 +472,139 @@ const Routes = () => {
           </h2>
           <p className="text-v-gray text-sm mt-0.5">{t('routes.subtitle')}</p>
         </div>
+
+        {/* Navigation Tabs */}
+        <div className="flex items-center gap-2 bg-v-dark p-1.5 rounded-xl border border-v-dark-border">
+          <button
+            onClick={() => setActiveTab('gestion')}
+            className={cn(
+              "px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-2",
+              activeTab === 'gestion'
+                ? "bg-primary text-v-dark-constant shadow-md"
+                : "text-v-gray hover:text-v-white hover:bg-v-dark-border/40"
+            )}
+          >
+            <RouteIcon size={14} />
+            Gestión de Rutas
+          </button>
+          <button
+            onClick={() => setActiveTab('tracking')}
+            className={cn(
+              "px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-2 relative",
+              activeTab === 'tracking'
+                ? "bg-primary text-v-dark-constant shadow-md"
+                : "text-v-gray hover:text-v-white hover:bg-v-dark-border/40"
+            )}
+          >
+            <Navigation size={14} className="rotate-45" />
+            Conductores en Ruta
+            {activeTrackings.length > 0 && (
+              <span className="px-1.5 py-0.2 bg-blue-500 text-white rounded-full text-[10px] font-extrabold animate-pulse">
+                {activeTrackings.length}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
-      {/* Main Split Layout: Left Map, Right Form/Table */}
+      {activeTab === 'tracking' && (
+        /* VISTA "CONDUCTORES EN RUTA" EN TIEMPO REAL */
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start text-left animate-in fade-in duration-300">
+          {/* Active Drivers Map (2 Columns) */}
+          <div className="lg:col-span-2 h-137.5 lg:h-175 relative rounded-3xl overflow-hidden border border-v-dark-border shadow-2xl">
+            <MapComponent
+              routes={routes}
+              activeRoute={selectedTracking ? {
+                origen: `${selectedTracking.latitud}, ${selectedTracking.longitud}`,
+                destino: selectedTracking.destino,
+                nombre_ruta: selectedTracking.nombre_ruta,
+                codigo_ruta: selectedTracking.codigo_ruta
+              } : null}
+            />
+          </div>
+
+          {/* Active Drivers Panel (1 Column) */}
+          <div className="space-y-4">
+            <div className="p-5 bg-v-dark-soft border border-v-dark-border rounded-3xl space-y-4 shadow-xl">
+              <div className="flex items-center justify-between pb-3 border-b border-v-dark-border">
+                <h3 className="text-base font-bold text-v-white flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-ping" />
+                  Conductores Activos ({activeTrackings.length})
+                </h3>
+                <button
+                  onClick={fetchActiveTrackings}
+                  className="p-1.5 rounded-lg bg-v-dark border border-v-dark-border text-v-gray hover:text-v-white transition-colors cursor-pointer"
+                  title="Actualizar"
+                >
+                  <RotateCcw size={14} />
+                </button>
+              </div>
+
+              {activeTrackings.length === 0 ? (
+                <div className="py-12 text-center text-v-gray text-xs space-y-2">
+                  <Truck size={32} className="mx-auto opacity-40" />
+                  <p>No hay conductores ejecutando rutas en este momento.</p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-145 overflow-y-auto custom-scrollbar pr-1">
+                  {activeTrackings.map((tr) => (
+                    <div
+                      key={tr.id_seguimiento}
+                      onClick={() => setSelectedTracking(tr)}
+                      className={cn(
+                        "p-4 rounded-2xl bg-v-dark border transition-all cursor-pointer space-y-3 hover:border-primary/40",
+                        selectedTracking?.id_seguimiento === tr.id_seguimiento
+                          ? "border-primary bg-primary/5 shadow-lg"
+                          : "border-v-dark-border"
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h4 className="font-bold text-v-white text-sm">{tr.conductor.nombre}</h4>
+                          <span className="text-xs text-primary font-mono font-semibold">{tr.codigo_ruta} — {tr.nombre_ruta}</span>
+                        </div>
+                        {tr.is_stale ? (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                            ⚠ Sin datos rec.
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            🟢 En Vivo
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-xs text-v-gray pt-2 border-t border-v-dark-border/60">
+                        <div>
+                          <span className="block text-[10px]">Vehículo:</span>
+                          <strong className="text-v-white font-mono">{tr.vehiculo.placa}</strong>
+                        </div>
+                        <div>
+                          <span className="block text-[10px]">Velocidad:</span>
+                          <strong className="text-emerald-400 font-mono">{tr.velocidad} km/h</strong>
+                        </div>
+                      </div>
+
+                      <div className="text-[10px] text-v-gray flex items-center justify-between pt-1">
+                        <span>Reporte: hace {tr.segundos_transcurridos}s</span>
+                        <span className="text-primary font-bold hover:underline">Ver en mapa →</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'gestion' && (
+      /* Main Split Layout: Left Map, Right Form/Table */
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
 
         {/* PANEL IZQUIERDO: Mapa Interactivo (60% width on LG screen) */}
         <div className="lg:col-span-3 flex flex-col gap-4">
-          <div className="h-[450px] lg:h-[680px]">
+          <div className="h-112.5 lg:h-170">
             <MapComponent
               routes={routes}
               activeRoute={selectedRoute}
@@ -458,29 +631,79 @@ const Routes = () => {
                   <div className="space-y-0.5 overflow-hidden">
                     <span className="text-xs font-bold text-v-gray uppercase tracking-wider block">Indicadores de Trayecto Real</span>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-v-white text-sm font-semibold truncate max-w-[200px]" title={origenSearch || 'Origen'}>
+                      <span className="text-v-white text-sm font-semibold truncate max-w-50" title={origenSearch || 'Origen'}>
                         {(origenSearch || 'Origen').split(',')[0]}
                       </span>
                       <ArrowRight size={14} className="text-v-gray shrink-0" />
-                      <span className="text-v-white text-sm font-semibold truncate max-w-[200px]" title={destinoSearch || 'Destino'}>
+                      <span className="text-v-white text-sm font-semibold truncate max-w-50" title={destinoSearch || 'Destino'}>
                         {(destinoSearch || 'Destino').split(',')[0]}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-5 shrink-0">
-                  <div className="space-y-0.5">
-                    <span className="text-[10px] font-bold text-v-gray uppercase tracking-wider block">Distancia</span>
-                    <span className="text-xl font-black text-primary font-mono">{routeInfo.distance} <span className="text-xs">km</span></span>
+                <div className="flex items-center gap-4 shrink-0 flex-wrap sm:flex-nowrap w-full sm:w-auto justify-end">
+                  <div className="flex items-center gap-4">
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] font-bold text-v-gray uppercase tracking-wider block">Distancia</span>
+                      <span className="text-xl font-black text-primary font-mono">{routeInfo.distance} <span className="text-xs">km</span></span>
+                    </div>
+                    <div className="h-8 w-px bg-v-dark-border" />
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] font-bold text-v-gray uppercase tracking-wider block">Tiempo Estimado</span>
+                      <span className="text-xl font-black text-v-white font-mono flex items-baseline gap-1">
+                        {routeInfo.duration} <span className="text-xs text-v-gray font-sans font-medium">min</span>
+                      </span>
+                    </div>
                   </div>
-                  <div className="h-8 w-px bg-v-dark-border" />
-                  <div className="space-y-0.5">
-                    <span className="text-[10px] font-bold text-v-gray uppercase tracking-wider block">Tiempo Estimado</span>
-                    <span className="text-xl font-black text-v-white font-mono flex items-baseline gap-1">
-                      {routeInfo.duration} <span className="text-xs text-v-gray font-sans font-medium">min</span>
-                    </span>
-                  </div>
+                  {routeInfo.instructions && routeInfo.instructions.length > 0 && (
+                    <button
+                      onClick={() => setIsIndicationsOpen(!isIndicationsOpen)}
+                      className="px-3.5 py-1.5 bg-primary text-v-dark-constant rounded-xl text-xs font-bold hover:bg-emerald-600 cursor-pointer flex items-center gap-1.5 transition-all self-stretch sm:self-auto justify-center"
+                    >
+                      <Navigation size={13} className="rotate-45" />
+                      {isIndicationsOpen ? 'Ocultar indicaciones' : 'Ver indicaciones'}
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* indications Collapsible Panel */}
+          <AnimatePresence>
+            {routeInfo && routeInfo.instructions && routeInfo.instructions.length > 0 && isIndicationsOpen && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="bg-v-dark-soft border border-v-dark-border p-5 rounded-2xl shadow-xl overflow-hidden max-h-75 overflow-y-auto custom-scrollbar text-left space-y-3"
+              >
+                <div className="flex justify-between items-center border-b border-v-dark-border pb-2">
+                  <h4 className="font-bold text-sm text-v-white flex items-center gap-2">
+                    <Navigation size={14} className="text-primary rotate-45" /> Indicaciones paso a paso
+                  </h4>
+                  <button
+                    onClick={() => setIsIndicationsOpen(false)}
+                    className="p-1 text-v-gray hover:text-v-white hover:bg-v-dark-border/40 rounded transition-colors cursor-pointer"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+                <div className="space-y-3 pl-1">
+                  {routeInfo.instructions.map((step, idx) => (
+                    <div key={idx} className="flex gap-3 text-xs leading-relaxed text-v-gray hover:text-v-white transition-colors">
+                      <span className="font-black text-primary font-mono shrink-0">{idx + 1}.</span>
+                      <div className="flex-1">
+                        <p className="font-medium text-v-white text-sm">{step.text}</p>
+                        {step.distance > 0 && (
+                          <span className="text-[11px] text-v-gray font-mono block mt-0.5">
+                            Durante {step.distance >= 1000 ? `${(step.distance / 1000).toFixed(1)} km` : `${Math.round(step.distance)} m`}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </motion.div>
             )}
@@ -627,9 +850,9 @@ const Routes = () => {
                     onChange={handleInputChange}
                   >
                     <option value="">Seleccione Conductor...</option>
-                    {drivers.map(d => (
+                    {drivers.filter(d => d.estado_conductor === 'DISPONIBLE' || d.estado_conductor === 'ACTIVO' || d.id_conductor === formData.id_conductor).map(d => (
                       <option key={d.id_conductor} value={d.id_conductor}>
-                        {d.nombre_conductor} {d.apellido_conductor}
+                        {d.nombre_conductor} {d.apellido_conductor} ({d.estado_conductor})
                       </option>
                     ))}
                   </Select>
@@ -647,7 +870,7 @@ const Routes = () => {
                     onChange={handleInputChange}
                   >
                     <option value="">Seleccione Vehículo...</option>
-                    {vehicles.map(v => (
+                    {vehicles.filter(v => v.estado_vehiculo === 'DISPONIBLE' || v.id_vehiculo === formData.id_vehiculo).map(v => (
                       <option key={v.id_vehiculo} value={v.id_vehiculo}>
                         {v.placa} — {v.marca} {v.modelo}
                       </option>
@@ -902,6 +1125,7 @@ const Routes = () => {
           </div>
         </div>
       </div>
+      )}
 
       {/* DELETE CONFIRMATION MODAL */}
       <AnimatePresence>

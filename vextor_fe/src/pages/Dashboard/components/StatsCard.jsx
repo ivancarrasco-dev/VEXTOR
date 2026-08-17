@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown } from 'lucide-react';
-import { cn } from '../../utils/cn';
+import { cn } from '../../../utils/cn';
 
 /**
  * StatsCard Component
@@ -33,8 +33,14 @@ const StatsCard = ({ title, value, icon: Icon, trend, trendValue, delay = 0 }) =
             "flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full",
             trend === 'up' ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"
           )}>
-            {trend === 'up' ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-            {trendValue}%
+            {trendValue !== null && trendValue !== undefined ? (
+              <>
+                {trend === 'up' ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                <span>{trendValue}%</span>
+              </>
+            ) : (
+              <span className="text-[10px] text-v-gray font-normal">S/D</span>
+            )}
           </div>
         )}
       </div>

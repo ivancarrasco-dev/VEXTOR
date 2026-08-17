@@ -13,8 +13,8 @@ import { Logo } from '../components/ui/Logo';
  * * Si no está autenticado, redirige al /login.
  * * Si está autenticado, renderiza los componentes hijos (Outlet).
  */
-const ProtectedRoute = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+const ProtectedRoute = ({ adminOnly = false }) => {
+  const { isAuthenticated, isLoading, user } = useAuth();
 
   if (isLoading) {
     return (
@@ -37,6 +37,11 @@ const ProtectedRoute = () => {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  const isConductor = user?.role === 'rol-conductor' || user?.role === 'Conductor';
+  if (adminOnly && isConductor) {
+    return <Navigate to="/driver/my-routes" replace />;
   }
 
   return <Outlet />;

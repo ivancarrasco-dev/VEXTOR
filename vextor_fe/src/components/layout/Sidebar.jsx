@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
@@ -18,6 +18,7 @@ import { Logo } from '../ui/Logo';
 import { cn } from '../../utils/cn';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { showConfirm } from '../../utils/sweetalert';
 
 /**
  * Sidebar Component
@@ -35,19 +36,27 @@ import { useTranslation } from 'react-i18next';
  * * Manejo de marca (Logo/Isotipo) según estado.
  * * Indicador visual de ruta activa.
  */
-const menuItems = [
-  { path: '/dashboard', icon: LayoutDashboard },
-  { path: '/vehicles', icon: Truck },
-  { path: '/drivers', icon: Users },
-  { path: '/routes', icon: MapPin },
-  { path: '/maintenance', icon: Wrench },
-  { path: '/reports', icon: BarChart3 },
-  { path: '/settings', icon: Settings },
+const adminMenuItems = [
+  { path: '/dashboard', labelKey: 'sidebar.dashboard', icon: LayoutDashboard },
+  { path: '/vehicles', labelKey: 'sidebar.vehicles', icon: Truck },
+  { path: '/drivers', labelKey: 'sidebar.drivers', icon: Users },
+  { path: '/routes', labelKey: 'sidebar.routes', icon: MapPin },
+  { path: '/maintenance', labelKey: 'sidebar.maintenance', icon: Wrench },
+  { path: '/reports', labelKey: 'sidebar.reports', icon: BarChart3 },
+  { path: '/settings', labelKey: 'sidebar.settings', icon: Settings },
+];
+
+const driverMenuItems = [
+  { path: '/driver/my-routes', labelText: 'Mis Rutas', icon: MapPin },
+  { path: '/settings', labelText: 'Configuración', icon: Settings },
 ];
 
 const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen }) => {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
+  const isConductor = user?.role === 'rol-conductor' || user?.role === 'Conductor';
+  const currentMenuItems = isConductor ? driverMenuItems : adminMenuItems;
   const location = useLocation();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [width, setWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
 
@@ -93,7 +102,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
         transition={{ type: 'tween', duration: 0.3, ease: 'easeInOut' }}
         className={cn(
           "fixed top-0 left-0 z-50 h-screen bg-v-dark-soft border-r border-v-dark-border",
-          isMobile ? "w-[280px]" : (isCollapsed ? "w-20" : "w-[260px]")
+          isMobile ? "w-70" : (isCollapsed ? "w-20" : "w-65")
         )}
       >
         <div className="flex flex-col h-full">
@@ -116,8 +125,8 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
 
           {/* Navigation */}
           <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto custom-scrollbar">
-            {menuItems.map((item) => {
-              const labelKey = item.path.replace('/', '');
+            {currentMenuItems.map((item) => {
+              const label = item.labelText || t(item.labelKey);
               return (
                 <NavLink
                   key={item.path}
@@ -140,7 +149,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
                         exit={{ opacity: 0, x: -10 }}
                         className="font-medium whitespace-nowrap"
                       >
-                        {t(`sidebar.${labelKey}`)}
+                        {label}
                       </motion.span>
                     )}
                   </AnimatePresence>
@@ -160,9 +169,22 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
           {/* Footer */}
           <div className="p-4 border-t border-v-dark-border">
             <button
-              onClick={logout}
+              onClick={() => {
+                showConfirm(
+                  t('navbar.logoutConfirm'),
+                  t('navbar.logoutText'),
+                  t('navbar.logoutYes'),
+                  t('common.cancel'),
+                  true
+                ).then((result) => {
+                  if (result.isConfirmed) {
+                    logout();
+                    navigate('/login');
+                  }
+                });
+              }}
               className={cn(
-                "flex items-center gap-3 w-full px-3 py-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-all duration-200",
+                "flex items-center gap-3 w-full px-3 py-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-all duration-200 cursor-pointer",
                 isCollapsed && !isMobile ? "justify-center" : ""
               )}
             >

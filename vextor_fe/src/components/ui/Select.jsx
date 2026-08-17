@@ -169,7 +169,7 @@ const Select = React.forwardRef(({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: -4 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="absolute left-0 right-0 z-[100] mt-2 max-h-60 overflow-y-auto rounded-xl border border-v-dark-border bg-v-dark-soft/95 backdrop-blur-md p-1.5 shadow-xl shadow-black/40 custom-scrollbar focus:outline-none"
+            className="absolute left-0 right-0 z-100 mt-2 max-h-60 overflow-y-auto rounded-xl border border-v-dark-border bg-v-dark-soft/95 backdrop-blur-md p-1.5 shadow-xl shadow-black/40 custom-scrollbar focus:outline-none"
             role="listbox"
           >
             <div className="flex flex-col gap-1">

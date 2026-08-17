@@ -20,22 +20,20 @@ import {
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Select } from '../../components/ui/Select';
-import { driverService } from '../../services/driverService';
+import { driverService } from './services/driverService';
 import { cn } from '../../utils/cn';
 import { useTranslation } from 'react-i18next';
 
 const DRIVER_STATUSES = [
-  { value: 'ACTIVO', label: 'Activo', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
-  { value: 'INACTIVO', label: 'Inactivo', color: 'bg-red-500/10 text-red-500 border-red-500/20' },
-  { value: 'SUSPENDIDO', label: 'Suspendido', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' }
+  { value: 'DISPONIBLE', label: 'Disponible', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
+  { value: 'EN_RUTA', label: 'En Ruta', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+  { value: 'NO_DISPONIBLE', label: 'No Disponible', color: 'bg-slate-500/10 text-slate-400 border-slate-500/20' },
+  { value: 'ACTIVO', label: 'Activo', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
+  { value: 'INACTIVO', label: 'Inactivo', color: 'bg-red-500/10 text-red-400 border-red-500/20' },
+  { value: 'SUSPENDIDO', label: 'Suspendido', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20' }
 ];
 
-const LICENSE_TYPES = [
-  'Licencia Profesional Tipo C',
-  'Licencia Profesional Tipo D',
-  'Licencia Profesional Tipo E',
-  'Licencia No Profesional Tipo B'
-];
+const LICENSE_TYPES = ['A1', 'A2', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3'];
 
 const Drivers = () => {
   const { t } = useTranslation();
@@ -60,8 +58,8 @@ const Drivers = () => {
     apellido_conductor: '',
     cedula_conductor: '',
     telefono_conductor: '',
-    licencia: 'Licencia Profesional Tipo C',
-    estado_conductor: 'ACTIVO',
+    licencia: 'C2',
+    estado_conductor: 'DISPONIBLE',
     fecha_ingreso: ''
   });
   const [formErrors, setFormErrors] = useState({});
@@ -126,12 +124,15 @@ const Drivers = () => {
 
     if (!formData.cedula_conductor.trim()) {
       errors.cedula_conductor = 'La cédula es obligatoria';
-    } else if (!/^[0-9]{10,20}$/.test(formData.cedula_conductor.trim())) {
-      errors.cedula_conductor = 'Debe ser numérica de 10 a 20 dígitos';
+    } else if (!/^[0-9]{3,10}$/.test(formData.cedula_conductor.trim())) {
+      errors.cedula_conductor = 'Debe tener entre 3 y 10 dígitos (numéricos únicamente)';
     }
 
-    if (formData.telefono_conductor && formData.telefono_conductor.length > 20) {
-      errors.telefono_conductor = 'Máximo 20 caracteres';
+    if (formData.telefono_conductor) {
+      const cleanPhone = formData.telefono_conductor.replace(/\s+/g, '');
+      if (!/^(\+57|57)?3[0-9]{9}$/.test(cleanPhone)) {
+        errors.telefono_conductor = 'Formato de celular colombiano inválido. Debe tener 10 dígitos y comenzar con 3 (ej. 3123456789).';
+      }
     }
 
     if (!formData.fecha_ingreso) {
@@ -149,8 +150,8 @@ const Drivers = () => {
       apellido_conductor: '',
       cedula_conductor: '',
       telefono_conductor: '',
-      licencia: 'Licencia Profesional Tipo C',
-      estado_conductor: 'ACTIVO',
+      licencia: 'C2',
+      estado_conductor: 'DISPONIBLE',
       fecha_ingreso: new Date().toISOString().split('T')[0]
     });
     setFormErrors({});
@@ -229,7 +230,7 @@ const Drivers = () => {
 
   // Filter & Search Logic
   const filteredDrivers = drivers.filter(driver => {
-    const query = search.toLowerCase();
+    const query = search.trim().toLowerCase();
     const matchesSearch =
       driver.nombre_conductor.toLowerCase().includes(query) ||
       driver.apellido_conductor.toLowerCase().includes(query) ||

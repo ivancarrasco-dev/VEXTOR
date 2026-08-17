@@ -1,18 +1,49 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List
+from sqlalchemy.exc import IntegrityError
+from typing import List, Optional
 from uuid import UUID, uuid4
-from .database import get_db
-from . import models, schemas
+from database import get_db
+import models, schemas
+from router_auth import get_current_user, require_admin
+from router_activities import record_activity, create_notification
+
+import re
 
 router = APIRouter(prefix="/api/drivers", tags=["Drivers"])
 
+def validate_colombian_phone(phone: str):
+    if not phone:
+        return
+    clean_phone = re.sub(r"\s+", "", phone)
+    pattern = r"^(\+57|57)?3[0-9]{9}$"
+    if not re.match(pattern, clean_phone):
+        raise HTTPException(
+            status_code=400,
+            detail="Formato de celular inválido en Colombia. Debe tener 10 dígitos y comenzar con 3 (ej. 3123456789)."
+        )
+
+def validate_colombian_cedula(cedula: str):
+    pattern = r"^[0-9]{3,10}$"
+    if not re.match(pattern, cedula.strip()):
+        raise HTTPException(
+            status_code=400,
+            detail="Formato de cédula de ciudadanía inválido en Colombia. Debe contener únicamente de 3 a 10 dígitos numéricos."
+        )
+
 @router.get("", response_model=List[schemas.Conductor])
-def get_drivers(db: Session = Depends(get_db)):
-    return db.query(models.Conductor).all()
+def get_drivers(estado_conductor: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(models.Conductor)
+    if estado_conductor:
+        query = query.filter(models.Conductor.estado_conductor == estado_conductor)
+    return query.all()
 
 @router.post("", response_model=schemas.Conductor)
-def create_driver(driver: schemas.ConductorCreate, db: Session = Depends(get_db)):
+def create_driver(driver: schemas.ConductorCreate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_admin)):
+    # Colombian driver validations
+    validate_colombian_cedula(driver.cedula_conductor)
+    validate_colombian_phone(driver.telefono_conductor)
+
     # Check duplicate cedula
     db_cond = db.query(models.Conductor).filter(models.Conductor.cedula_conductor == driver.cedula_conductor).first()
     if db_cond:
@@ -21,7 +52,6 @@ def create_driver(driver: schemas.ConductorCreate, db: Session = Depends(get_db)
             detail="La cédula ingresada ya está registrada."
         )
         
-
     # Resolve or create Rol for Conductor
     rol = db.query(models.Rol).filter(models.Rol.nombre_rol == "rol-conductor").first()
     if not rol:
@@ -56,15 +86,23 @@ def create_driver(driver: schemas.ConductorCreate, db: Session = Depends(get_db)
     db.add(new_cond)
     db.commit()
     db.refresh(new_cond)
+
+    # Record Activity & Create Notification
+    user_name = f"{current_user.nombres_usuario} {current_user.apellidos_usuario}".strip()
+    cond_name = f"{new_cond.nombre_conductor} {new_cond.apellido_conductor}"
+    record_activity(db, current_user.id_usuario, user_name, "CREAR", "Conductores", f"Registró al conductor {cond_name} con cédula {new_cond.cedula_conductor}.", str(new_cond.id_conductor))
+    create_notification(db, "Conductor registrado", f"El conductor {cond_name} fue registrado por {user_name}.", "conductor")
+
     return new_cond
 
 @router.put("/{id_conductor}", response_model=schemas.Conductor)
-def update_driver(id_conductor: UUID, driver_data: schemas.ConductorUpdate, db: Session = Depends(get_db)):
+def update_driver(id_conductor: UUID, driver_data: schemas.ConductorUpdate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_admin)):
     db_cond = db.query(models.Conductor).filter(models.Conductor.id_conductor == id_conductor).first()
     if not db_cond:
         raise HTTPException(status_code=404, detail="Conductor no encontrado.")
 
     if driver_data.cedula_conductor:
+        validate_colombian_cedula(driver_data.cedula_conductor)
         cedula_exists = db.query(models.Conductor).filter(
             models.Conductor.id_conductor != id_conductor,
             models.Conductor.cedula_conductor == driver_data.cedula_conductor
@@ -74,6 +112,9 @@ def update_driver(id_conductor: UUID, driver_data: schemas.ConductorUpdate, db: 
                 status_code=400,
                 detail="La cédula ingresada ya está registrada en otro conductor."
             )
+
+    if driver_data.telefono_conductor is not None:
+        validate_colombian_phone(driver_data.telefono_conductor)
 
     update_dict = driver_data.model_dump(exclude_unset=True)
     for key, value in update_dict.items():
@@ -93,20 +134,61 @@ def update_driver(id_conductor: UUID, driver_data: schemas.ConductorUpdate, db: 
 
     db.commit()
     db.refresh(db_cond)
+
+    # Record Activity
+    user_name = f"{current_user.nombres_usuario} {current_user.apellidos_usuario}".strip()
+    cond_name = f"{db_cond.nombre_conductor} {db_cond.apellido_conductor}"
+    record_activity(db, current_user.id_usuario, user_name, "EDITAR", "Conductores", f"Editó al conductor {cond_name}.", str(db_cond.id_conductor))
+
     return db_cond
 
 @router.delete("/{id_conductor}")
-def delete_driver(id_conductor: UUID, db: Session = Depends(get_db)):
+def delete_driver(id_conductor: UUID, db: Session = Depends(get_db), current_user: models.Usuario = Depends(require_admin)):
     db_cond = db.query(models.Conductor).filter(models.Conductor.id_conductor == id_conductor).first()
     if not db_cond:
         raise HTTPException(status_code=404, detail="Conductor no encontrado.")
 
+    # Check if assigned to an active or scheduled route
+    active_route_asig = db.query(models.AsignacionConductor).join(models.Ruta).filter(
+        models.AsignacionConductor.id_conductor == id_conductor,
+        models.Ruta.estado_ruta.in_(["PROGRAMADA", "EN_PROCESO", "EN_CURSO"])
+    ).first()
+    if active_route_asig:
+        raise HTTPException(
+            status_code=400,
+            detail="El conductor no se puede eliminar porque tiene una ruta activa o programada actualmente."
+        )
+
     # Remove the associated user account
     db_user = db.query(models.Usuario).filter(models.Usuario.id_usuario == db_cond.id_usuario).first()
 
-    db.delete(db_cond)
-    if db_user:
-        db.delete(db_user)
+    cond_name_deleted = f"{db_cond.nombre_conductor} {db_cond.apellido_conductor}"
+    cedula_deleted = db_cond.cedula_conductor
 
-    db.commit()
+    try:
+        # Clean up historical assignments, trackings, and novedades
+        db.query(models.AsignacionConductor).filter(models.AsignacionConductor.id_conductor == id_conductor).delete()
+        db.query(models.SeguimientoRuta).filter(models.SeguimientoRuta.id_conductor == id_conductor).delete()
+        db.query(models.Novedad).filter(models.Novedad.id_conductor == id_conductor).delete()
+
+        db.delete(db_cond)
+        if db_user:
+            db.query(models.SesionUsuario).filter(models.SesionUsuario.id_usuario == db_user.id_usuario).delete()
+            db.query(models.Notificacion).filter(models.Notificacion.id_usuario == db_user.id_usuario).delete()
+            db.delete(db_user)
+
+        db.commit()
+
+        # Record Activity & Create Notification
+        user_name = f"{current_user.nombres_usuario} {current_user.apellidos_usuario}".strip()
+        record_activity(db, current_user.id_usuario, user_name, "ELIMINAR", "Conductores", f"Eliminó al conductor {cond_name_deleted} (Cédula: {cedula_deleted}).", str(id_conductor))
+        create_notification(db, "Conductor eliminado", f"El conductor {cond_name_deleted} fue eliminado por {user_name}.", "conductor")
+
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="No se puede eliminar el conductor debido a restricciones relacionales en el sistema."
+        )
+
     return {"message": "Conductor eliminado con éxito"}

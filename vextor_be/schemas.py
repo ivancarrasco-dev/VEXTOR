@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field
 from uuid import UUID
 from datetime import date, datetime
-from typing import Optional, List
+from typing import Literal, Optional, List
 
 # --- ROL ---
 class RolBase(BaseModel):
@@ -17,6 +17,93 @@ class Rol(RolBase):
     class Config:
         from_attributes = True
 
+# --- EMPRESA ---
+class EmpresaBase(BaseModel):
+    name: str = Field(..., max_length=100)
+    nit: str = Field(..., max_length=50)
+    address: Optional[str] = Field(None, max_length=255)
+    city: Optional[str] = Field(None, max_length=100)
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = Field(None, max_length=50)
+    retention_days: Optional[int] = 30
+
+class EmpresaCreate(EmpresaBase):
+    pass
+
+class EmpresaUpdate(BaseModel):
+    name: Optional[str] = Field(None, max_length=100)
+    nit: Optional[str] = Field(None, max_length=50)
+    address: Optional[str] = Field(None, max_length=255)
+    city: Optional[str] = Field(None, max_length=100)
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = Field(None, max_length=50)
+    retention_days: Optional[int] = None
+
+class Empresa(EmpresaBase):
+    id_empresa: UUID
+
+    class Config:
+        from_attributes = True
+
+# --- ACTIVIDAD ---
+class ActividadBase(BaseModel):
+    tipo_accion: str
+    modulo: str
+    descripcion: str
+    id_registro_afectado: Optional[str] = None
+    ip_origen: Optional[str] = None
+    resultado: str = "EXITOSO"
+
+class ActividadCreate(ActividadBase):
+    id_usuario: Optional[UUID] = None
+    nombres_usuario: Optional[str] = None
+
+class Actividad(ActividadBase):
+    id_actividad: UUID
+    id_usuario: Optional[UUID] = None
+    nombres_usuario: Optional[str] = None
+    fecha_hora: datetime
+
+    class Config:
+        from_attributes = True
+
+# --- SESION USUARIO ---
+class SesionUsuarioOut(BaseModel):
+    id_sesion: UUID
+    id_usuario: UUID
+    ip_origen: Optional[str] = None
+    dispositivo: Optional[str] = None
+    user_agent: Optional[str] = None
+    fecha_inicio: datetime
+    ultima_actividad: datetime
+    estado_sesion: str
+    is_current: bool = False
+
+    class Config:
+        from_attributes = True
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+# --- NOTIFICACION ---
+class NotificacionBase(BaseModel):
+    titulo: str
+    descripcion: str
+    tipo: str
+
+class NotificacionCreate(NotificacionBase):
+    id_usuario: Optional[UUID] = None
+
+class Notificacion(NotificacionBase):
+    id_notificacion: UUID
+    id_usuario: Optional[UUID] = None
+    fecha_hora: datetime
+    leido: bool
+
+    class Config:
+        from_attributes = True
+
 
 # --- USUARIO ---
 class UsuarioBase(BaseModel):
@@ -25,6 +112,7 @@ class UsuarioBase(BaseModel):
     correo_usuario: EmailStr
     telefono_usuario: Optional[str] = Field(None, max_length=20)
     estado_usuario: str = Field("ACTIVO", max_length=20)
+    foto_perfil: Optional[str] = None
 
 class UsuarioCreate(UsuarioBase):
     id_rol: UUID
@@ -36,6 +124,7 @@ class UsuarioUpdate(BaseModel):
     correo_usuario: Optional[EmailStr] = None
     telefono_usuario: Optional[str] = Field(None, max_length=20)
     estado_usuario: Optional[str] = Field(None, max_length=20)
+    foto_perfil: Optional[str] = None
 
 class Usuario(UsuarioBase):
     id_usuario: UUID
@@ -151,6 +240,70 @@ class Ruta(RutaBase):
         from_attributes = True
 
 
+# --- SEGUIMIENTO Y UBICACION ---
+class UbicacionUpdate(BaseModel):
+    id_ruta: UUID
+    latitud: float
+    longitud: float
+    velocidad: Optional[float] = 0.0
+    heading: Optional[float] = 0.0
+
+class SeguimientoRutaOut(BaseModel):
+    id_seguimiento: UUID
+    id_ruta: UUID
+    id_conductor: UUID
+    id_vehiculo: UUID
+    latitud: float
+    longitud: float
+    velocidad: Optional[float] = 0.0
+    heading: Optional[float] = 0.0
+    ultima_actualizacion: datetime
+    estado_seguimiento: str
+    nombre_conductor: Optional[str] = None
+    placa_vehiculo: Optional[str] = None
+    nombre_ruta: Optional[str] = None
+    codigo_ruta: Optional[str] = None
+    origen: Optional[str] = None
+    destino: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+# --- ROUTING / OSRM ---
+class RoutingPoint(BaseModel):
+    lat: float = Field(..., ge=-90, le=90)
+    lng: float = Field(..., ge=-180, le=180)
+
+
+class RoutingRouteRequest(BaseModel):
+    origin: RoutingPoint
+    destination: RoutingPoint
+    profile: Literal["driving", "cycling", "walking"] = "driving"
+
+
+class RoutingInstruction(BaseModel):
+    text: str
+    distance: float
+    duration: float
+    type: str
+
+
+class RoutingGeometry(BaseModel):
+    type: Literal["LineString"]
+    coordinates: List[List[float]]
+
+
+class RoutingRouteResponse(BaseModel):
+    distance: float
+    duration: float
+    geometry: RoutingGeometry
+    instructions: List[RoutingInstruction]
+
+
+class RoutingHealth(BaseModel):
+    status: Literal["available"]
+
 # --- MANTENIMIENTO ---
 class MantenimientoBase(BaseModel):
     id_vehiculo: UUID
@@ -163,7 +316,6 @@ class MantenimientoBase(BaseModel):
 
 class MantenimientoCreate(MantenimientoBase):
     pass
-
 class MantenimientoUpdate(BaseModel):
     id_vehiculo: Optional[UUID] = None
     tipo_mantenimiento: Optional[str] = Field(None, max_length=50)

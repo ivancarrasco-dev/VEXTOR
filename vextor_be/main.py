@@ -1,18 +1,131 @@
 import random
 import uuid
+import unicodedata
 from datetime import date, datetime, timedelta
-from fastapi import FastAPI
+from pathlib import Path
+from dotenv import load_dotenv
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from sqlalchemy import text
+from typing import List
 
-from .database import engine, SessionLocal
-from . import models
-from .router_vehicles import router as vehicles_router
-from .router_drivers import router as drivers_router
-from .router_routes import router as routes_router
-from .router_maintenance import router as maintenance_router
+# Carga la configuración local antes de inicializar la base de datos y los servicios.
+# Las variables ya definidas por el entorno tienen prioridad sobre el archivo .env.
+load_dotenv(Path(__file__).with_name(".env"))
+
+from database import engine, SessionLocal
+import models
+from router_vehicles import router as vehicles_router
+from router_drivers import router as drivers_router
+from router_routes import router as routes_router
+from router_maintenance import router as maintenance_router
+from router_auth import router as auth_router
+from router_company import router as company_router
+from router_users import router as users_router
+from router_activities import router as activities_router
+from router_security import router as security_router
+from router_reports import router as reports_router
+from router_routing import router as routing_router
 
 app = FastAPI(title="Vextor API", description="Backend para la gestión de flota y transporte de Vextor")
+
+# Real-time WebSocket Connection Manager
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: dict):
+        for connection in list(self.active_connections):
+            try:
+                await connection.send_json(message)
+            except Exception:
+                self.disconnect(connection)
+
+ws_manager = ConnectionManager()
+
+@app.websocket("/ws/tracking")
+async def websocket_tracking(websocket: WebSocket):
+    await ws_manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_json()
+            if data.get("type") == "location_update":
+                id_ruta_str = data.get("id_ruta")
+                lat = data.get("latitud")
+                lng = data.get("longitud")
+                speed = data.get("velocidad", 0.0)
+                heading = data.get("heading", 0.0)
+
+                if id_ruta_str and lat is not None and lng is not None:
+                    db = SessionLocal()
+                    try:
+                        id_ruta = uuid.UUID(id_ruta_str)
+                        seg = db.query(models.SeguimientoRuta).filter(models.SeguimientoRuta.id_ruta == id_ruta).first()
+                        now = datetime.now()
+                        if seg:
+                            seg.latitud = lat
+                            seg.longitud = lng
+                            seg.velocidad = speed
+                            seg.heading = heading
+                            seg.ultima_actualizacion = now
+                            seg.estado_seguimiento = "ACTIVO"
+                            db.commit()
+
+                            hist = models.HistorialUbicacion(
+                                id_seguimiento=seg.id_seguimiento,
+                                id_ruta=id_ruta,
+                                latitud=lat,
+                                longitud=lng,
+                                velocidad=speed,
+                                fecha_hora=now
+                            )
+                            db.add(hist)
+                            db.commit()
+
+                            route = db.query(models.Ruta).filter(models.Ruta.id_ruta == id_ruta).first()
+                            conductor = db.query(models.Conductor).filter(models.Conductor.id_conductor == seg.id_conductor).first()
+                            vehiculo = db.query(models.Vehiculo).filter(models.Vehiculo.id_vehiculo == seg.id_vehiculo).first()
+
+                            broadcast_payload = {
+                                "type": "location_broadcast",
+                                "id_ruta": id_ruta_str,
+                                "codigo_ruta": route.codigo_ruta if route else "",
+                                "nombre_ruta": route.nombre_ruta if route else "",
+                                "latitud": float(lat),
+                                "longitud": float(lng),
+                                "velocidad": float(speed),
+                                "heading": float(heading),
+                                "ultima_actualizacion": now.isoformat(),
+                                "conductor": {
+                                    "id_conductor": str(conductor.id_conductor) if conductor else None,
+                                    "nombre": f"{conductor.nombre_conductor} {conductor.apellido_conductor}" if conductor else "Conductor"
+                                },
+                                "vehiculo": {
+                                    "id_vehiculo": str(vehiculo.id_vehiculo) if vehiculo else None,
+                                    "placa": vehiculo.placa if vehiculo else "N/A"
+                                }
+                            }
+                            await ws_manager.broadcast(broadcast_payload)
+                    except Exception as e:
+                        print(f"Error updating location via WS: {e}")
+                    finally:
+                        db.close()
+            elif data.get("type") == "ping":
+                await websocket.send_json({"type": "pong"})
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket)
+    except Exception as e:
+        print(f"WebSocket exception: {e}")
+        ws_manager.disconnect(websocket)
 
 @app.get("/")
 def root():
@@ -24,31 +137,52 @@ def root():
 # Setup CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all or restrict as needed e.g., ["http://localhost:5173"]
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
 # Include routers
+app.include_router(auth_router)
+app.include_router(company_router)
+app.include_router(users_router)
 app.include_router(vehicles_router)
+app.include_router(activities_router)
+app.include_router(security_router)
 app.include_router(drivers_router)
 app.include_router(routes_router)
+app.include_router(routing_router)
 app.include_router(maintenance_router)
+app.include_router(reports_router)
 
 
 # Database Seeding/Initialization on startup
 @app.on_event("startup")
 def startup_populate():
+    # Automatically create missing database tables in PostgreSQL
+    try:
+        models.Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        print("Table creation note:", e)
+
+    # Update DB Constraints for Conductor table if necessary
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE conductor DROP CONSTRAINT IF EXISTS chk_estado_conductor;"))
+            conn.execute(text("ALTER TABLE conductor ADD CONSTRAINT chk_estado_conductor CHECK (estado_conductor IN ('DISPONIBLE', 'EN_RUTA', 'NO_DISPONIBLE', 'ACTIVO', 'INACTIVO', 'SUSPENDIDO'));"))
+            conn.commit()
+    except Exception as e:
+        print("Constraint migration note:", e)
+
     db = SessionLocal()
     try:
         # Check if Rol has any records
         if db.query(models.Rol).count() == 0:
             rol_admin = models.Rol(
                 id_rol=uuid.UUID("11111111-2222-3333-4444-555555555551"),
-                nombre_rol="Super Administrador",
-                descripcion_rol="Administrador de todo el sistema Vextor"
+                nombre_rol="Administrador",
+                descripcion_rol="Administrador del sistema Vextor"
             )
             rol_conductor = models.Rol(
                 id_rol=uuid.UUID("11111111-2222-3333-4444-555555555552"),
@@ -60,7 +194,7 @@ def startup_populate():
 
         # Check if Usuario has any records
         if db.query(models.Usuario).count() == 0:
-            rol_admin = db.query(models.Rol).filter(models.Rol.nombre_rol == "Super Administrador").first()
+            rol_admin = db.query(models.Rol).filter(models.Rol.nombre_rol == "Administrador").first()
             admin_user = models.Usuario(
                 id_usuario=uuid.UUID("abc12345-6789-4000-b000-000000000002"),
                 id_rol=rol_admin.id_rol,
@@ -152,18 +286,22 @@ def startup_populate():
 
             # Special driver
             special_user_id = uuid.UUID("abc12345-6789-4000-b000-000000000001")
-            special_user = models.Usuario(
-                id_usuario=special_user_id,
-                id_rol=rol_conductor.id_rol,
-                nombres_usuario="Juan",
-                apellidos_usuario="Pérez",
-                correo_usuario="juan.perez@vextor.com",
-                contrasenia_usuario="pbkdf2:sha256:123456",
-                telefono_usuario="+593 98 765 4321",
-                estado_usuario="ACTIVO"
-            )
-            db.add(special_user)
-            db.commit()
+            
+            # Validar si el usuario ya existe en la BD antes de intentar insertarlo
+            special_user = db.query(models.Usuario).filter(models.Usuario.id_usuario == special_user_id).first()
+            if not special_user:
+                special_user = models.Usuario(
+                    id_usuario=special_user_id,
+                    id_rol=rol_conductor.id_rol,
+                    nombres_usuario="Juan",
+                    apellidos_usuario="Pérez",
+                    correo_usuario="juan.perez@vextor.com",
+                    contrasenia_usuario="pbkdf2:sha256:123456",
+                    telefono_usuario="+593 98 765 4321",
+                    estado_usuario="ACTIVO"
+                )
+                db.add(special_user)
+                db.commit()
 
             special_cond = models.Conductor(
                 id_conductor=uuid.UUID("abc12345-6789-4000-c000-000000000001"),
@@ -172,8 +310,8 @@ def startup_populate():
                 apellido_conductor="Pérez",
                 cedula_conductor="1723456789",
                 telefono_conductor="+593 98 765 4321",
-                licencia="Licencia Profesional Tipo E",
-                estado_conductor="ACTIVO",
+                licencia="C2",
+                estado_conductor="DISPONIBLE",
                 fecha_ingreso=date(2021, 3, 15)
             )
             drivers_to_add.append(special_cond)
@@ -186,8 +324,7 @@ def startup_populate():
                 'Pérez', 'Mendoza', 'Rodríguez', 'Gómez', 'Castillo', 'Altamirano', 'Sánchez', 'López', 'Martínez', 'Ramírez',
                 'González', 'Alvarez', 'Torres', 'Fernández', 'Vargas', 'Herrera', 'Castro', 'Ríos', 'Guerrero', 'Ortega'
             ]
-            licenses = ['Licencia Profesional Tipo C', 'Licencia Profesional Tipo D', 'Licencia Profesional Tipo E', 'Licencia Tipo B']
-            cond_statuses = ['ACTIVO', 'INACTIVO', 'SUSPENDIDO']
+            licenses = ['A1', 'A2', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3']
             used_cedulas = {"1723456789"}
             used_emails = {"juan.perez@vextor.com", "admin@vextor.com"}
 
@@ -206,7 +343,6 @@ def startup_populate():
                 
                 # Make email unique
                 email = ""
-                import unicodedata
                 while True:
                     email_prefix = f"{f_name.lower()}.{l_name.lower()}"
                     email_prefix = "".join(c for c in unicodedata.normalize("NFD", email_prefix) if unicodedata.category(c) != "Mn")
@@ -236,13 +372,36 @@ def startup_populate():
                     cedula_conductor=cedula,
                     telefono_conductor=u.telefono_usuario,
                     licencia=random.choice(licenses),
-                    estado_conductor=random.choice(cond_statuses),
+                    estado_conductor="DISPONIBLE",
                     fecha_ingreso=date.today() - timedelta(days=random.randint(10, 1000))
                 )
                 drivers_to_add.append(c)
 
             db.add_all(drivers_to_add)
             db.commit()
+
+        # Normalize driver statuses for existing drivers
+        existing_drivers = db.query(models.Conductor).all()
+        for d in existing_drivers:
+            # Check if running active route
+            active_asig = db.query(models.AsignacionConductor).filter(
+                models.AsignacionConductor.id_conductor == d.id_conductor
+            ).all()
+            is_in_route = False
+            for asig in active_asig:
+                r = db.query(models.Ruta).filter(
+                    models.Ruta.id_ruta == asig.id_ruta,
+                    models.Ruta.estado_ruta == "EN_PROCESO"
+                ).first()
+                if r:
+                    is_in_route = True
+                    break
+
+            if is_in_route:
+                d.estado_conductor = "EN_RUTA"
+            elif d.estado_conductor in ("ACTIVO", None, "", "DESCONOCIDO"):
+                d.estado_conductor = "DISPONIBLE"
+        db.commit()
 
         # Seed Maintenances if empty
         if db.query(models.Mantenimiento).count() == 0:
@@ -277,43 +436,43 @@ def startup_populate():
             vehicles = db.query(models.Vehiculo).all()
             if drivers and vehicles:
                 routes_data = [
-    {
-        "id_ruta": uuid.UUID("11111111-1111-4000-a000-000000000001"),
-        "codigo_ruta": "RUT-101",
-        "nombre_ruta": "Ruta Portal Norte a Andino",
-        "origen": "4.7554, -74.0463",
-        "destino": "4.6669, -74.0528",
-        "fecha_programada": datetime.now() + timedelta(days=1),
-        "estado_ruta": "PROGRAMADA",
-        "id_conductor": drivers[0].id_conductor,
-        "id_vehiculo": vehicles[0].id_vehiculo
-    },
-    {
-        "id_ruta": uuid.UUID("22222222-2222-4000-a000-000000000002"),
-        "codigo_ruta": "RUT-102",
-        "nombre_ruta": "Ruta Portal 80 a Parque de la 93",
-        "origen": "4.7100, -74.1120",
-        "destino": "4.6768, -74.0483",
-        "fecha_programada": datetime.now(),
-        "hora_inicio_real": datetime.now() - timedelta(hours=1),
-        "estado_ruta": "EN_PROCESO",
-        "id_conductor": drivers[min(1, len(drivers)-1)].id_conductor,
-        "id_vehiculo": vehicles[min(1, len(vehicles)-1)].id_vehiculo
-    },
-    {
-        "id_ruta": uuid.UUID("33333333-3333-4000-a000-000000000003"),
-        "codigo_ruta": "RUT-103",
-        "nombre_ruta": "Ruta Terminal Salitre a Aeropuerto",
-        "origen": "4.6534, -74.1158",
-        "destino": "4.6975, -74.1411",
-        "fecha_programada": datetime.now() - timedelta(days=2),
-        "hora_inicio_real": datetime.now() - timedelta(days=2, hours=1),
-        "hora_fin_real": datetime.now() - timedelta(days=2, minutes=30),
-        "estado_ruta": "COMPLETADA",
-        "id_conductor": drivers[min(2, len(drivers)-1)].id_conductor,
-        "id_vehiculo": vehicles[min(2, len(vehicles)-1)].id_vehiculo
-    }
-]
+                    {
+                        "id_ruta": uuid.UUID("11111111-1111-4000-a000-000000000001"),
+                        "codigo_ruta": "RUT-101",
+                        "nombre_ruta": "Ruta Portal Norte a Andino",
+                        "origen": "4.7554, -74.0463",
+                        "destino": "4.6669, -74.0528",
+                        "fecha_programada": datetime.now() + timedelta(days=1),
+                        "estado_ruta": "PROGRAMADA",
+                        "id_conductor": drivers[0].id_conductor,
+                        "id_vehiculo": vehicles[0].id_vehiculo
+                    },
+                    {
+                        "id_ruta": uuid.UUID("22222222-2222-4000-a000-000000000002"),
+                        "codigo_ruta": "RUT-102",
+                        "nombre_ruta": "Ruta Portal 80 a Parque de la 93",
+                        "origen": "4.7100, -74.1120",
+                        "destino": "4.6768, -74.0483",
+                        "fecha_programada": datetime.now(),
+                        "hora_inicio_real": datetime.now() - timedelta(hours=1),
+                        "estado_ruta": "EN_PROCESO",
+                        "id_conductor": drivers[min(1, len(drivers)-1)].id_conductor,
+                        "id_vehiculo": vehicles[min(1, len(vehicles)-1)].id_vehiculo
+                    },
+                    {
+                        "id_ruta": uuid.UUID("33333333-3333-4000-a000-000000000003"),
+                        "codigo_ruta": "RUT-103",
+                        "nombre_ruta": "Ruta Terminal Salitre a Aeropuerto",
+                        "origen": "4.6534, -74.1158",
+                        "destino": "4.6975, -74.1411",
+                        "fecha_programada": datetime.now() - timedelta(days=2),
+                        "hora_inicio_real": datetime.now() - timedelta(days=2, hours=1),
+                        "hora_fin_real": datetime.now() - timedelta(days=2, minutes=30),
+                        "estado_ruta": "COMPLETADA",
+                        "id_conductor": drivers[min(2, len(drivers)-1)].id_conductor,
+                        "id_vehiculo": vehicles[min(2, len(vehicles)-1)].id_vehiculo
+                    }
+                ]
 
                 for rd in routes_data:
                     cond_id = rd.pop("id_conductor")

@@ -18,13 +18,13 @@ const CTASection = () => {
   return (
     <section className="py-24 bg-v-dark relative overflow-hidden">
       {/* Decorative Elements */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/20 blur-[120px] rounded-full -z-10 animate-pulse" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-150 h-150 bg-primary/20 blur-[120px] rounded-full -z-10 animate-pulse" />
 
       <div className="container mx-auto px-6">
         <div className="max-w-5xl mx-auto">
           <div className="relative bg-v-dark-soft border border-v-white/10 rounded-[48px] p-12 md:p-20 overflow-hidden text-center">
             {/* Background Texture */}
-            <div className="absolute inset-0 opacity-5 pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:20px_20px]" />
+            <div className="absolute inset-0 opacity-5 pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] bg-size-[20px_20px]" />
 
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}

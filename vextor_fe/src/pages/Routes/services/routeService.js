@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 const API_URL = 'http://localhost:8000/api/routes';
+const ROUTING_API_URL = 'http://localhost:8000/api/routing';
 
 export const routeService = {
   async getRoutes() {
@@ -28,6 +29,7 @@ export const routeService = {
         id_conductor: routeData.id_conductor,
         id_vehiculo: routeData.id_vehiculo
       };
+      
       const response = await axios.post(API_URL, formattedData);
       return response.data;
     } catch (error) {
@@ -65,6 +67,30 @@ export const routeService = {
       return true;
     } catch (error) {
       const message = error.response?.data?.detail || 'Error al eliminar la ruta.';
+      throw new Error(message);
+    }
+  },
+
+  async getActiveTracking() {
+    try {
+      const response = await axios.get(`${API_URL}/active-tracking`);
+      return response.data;
+    } catch (error) {
+      console.warn('Error fetching active trackings:', error);
+      return [];
+    }
+  },
+
+  async calculateRoute({ origin, destination, profile = 'driving' }) {
+    try {
+      const response = await axios.post(`${ROUTING_API_URL}/route`, {
+        origin: { lat: origin[0], lng: origin[1] },
+        destination: { lat: destination[0], lng: destination[1] },
+        profile
+      });
+      return response.data;
+    } catch (error) {
+      const message = error.response?.data?.detail || 'No fue posible calcular la ruta.';
       throw new Error(message);
     }
   }

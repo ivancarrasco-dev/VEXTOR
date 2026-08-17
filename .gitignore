@@ -1,0 +1,15 @@
+# Configuración local y credenciales
+.env
+.env.*
+!.env.example
+vextor_be/.env
+vextor_be/.env.*
+!vextor_be/.env.example
+
+# Artefactos locales
+.pnpm-store/
+vextor_fe/node_modules/
+vextor_fe/dist/
+vextor_be/.venv/
+__pycache__/
+*.py[cod]

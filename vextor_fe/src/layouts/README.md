@@ -1,6 +1,22 @@
-# Layouts
+# Envoltorios de Diseño (Layouts) - `src/layouts/`
 
-Contenedores de alto nivel que definen la envolvente visual de las páginas.
+Los layouts estructuran visualmente las páginas protegidas de VEXTOR.
 
-## Contenido
-* `DashboardLayout.jsx`: Estructura base para el panel de control, integrando Sidebar, Navbar y el área de contenido principal.
+---
+
+## 1. Componentes
+
+### `DashboardLayout.jsx`
+- **Propósito:** Envoltorio principal para la SPA autenticada.
+- **Estructura Visual:**
+  ```text
+  ┌─────────────────────────────────────────────────────────────┐
+  │ Sidebar     │ Navbar (Búsqueda, Notificaciones, UserMenu)   │
+  │ (Framer     ├─────────────────────────────────────────────┤
+  │ Motion)     │                                             │
+  │             │               <Outlet />                    │
+  │             │      (Página hija activa renderizada)       │
+  │             │                                             │
+  └─────────────┴─────────────────────────────────────────────┘
+  ```
+- **Responsabilidad:** Gestiona la sincronización del estado colapsado/expandido de la barra lateral (`Sidebar`) mediante breakpoints de pantalla (`isMobile`) y renderiza la barra superior (`Navbar`).

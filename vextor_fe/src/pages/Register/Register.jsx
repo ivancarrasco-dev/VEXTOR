@@ -48,16 +48,20 @@ const Register = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.fullName) newErrors.fullName = 'El nombre es obligatorio';
-    if (!formData.email) {
+    if (!formData.fullName.trim() || formData.fullName.trim().length < 2) {
+      newErrors.fullName = 'El nombre completo es obligatorio (mínimo 2 caracteres)';
+    }
+    if (!formData.email.trim()) {
       newErrors.email = 'El correo es obligatorio';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Correo inválido';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      newErrors.email = 'Ingrese un correo electrónico válido';
     }
     if (!formData.password) {
       newErrors.password = 'La contraseña es obligatoria';
     } else if (formData.password.length < 8) {
       newErrors.password = 'Mínimo 8 caracteres';
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
+      newErrors.password = 'Debe incluir al menos una mayúscula, minúscula y número';
     }
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Las contraseñas no coinciden';
@@ -83,8 +87,8 @@ const Register = () => {
         password: formData.password
       });
       navigate('/dashboard');
-    } catch {
-      setErrors({ form: 'Error al crear la cuenta.' });
+    } catch (err) {
+      setErrors({ form: err.message || 'Error al crear la cuenta.' });
     } finally {
       setIsLoading(false);
     }
@@ -180,6 +184,11 @@ const Register = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            {errors.form && (
+              <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-xl">
+                {errors.form}
+              </div>
+            )}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}

@@ -1,54 +1,70 @@
-# Vextor - Gestión Inteligente de Flotas
+# Documentación del Frontend - VEXTOR (`vextor_fe`)
 
-Vextor es una plataforma SaaS premium diseñada para modernizar la gestión operativa de empresas de transporte especial. Este proyecto reemplaza procesos manuales (papel, Excel, WhatsApp) con un sistema centralizado, seguro y eficiente.
+El cliente web de VEXTOR está construido con **React 19**, **Vite** como empaquetador, **Tailwind CSS v4** para estilos utilitarios responsive y soporte dinamico para temas (modo claro/oscuro), **Framer Motion** para animaciones y transiciones de interfaz, y **Leaflet** para el mapeo interactivo y seguimiento GPS en tiempo real.
 
-## 🚀 Tecnologías Core
-* **React 19:** Biblioteca base para la interfaz.
-* **Tailwind CSS v4:** Motor de estilos de última generación para un diseño ultra-rápido y mantenible.
-* **Framer Motion:** Animaciones suaves y microinteracciones de nivel premium.
-* **Lucide React:** Set de iconos consistente y moderno.
-* **React Router v7:** Gestión de navegación y protección de rutas.
+---
 
-## 🎨 Identidad Visual
-Vextor utiliza una paleta de colores basada en **"Emerald & Slate"**:
-* **Emerald-500:** Utilizado exclusivamente para acciones primarias, estados positivos e indicadores visuales.
-* **Slate-900/800:** Tonos oscuros que transmiten confianza, estabilidad y profesionalismo empresarial.
+## 1. Estructura de Directorios
 
-## 📂 Arquitectura del Proyecto
-El proyecto sigue una estructura modular y escalable:
-
-* `src/assets/`: Recursos estáticos (Logos, imágenes).
-* `src/components/`:
-    * `ui/`: Componentes atómicos reutilizables (Botones, Inputs).
-    * `layout/`: Estructura global (Sidebar, Navbar).
-    * `dashboard/`: Componentes específicos del panel operativo.
-* `src/pages/`: Contenedores de página organizados por módulo funcional.
-* `src/layouts/`: Plantillas de estructura de alto nivel.
-* `src/routes/`: Configuración centralizada de navegación.
-* `src/utils/`: Funciones de ayuda y lógica compartida.
-* `src/styles/`: Configuración global de estilos y temas.
-
-## 🛠️ Ejecución y Desarrollo
-
-### Instalación de dependencias
-```bash
-npm install
+```text
+vextor_fe/
+├── src/
+│   ├── assets/           # Imágenes corporativas (logos, isotipos, SVGs)
+│   ├── components/       # Componentes visuales reutilizables (UI y Layout)
+│   │   ├── layout/       # Sidebar, Navbar, NavbarSearch, UserMenu, NotificationButton
+│   │   └── ui/           # Button, Input, Select, Checkbox, Logo, ThemeToggle
+│   ├── context/          # Estados globales (AuthContext, ThemeContext)
+│   ├── hooks/            # Hooks personalizados (useTheme, etc.)
+│   ├── i18n/             # Configuración de internacionalización y traducciones (es, en)
+│   ├── layouts/          # Envoltorios de páginas principales (DashboardLayout)
+│   ├── pages/            # Módulos y páginas de la aplicación
+│   │   ├── Dashboard/    # Resumen métrico y actividad reciente
+│   │   ├── Vehicles/     # Gestión del parque automotor
+│   │   ├── Drivers/      # Administración de conductores y licencias
+│   │   ├── Routes/       # Programación de rutas y mapa en tiempo real (Admin)
+│   │   ├── Driver/       # Vista operativa del conductor (MyRoutes, ActiveRoutePage)
+│   │   ├── Maintenance/  # Registro de mantenimientos y taller (COP)
+│   │   ├── Reports/      # Centro de reportes y exportación (PDF, CSV, Excel)
+│   │   ├── Settings/     # Configuración modular (Perfil, Empresa, Usuarios, Seguridad, Auditoría, etc.)
+│   │   ├── Landing/      # Página pública de presentación comercial
+│   │   ├── Login/        # Inicio de sesión
+│   │   ├── Register/     # Registro de usuarios
+│   │   ├── ForgotPassword/ # Solicitud de recuperación de clave
+│   │   └── ResetPassword/  # Restablecimiento de clave
+│   ├── routes/           # Configuración de React Router (AppRouter, ProtectedRoute)
+│   ├── services/         # Clientes HTTP centralizados (vehicleService, routeService, etc.)
+│   ├── styles/           # Configuración global de CSS
+│   ├── utils/            # Utilidades generales (cn.js, sweetalert.js)
+│   ├── App.jsx           # Componente raíz
+│   └── main.jsx          # Punto de entrada de React DOM
+├── package.json          # Lista de dependencias y scripts de pnpm
+└── vite.config.js        # Configuración de Vite y plugins
 ```
 
-### Iniciar servidor de desarrollo
+---
+
+## 2. Tecnologías Principales
+
+- **React 19:** Biblioteca principal para la construcción de interfaces mediante componentes funcionales y hooks.
+- **Tailwind CSS v4:** Motor de estilos mediante clases utilitarias de alto rendimiento con selector dark mode `.dark`.
+- **Framer Motion:** Biblioteca para animaciones fluidas, colapsado de barra lateral y transiciones de páginas.
+- **Leaflet & React-Leaflet:** Renderizado de mapas vectoriales sin dependencias de claves de API de pago.
+- **SweetAlert2 (`sweetalert.js`):** Modales estilizados en tema oscuro/claro para confirmación de acciones destructivas o alertas.
+
+---
+
+## 3. Instalación y Ejecución Local
+
 ```bash
-npm run dev
+cd vextor_fe
+
+# Instalar dependencias con pnpm
+pnpm install
+
+# Iniciar servidor de desarrollo (Vite)
+pnpm run dev
+
+# Compilar para producción
+pnpm run build
 ```
-
-### Construcción para producción
-```bash
-npm run build
-```
-
-## 🔒 Próximos Pasos
-1. Implementación de módulos de gestión individual (Vehículos, Conductores).
-2. Integración de servicios de Backend / API.
-3. Configuración de estados globales (Context API / Redux).
-4. Implementación de notificaciones en tiempo real.
-
-Prueba de mi fork
+Servidor local por defecto: `http://localhost:5173`
