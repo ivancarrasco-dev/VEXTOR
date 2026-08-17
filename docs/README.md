@@ -15,6 +15,7 @@ Esta carpeta contiene la documentación detallada del sistema dividida por tópi
 | [DATABASE.md](./DATABASE.md) | Modelo relacional de PostgreSQL, esquemas de tablas, llaves primarias/foráneas, índices, disparadores y datos semilla. |
 | [FLOWS.md](./FLOWS.md) | Flujos funcionales de extremo a extremo (Autenticación, Gestión de Vehículos, Asignación y Operación de Rutas con GPS, Notificaciones y Auditoría). |
 | [SECURITY.md](./SECURITY.md) | Esquema de seguridad, autenticación JWT, manejo de cookies HttpOnly, sesiones dinámicas en BD, hash de contraseñas y validaciones colombianas. |
+| [OSRM.md](./OSRM.md) | Instancia propia de OSRM, datos de Colombia, Docker, configuración y pruebas de routing. |
 
 ---
 
