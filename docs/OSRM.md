@@ -1,126 +1,140 @@
-# OSRM propio para VEXTOR
+# Guía y Documentación de OSRM y Docker en VEXTOR
 
-## Propósito y arquitectura
+## 1. Conceptos Fundamentales
 
-[OSRM (Open Source Routing Machine)](https://project-osrm.org/) calcula recorridos sobre datos de OpenStreetMap. VEXTOR lo usa para obtener geometría vial, distancia, duración e indicaciones de una ruta de vehículos. No construye un motor de rutas propio.
+### ¿Qué es Docker?
+[Docker](https://www.docker.com/) es una plataforma de contenedorización que permite ejecutar aplicaciones dentro de entornos aislados e independientes llamados **contenedores**. Incluye todo lo necesario para que el software se ejecute: código, dependencias, librerías del sistema y configuraciones.
+
+### ¿Por qué VEXTOR utiliza Docker?
+VEXTOR utiliza Docker para levantar **OSRM (Open Source Routing Machine)**. OSRM requiere un compilado C++ específico de alto rendimiento con dependencias nativas del sistema operativo. Mediante Docker, cualquier integrante del equipo puede levantar OSRM en Windows, Linux o macOS utilizando exactamente la misma versión (`ghcr.io/project-osrm/osrm-backend:v26.7.3-debian`) sin necesidad de compilar C++ ni instalar paquetes complejos en su máquina host.
+
+### ¿Qué es OSRM?
+[OSRM (Open Source Routing Machine)](https://project-osrm.org/) es un motor de enrutamiento vial de código abierto diseñado para calcular el camino más rápido sobre la red de carreteras de OpenStreetMap. VEXTOR lo utiliza para obtener:
+1. **Geometría vial:** Coordenadas `LineString` exactas que siguen las calles reales de Colombia.
+2. **Métricas:** Distancia proyectada en metros y tiempo estimado de viaje en segundos.
+3. **Indicaciones giro a giro:** Pasos descriptivos ("Gira a la derecha por la Carrera 7", "Continúa por la Autopista Norte").
+
+### ¿Por qué VEXTOR tiene su propio servidor OSRM local (`localhost:5000`)?
+1. **Independencia y Disponibilidad:** El servidor demo público (`router.project-osrm.org`) no ofrece garantías de disponibilidad, impone límites de tasa de peticiones y puede caerse en cualquier momento.
+2. **Privacidad y Control:** Las consultas de rutas de la flota no se comparten con servidores de terceros.
+3. **Baja Latencia:** Las peticiones desde el backend local a `http://localhost:5000` responden en pocos milisegundos.
+
+---
+
+## 2. Arquitectura de Routing vs Base de Datos
+
+Es fundamental comprender la separación clara entre la infraestructura de enrutamiento y la persistencia de datos en VEXTOR:
 
 ```text
-React + Leaflet -> FastAPI (/api/routing/route) -> OSRM local -> datos OSM de Colombia
-                         |
-                         +-> PostgreSQL: rutas, asignaciones y telemetría
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            FLUJO DE ROUTING (MAPA)                          │
+│                                                                             │
+│   Frontend React ──► FastAPI (/api/routing/route) ──► OSRM Docker local     │
+│   (Vite SPA)         (Python 3.12 Backend)           (http://localhost:5000)│
+└─────────────────────────────────────────────────────────────────────────────┘
 
-GPS del conductor -> WebSocket /ws/tracking -> FastAPI -> mapa administrativo
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          FLUJO DE DATOS Y AUDITORÍA                         │
+│                                                                             │
+│   FastAPI Backend ───────────────► Supabase PostgreSQL                      │
+│   (SQLAlchemy ORM)                 (Base de datos remota / en la nube)      │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-El navegador nunca conoce la dirección de OSRM: `MapComponent` pide la ruta a FastAPI y solo renderiza el GeoJSON recibido con Leaflet. Esto reemplaza Leaflet Routing Machine para evitar controles imperativos duplicados y el error de desmontaje `removeLayer` asociado.
+**Puntos Clave:**
+- **Supabase contiene la Base de Datos PostgreSQL:** Almacena usuarios, vehículos, conductores, historiales, reportes, sesiones y asignación de rutas.
+- **OSRM NO está en Supabase:** OSRM es un servicio independiente enfocado únicamente en algoritmos de grafos viales.
+- **OSRM corre localmente mediante Docker:** Por este motivo, un desarrollador en un PC nuevo requiere instalar Docker Desktop y ejecutar la preparación de OSRM.
+- **No se requiere instalar PostgreSQL localmente:** Si VEXTOR está configurado con la cadena de conexión de Supabase en `DATABASE_URL`, la base de datos ya está disponible en la nube.
 
-No se usa `router.project-osrm.org`: es un servidor demo compartido, no una dependencia adecuada para producción ni una garantía de capacidad o disponibilidad.
+---
 
-## Datos y pipeline
+## 3. Estructura de `infra/osrm/` y Archivos Generados
 
-El extracto inicial es [`colombia-latest.osm.pbf` de Geofabrik](https://download.geofabrik.de/south-america/colombia.html), que contiene datos abiertos de OpenStreetMap para Colombia. La fuente se descarga bajo demanda y no se versiona en Git.
+La carpeta `infra/osrm/` contiene la configuración de Docker y los datos procesados:
 
-La configuración utiliza el pipeline MLD recomendado actualmente por el proyecto OSRM: `osrm-extract`, `osrm-partition`, `osrm-customize` y `osrm-routed --algorithm mld`. Es la alternativa moderna a `osrm-contract`; no incorpora tráfico ni datos sintéticos. Los tiempos provienen de los atributos y perfiles de conducción de OSM.
+```text
+infra/osrm/
+├── docker-compose.yml       # Definición de servicios Docker (osrm y osrm-tools)
+└── data/                    # Directorio de datos y grafo procesado (Ignorado en Git)
+    ├── colombia-latest.osm.pbf          # Extracto crudo de OpenStreetMap para Colombia
+    ├── colombia-latest.osrm              # Grafo de red vial extraído
+    ├── colombia-latest.osrm.properties   # Propiedades y metadatos del grafo
+    ├── colombia-latest.osrm.cells        # Particiones MLD
+    ├── colombia-latest.osrm.partition    # Estructura jerárquica MLD
+    └── colombia-latest.osrm.tls          # Tablas de giros y restricciones
+```
 
-## Requisitos locales
+### Explicación de los archivos:
+- **`colombia-latest.osm.pbf`:** Es el archivo fuente descargado de Geofabrik que contiene la información geográfica abierta de carreteras de Colombia (~150 MB a ~200 MB).
+- **Archivos `.osrm.*`:** Son los archivos binarios generados tras procesar el mapa con el algoritmo **MLD (Multi-Level Dijkstra)** (`osrm-extract`, `osrm-partition`, `osrm-customize`).
+- **¿Por qué ocupan espacio?** El procesamiento convierte las calles y nodos de todo Colombia en estructuras de datos indexadas en memoria rápida, generando entre 1.5 GB y 3 GB de archivos binarios.
+- **¿Por qué NO se suben a GitHub?** Ocupan gigabytes de espacio, son archivos binarios generados derivativamente y pueden ser regenerados automáticamente en cualquier equipo mediante el script `setup-osrm.ps1`. Por ello, están explícitamente incluidos en `.gitignore`.
 
-- Docker Desktop con contenedores Linux habilitados y al menos 15 GB libres en SSD.
-- Como punto de partida: 4 CPU y 8 GB de RAM disponibles para Docker. Ajusta al alza si habrá varias consultas concurrentes.
-- Conexión a Internet solo para descargar la imagen de OSRM y el extracto OSM. La operación normal del routing local no requiere un proveedor de rutas externo.
+---
 
-## Preparar Colombia por primera vez
+## 4. Funcionamiento del Script `setup-osrm.ps1`
 
-Desde la raíz del repositorio, en PowerShell:
+El script `setup-osrm.ps1` ubicado en la raíz del repositorio automatiza y simplifica la configuración de OSRM en cualquier PC con Windows/PowerShell.
 
+### Lo que hace el script paso a paso:
+1. **Verificación de Docker:** Comprueba que `docker` esté instalado y que Docker Desktop esté en ejecución (`docker info`). Si no lo está, le indica exactamente qué hacer al usuario.
+2. **Verificación de Docker Compose:** Confirma que `docker compose` esté disponible.
+3. **Directorio de datos:** Crea la carpeta `infra/osrm/data` si no existe.
+4. **Descarga de mapa:** Comprueba si ya existe `colombia-latest.osm.pbf`. Si ya existe, **no lo vuelve a descargar** (idempotente). Si no existe, lo descarga desde Geofabrik.
+5. **Verificación de Grafo Integro:** Comprueba la existencia de los múltiples archivos binarios del grafo (`.osrm`, `.properties`, `.cells`, `.partition`, `.tls`).
+   - **Primera vez:** Detecta que faltan los archivos del grafo, explica lo que sucederá y ejecuta secuencialmente los tres comandos MLD (`osrm-extract`, `osrm-partition`, `osrm-customize`).
+   - **Reejecuciones:** Detecta que el grafo ya está completo e íntegro, omite el procesamiento pesado y procede directamente a levantar el contenedor.
+6. **Despliegue del contenedor:** Ejecuta `docker compose up -d osrm`.
+7. **Prueba de Salud y Enrutamiento Real:** Realiza peticiones periódicas a `http://localhost:5000` con la ruta Bogotá-Medellín hasta que el servicio responda HTTP 200 OK con un JSON de ruta válido (`code: "Ok"`).
+8. **Resumen visual:** Imprime una tabla consolidada del estado del entorno.
+
+---
+
+## 5. Comandos Útiles y Gestión de OSRM
+
+### Verificar estado del contenedor
 ```powershell
-New-Item -ItemType Directory -Force infra/osrm/data
-Invoke-WebRequest `
-  -Uri 'https://download.geofabrik.de/south-america/colombia-latest.osm.pbf' `
-  -OutFile 'infra/osrm/data/colombia-latest.osm.pbf'
-
-docker compose -f infra/osrm/docker-compose.yml run --rm osrm-tools `
-  osrm-extract -p /opt/car.lua /data/colombia-latest.osm.pbf
-docker compose -f infra/osrm/docker-compose.yml run --rm osrm-tools `
-  osrm-partition /data/colombia-latest.osrm
-docker compose -f infra/osrm/docker-compose.yml run --rm osrm-tools `
-  osrm-customize /data/colombia-latest.osrm
+docker compose -f infra/osrm/docker-compose.yml ps
 ```
 
-El primer procesamiento puede tardar varios minutos y crear varios GB de archivos `colombia-latest.osrm*` en `infra/osrm/data/`. Deben prepararse siempre con la misma versión de imagen con la que se inicia `osrm-routed`.
-
-## Iniciar, detener y actualizar
-
-Inicia OSRM:
-
+### Ver logs del servidor OSRM en tiempo real
 ```powershell
-docker compose -f infra/osrm/docker-compose.yml up -d osrm
+docker compose -f infra/osrm/docker-compose.yml logs -f osrm
 ```
 
-Comprueba el servidor directamente:
-
-```powershell
-Invoke-RestMethod 'http://localhost:5000/nearest/v1/driving/-74.0721,4.7110?number=1'
-Invoke-RestMethod 'http://localhost:5000/route/v1/driving/-74.0721,4.7110;-75.5812,6.2442?overview=false'
-```
-
-Deténlo sin borrar datos:
-
+### Detener OSRM sin eliminar los datos
 ```powershell
 docker compose -f infra/osrm/docker-compose.yml stop osrm
 ```
 
-Para actualizar OSM, detén el servicio, sustituye `colombia-latest.osm.pbf`, vuelve a ejecutar los tres comandos del pipeline y levanta `osrm` de nuevo. No borres los archivos procesados mientras el contenedor esté corriendo.
-
-## Configurar VEXTOR
-
-En `vextor_be/.env` (o en el entorno que inicia Uvicorn) configura:
-
-```env
-# Desarrollo local: FastAPI se conecta al puerto publicado por Docker.
-OSRM_URL=http://localhost:5000
-OSRM_TIMEOUT_SECONDS=10
-```
-
-En producción `OSRM_URL` debe apuntar a la dirección privada o al nombre DNS interno de la instancia administrada por VEXTOR, por ejemplo `http://osrm:5000`. La variable solo la utiliza el backend en `services/osrm_client.py`; no existe una variable `VITE_*` para OSRM.
-
-`main.py` carga `vextor_be/.env` al arrancar mediante `python-dotenv`; instala o actualiza las dependencias del backend con `python -m pip install -r requirements.txt`. El archivo `.env` está ignorado por Git y no debe contener credenciales en archivos versionados.
-
-`DATABASE_URL` también es obligatoria para iniciar FastAPI. Los archivos `.env.example` solo contienen valores de ejemplo y no incluyen credenciales reutilizables.
-
-Inicia FastAPI y comprueba la integración:
-
+### Volver a iniciar OSRM (cuando los datos ya están procesados)
 ```powershell
-cd vextor_be
-uvicorn main:app --reload --port 8000
-
-Invoke-RestMethod http://localhost:8000/api/routing/health
-Invoke-RestMethod -Method Post http://localhost:8000/api/routing/route `
-  -ContentType 'application/json' `
-  -Body '{"origin":{"lat":4.7110,"lng":-74.0721},"destination":{"lat":6.2442,"lng":-75.5812},"profile":"driving"}'
+docker compose -f infra/osrm/docker-compose.yml start osrm
 ```
 
-La respuesta contiene distancia y duración en metros/segundos, geometría `LineString` GeoJSON e indicaciones. La interfaz convierte las unidades solo para mostrarlas.
+### Probar el endpoint directamente desde PowerShell
+```powershell
+Invoke-RestMethod 'http://localhost:5000/route/v1/driving/-74.0721,4.7110;-75.5812,6.2442?overview=false'
+```
 
-## Pruebas funcionales
+---
 
-1. Levanta OSRM y espera a que `/api/routing/health` responda `available`.
-2. Ejecuta la solicitud Bogotá–Medellín anterior y confirma `distance`, `duration` y `geometry.coordinates`.
-3. Inicia frontend y backend, selecciona origen/destino colombianos y comprueba la línea vial, métricas e indicaciones.
-4. Inicia/finaliza una ruta como conductor; verifica que GPS y `/ws/tracking` siguen actualizando la posición real, que es independiente de la geometría planificada.
-5. Recarga, cambia origen/destino y revisa la consola: ya no debe aparecer `Cannot read properties of null (reading 'removeLayer')` de Leaflet Routing Machine.
+## 6. Solución de Problemas Frecuentes (Troubleshooting)
 
-## Problemas comunes
+### Problema 1: "ERROR: Docker Desktop no esta ejecutandose" o `docker info` falla
+- **Síntoma:** El script `setup-osrm.ps1` se detiene en el paso 1 indicando error de Docker Engine.
+- **Causa:** La aplicación Docker Desktop está cerrada o el motor Docker aún se está iniciando.
+- **Solución:** Abre Docker Desktop desde el menú Inicio, espera a que la barra inferior indique "Docker Desktop is running" (ícono ballena azul estático) y vuelve a ejecutar el script.
 
-- **`503 No fue posible conectar`**: inicia el contenedor, confirma que el puerto 5000 está libre y revisa `docker compose ... logs osrm`.
-- **`422 OSRM no encontró una ruta`**: verifica que ambos puntos estén en Colombia y cerca de una vía enrutable; OSRM no puede rutear tramos no conectados.
-- **El contenedor sale al iniciar**: faltan archivos `.osrm*` o fueron generados con otra versión. Repite el pipeline con la imagen declarada en `docker-compose.yml`.
-- **Memoria insuficiente**: aumenta la memoria asignada a Docker, cierra aplicaciones pesadas y usa SSD para `infra/osrm/data`.
-- **Las direcciones no autocompletan**: el autocompletado y la geocodificación inversa actuales siguen usando Nominatim público y son independientes de OSRM.
+### Problema 2: "El puerto 5000 está ocupado" (`port is already allocated`)
+- **Síntoma:** Docker Compose reporta un conflicto de puertos al intentar levantar `osrm`.
+- **Causa:** Otra aplicación (como AirPlay en macOS o un servicio local en Windows) está utilizando el puerto 5000.
+- **Solución:**
+  1. Para identificar qué proceso usa el puerto en Windows: `netstat -ano | findstr :5000`
+  2. Si deseas cambiar el puerto de OSRM en VEXTOR, modifica el mapeo en `infra/osrm/docker-compose.yml` (por ejemplo `"5001:5000"`) y actualiza `OSRM_URL=http://localhost:5001` en `vextor_be/.env`.
 
-## Dependencias externas que permanecen
-
-- OpenStreetMap/Geofabrik: descarga periódica de datos.
-- Nominatim público: búsqueda y geocodificación de direcciones actual.
-- Proveedores de teselas Carto, OpenStreetMap, OpenTopoMap y Esri: representación base del mapa.
-
-Ninguno proporciona el cálculo de rutas de VEXTOR después de esta integración. El tráfico en tiempo real no está implementado ni simulado; requerirá una fuente de datos real y una fase de diseño separada.
+### Problema 3: OSRM se detiene al iniciar (`exit 1`)
+- **Síntoma:** El contenedor OSRM se crea pero se apaga inmediatamente.
+- **Causa:** Los archivos binarios en `infra/osrm/data/` están corruptos, incompletos o fueron procesados con una versión diferente de OSRM.
+- **Solución:** Elimina los archivos binarios de `infra/osrm/data/` (conservando `colombia-latest.osm.pbf`) y vuelve a ejecutar `setup-osrm.ps1` para forzar la regeneración del grafo.
