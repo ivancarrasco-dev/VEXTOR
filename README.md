@@ -1,15 +1,16 @@
-# VEXTOR - Plataforma SaaS de Gestión de Flotas Vehiculares
+# VEXTOR - Plataforma SaaS de Gestión de Flotas Vehiculares y Monitoreo Logístico
 
-[![React](https://img.shields.io/badge/Frontend-React%2019-blue.svg)](https://react.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Styles-Tailwind%20CSS%20v4-38bdf8.svg)](https://tailwindcss.com/)
+[![React 19](https://img.shields.io/badge/Frontend-React%2019-blue.svg)](https://react.dev/)
+[![Tailwind CSS v4](https://img.shields.io/badge/Styles-Tailwind%20CSS%20v4-38bdf8.svg)](https://tailwindcss.com/)
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI%20(Python%203.12)-009688.svg)](https://fastapi.tiangolo.com/)
-[![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-336791.svg)](https://www.postgresql.org/)
+[![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL%20(Supabase)-336791.svg)](https://www.postgresql.org/)
+[![Docker OSRM](https://img.shields.io/badge/Routing-OSRM%20Docker-orange.svg)](https://project-osrm.org/)
 
-**VEXTOR** es una solución web SaaS de nivel empresarial para el control, monitoreo, mantenimiento y optimización de flotas vehiculares y logística de transporte. Permite a las empresas rastrear vehículos en tiempo real vía GPS/WebSockets, asignar y monitorear rutas sobre mapas interactivos, gestionar conductores con licenciamiento colombiano, controlar órdenes de mantenimiento en COP, consultar bitácoras de auditoría y generar reportes analíticos con exportación binaria en PDF, Excel y CSV.
+**VEXTOR** es una solución web SaaS de nivel empresarial para el control, monitoreo, mantenimiento y optimización de flotas vehiculares y logística de transporte. Permite a las empresas rastrear vehículos en tiempo real vía GPS/WebSockets, asignar y monitorear rutas sobre mapas interactivos con enrutamiento vial OSRM local, gestionar conductores con licenciamiento colombiano, controlar órdenes de mantenimiento en Pesos Colombianos (`COP`), consultar bitácoras de auditoría y generar reportes analíticos con exportación binaria en PDF, Excel y CSV.
 
 ---
 
-## 1. Visión General del Sistema
+## 1. Visión General y Arquitectura del Sistema
 
 ```text
                                ┌──────────────────────────┐
@@ -28,111 +29,155 @@
                                ┌──────────────────────────┐
                                │     FastAPI Backend      │
                                │   (Python 3.12 + ORM)    │
-                               └────────────┬─────────────┘
-                                            │
-                                            ▼
-                               ┌──────────────────────────┐
-                               │   PostgreSQL Database    │
-                               │  (Supabase / Native DDL) │
-                               └──────────────────────────┘
+                               └──────┬────────────┬──────┘
+                                      │            │
+                 HTTP Local           │            │ Connection Pool
+                 (Port 5000)          ▼            ▼ (psycopg)
+                        ┌──────────────────┐  ┌──────────────────────┐
+                        │   OSRM Docker    │  │ Supabase PostgreSQL  │
+                        │  (Grafo Colombia)│  │ (Base de Datos SaaS) │
+                        └──────────────────┘  └──────────────────────┘
 ```
+
+### Principales Componentes:
+- **Frontend (`vextor_fe`):** Single Page Application construida en React 19, Vite, Tailwind CSS v4, Framer Motion y Leaflet.
+- **Backend (`vextor_be`):** API REST y servidor WebSocket en FastAPI (Python 3.12) con validaciones Pydantic v2, autenticación JWT con bcrypt y proxy seguro hacia OSRM.
+- **Motor OSRM (`infra/osrm`):** Contenedor Docker con el motor Open Source Routing Machine ejecutando el algoritmo MLD sobre los datos geográficos de Colombia.
+- **Base de Datos (`vextor_bd`):** PostgreSQL alojado en Supabase con UUID v4 nativos (`gen_random_uuid()`) e integridad referencial estricta.
 
 ---
 
 ## 2. Módulos y Funcionalidades
 
-### 📊 Dashboard Consolidado
-- Resumen de métricas de flota (Total vehículos, activos, disponibles, en mantenimiento).
-- Gráficos de tendencias con cálculo de varianza respecto a periodos anteriores.
-- Registro de actividad reciente en tiempo real.
-
-### 🚛 Gestión de Vehículos (`/vehiculos`)
-- Inventario completo del parque automotor (Marca, modelo, año, placa en formato colombiano `AAA-123`, capacidad de carga en kg).
-- Transición automática de estados (`DISPONIBLE`, `EN_RUTA`, `EN_MANTENIMIENTO`, `INACTIVO`).
-- Validación de borrado seguro (impide eliminar vehículos asociados a rutas o mantenimientos activos).
-
-### 👨‍✈️ Administración de Conductores (`/conductores`)
-- Registro de conductores con cédula de ciudadanía, teléfono móvil y licencia de conducción colombiana (`A1`, `A2`, `B1`, `B2`, `B3`, `C1`, `C2`, `C3`).
-- Control de fechas de vencimiento de pases y disponibilidad operativa (`DISPONIBLE`, `EN_RUTA`, `NO_DISPONIBLE`).
-
-### 🗺️ Rutas y Telemetría GPS en Tiempo Real (`/rutas`, `/driver/active-route`)
-- Asignación de rutas logísticas con autocompletado geográfico vía OpenStreetMap Nominatim.
-- Panel exclusivo del conductor touch-friendly para iniciar/completar viajes.
-- Telemetría GPS en tiempo real mediante **WebSockets** (`/ws/tracking`) con fallback HTTP.
-- Mapa interactivo Leaflet con tema dinámico claro/oscuro y velocímetro.
-
-### 🔧 Control de Mantenimiento (`/mantenimientos`)
-- Programación de intervenciones preventivas y correctivas.
-- Registro de costos financieros expresados en Pesos Colombianos (`COP`).
-- Control de talleres y estados de orden de trabajo.
-
-### 📈 Centro de Reportes (`/reportes`)
-- Consola de análisis de datos filtrada por rango de fechas y módulos.
-- Exportación binaria de informes en PDF, CSV y Microsoft Excel (`.xlsx`).
-
-### ⚙️ Configuración del Sistema (`/configuracion`)
-- Arquitectura altamente modularizada en subsecciones (Perfil, Seguridad, Usuarios, Empresa, Auditoría, Notificaciones, Apariencia, Respaldos).
-- Gestión de sesiones activas del usuario (`sesion_usuario`) con revocación remota de dispositivos.
-- Modificación de datos corporativos (NIT, Razón Social).
+- 📊 **Dashboard Consolidado:** Resumen métrico de flota, gráficos con cálculo de varianzas históricas y bitácora de actividad reciente.
+- 🚛 **Gestión de Vehículos (`/vehiculos`):** Control del parque automotor, placas colombianas (`AAA-123`), capacidades de carga y validación de borrado seguro.
+- 👨‍✈️ **Administración de Conductores (`/conductores`):** Cédulas de ciudadanía, celulares colombianos, categorías de licencia (`A1`-`C3`) y disponibilidad operativa.
+- 🗺️ **Rutas y Telemetría GPS en Tiempo Real (`/rutas`, `/driver/active-route`):** Planificación de rutas viales con OSRM, panel del conductor touch-friendly y transmisión GPS en tiempo real por WebSockets (`/ws/tracking`).
+- 🔧 **Control de Mantenimiento (`/mantenimientos`):** Registro de intervenciones preventivas y correctivas en Pesos Colombianos (`COP`).
+- 📈 **Centro de Reportes (`/reportes`):** Consola de análisis con exportación binaria a PDF, CSV y Excel (`.xlsx`).
+- ⚙️ **Configuración Modular (`/configuracion`):** Gestión de perfil, seguridad, usuarios, empresa, auditoría de actividades y revocación remota de sesiones.
 
 ---
 
-## 3. Estructura del Proyecto
+## 3. Estructura Completa del Repositorio
 
 ```text
-vextor/
-├── docs/                 # Documentación técnica completa (Arquitectura, API, DB, Flujos, Seguridad)
-├── vextor_bd/           # Scripts DDL de PostgreSQL y esquema de base de datos
-├── vextor_be/           # Código fuente del Backend FastAPI (Python 3.12)
-└── vextor_fe/           # Código fuente del Frontend React 19 (Tailwind CSS v4)
+VEXTOR/
+├── docs/                 # Documentación técnica profunda (Arquitectura, API, DB, Flujos, Seguridad, OSRM, Dependencias)
+│   ├── API.md            # Especificación de endpoints REST y WebSockets
+│   ├── ARCHITECTURE.md   # Diagramas de arquitectura y flujos de routing/tracking
+│   ├── DATABASE.md       # Esquema del modelo relacional PostgreSQL
+│   ├── DEPENDENCIES.md   # Inventario exhaustivo de librerías e imports reales
+│   ├── FLOWS.md          # Diagramas de flujo funcionales end-to-end
+│   ├── OSRM.md           # Guía completa de OSRM, Docker y grafos viales
+│   ├── SECURITY.md       # Esquema de autenticación JWT, RBAC y sesiones
+│   └── README.md         # Índice general de documentación técnica
+├── infra/                # Infraestructura de servicios y contenedores
+│   └── osrm/             # Docker Compose y datos del mapa de Colombia
+│       └── docker-compose.yml
+├── vextor_bd/            # DDL SQL y scripts del esquema PostgreSQL
+│   ├── Readme.md
+│   └── vextor_bd.sql
+├── vextor_be/            # Backend FastAPI (Python 3.12)
+│   ├── main.py           # Punto de entrada de FastAPI
+│   ├── database.py       # Conexión SQLAlchemy a PostgreSQL
+│   ├── models.py         # Modelos relacionales ORM
+│   ├── schemas.py        # Esquemas de validación Pydantic
+│   ├── router_*.py       # Módulos de la API REST y WebSockets
+│   ├── services/         # Clientes de servicios (OsrmClient)
+│   ├── requirements.txt  # Dependencias Python con versiones fijadas
+│   └── README.md         # Documentación detallada del backend
+├── vextor_fe/            # Frontend React 19 (Tailwind CSS v4)
+│   ├── src/              # Código fuente de componentes, páginas, hooks y servicios
+│   ├── package.json      # Dependencias de pnpm / npm
+│   └── README.md         # Documentación detallada del frontend
+├── .env.example          # Plantilla de variables de entorno
+├── .gitignore            # Archivos ignorados por Git
+├── GUIA_INSTALACION.md   # Guía paso a paso para instalación desde cero en un PC nuevo
+├── README.md             # Este archivo
+└── setup-osrm.ps1        # Script PowerShell automatizado para preparación de OSRM
 ```
 
 ---
 
-## 4. Tecnologías Utilizadas
+## 4. Requisitos del Sistema
 
-- **Frontend:** React 19, Vite, Tailwind CSS v4, Framer Motion, Leaflet, Lucide React, SweetAlert2.
-- **Backend:** FastAPI, Python 3.12, SQLAlchemy, Pydantic v2, PyJWT, bcrypt, WebSockets, Uvicorn.
-- **Base de Datos:** PostgreSQL con UUID v4 nativos.
-
----
-
-## 5. Instalación y Puesta en Marcha
-
-### 5.1 Requisitos Previos
-- Node.js 20+ y `pnpm`
-- Python 3.12+
-- Servidor PostgreSQL
-
-### 5.2 Configuración del Backend (`vextor_be`)
-```bash
-cd vextor_be
-python -m venv venv
-source venv/bin/activate # En Windows: venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
-```
-
-### 5.3 Configuración del Frontend (`vextor_fe`)
-```bash
-cd vextor_fe
-pnpm install
-pnpm run dev
-```
-La aplicación abrirá en `http://localhost:5173`.
+- **Node.js:** Versión 20+ y `pnpm` (`npm install -g pnpm`).
+- **Python:** Versión 3.12+.
+- **Docker Desktop:** Habilitado con contenedores Linux para ejecutar OSRM.
+- **Git:** Control de versiones.
 
 ---
 
-## 6. Documentación Técnica Detallada
+## 5. Instalación Rápida
 
-Para consultar la documentación profunda de cada capa:
+Para una guía paso a paso ultra detallada pensada para nuevos miembros del equipo, consulta **[GUIA_INSTALACION.md](./GUIA_INSTALACION.md)**.
 
-- 📖 [Documentación Técnica General](./docs/README.md)
-- 🏗️ [Arquitectura del Sistema](./docs/ARCHITECTURE.md)
-- 🔌 [Referencia de API REST & WebSockets](./docs/API.md)
+### Resumen de comandos:
+
+1. **Configurar el motor de mapas OSRM con Docker:**
+   ```powershell
+   .\setup-osrm.ps1
+   ```
+
+2. **Configurar variables de entorno (`vextor_be/.env`):**
+   ```powershell
+   Copy-Item .env.example vextor_be\.env
+   ```
+
+3. **Iniciar Backend FastAPI:**
+   ```bash
+   cd vextor_be
+   python -m venv venv
+   .\venv\Scripts\activate   # En Linux/macOS: source venv/bin/activate
+   pip install -r requirements.txt
+   uvicorn main:app --reload --port 8000
+   ```
+
+4. **Iniciar Frontend React:**
+   ```bash
+   cd vextor_fe
+   pnpm install
+   pnpm run dev
+   ```
+
+Accede a la aplicación en `http://localhost:5173`.
+
+---
+
+## 6. Variables de Entorno (`vextor_be/.env`)
+
+| Variable | Propósito | Valor por Defecto Local |
+| :--- | :--- | :--- |
+| `DATABASE_URL` | Cadena de conexión PostgreSQL (Supabase o local). | `postgresql+psycopg://user:pass@localhost:5432/vextor_db` |
+| `JWT_SECRET_KEY` | Clave secreta para la firma de tokens JWT. | `reemplaza-esta-clave-por-un-secreto-largo` |
+| `OSRM_URL` | Dirección del contenedor OSRM local utilizado por FastAPI. | `http://localhost:5000` |
+| `OSRM_TIMEOUT_SECONDS` | Tiempo límite de espera para respuestas de OSRM. | `10` |
+| `FRONTEND_URL` | URL del cliente web para enlaces de recuperación. | `http://localhost:5173` |
+
+---
+
+## 7. Solución de Problemas Frecuentes (Troubleshooting)
+
+- **Docker no responde / `docker info` falla:**
+  Asegúrate de tener **Docker Desktop** abierto y que el motor indique "Docker Desktop is running".
+- **El puerto 5000 está ocupado:**
+  Averigua qué proceso usa el puerto (`netstat -ano | findstr :5000` en Windows) o cambia el puerto externo en `infra/osrm/docker-compose.yml` y ajusta `OSRM_URL` en `.env`.
+- **FastAPI no se conecta a OSRM (`503 Service Unavailable`):**
+  Ejecuta `.\setup-osrm.ps1` o verifica el estado del contenedor con `docker compose -f infra/osrm/docker-compose.yml ps`.
+- **FastAPI no se conecta a PostgreSQL:**
+  Verifica que tu conexión a Internet esté activa si usas Supabase y que la clave en `DATABASE_URL` sea correcta.
+- **El frontend no puede comunicarse con el backend:**
+  Confirma que FastAPI esté ejecutándose en `http://localhost:8000`.
+
+---
+
+## 8. Documentación Adicional
+
+- 📖 [Guía Paso a Paso de Instalación desde Cero](./GUIA_INSTALACION.md)
+- 🏗️ [Arquitectura del Sistema y Flujos](./docs/ARCHITECTURE.md)
+- 🗺️ [Guía de OSRM, Docker y Grafos Viales](./docs/OSRM.md)
+- 📦 [Inventario de Dependencias e Imports](./docs/DEPENDENCIES.md)
+- 🔌 [Especificación de API REST & WebSockets](./docs/API.md)
 - 🗄️ [Modelo de Base de Datos PostgreSQL](./docs/DATABASE.md)
-- 🔄 [Flujos de Trabajo End-to-End](./docs/FLOWS.md)
-- 🔒 [Seguridad y Permisos RBAC](./docs/SECURITY.md)
-- 💻 [Documentación de Frontend (`vextor_fe`)](./vextor_fe/README.md)
-- 🐍 [Documentación de Backend (`vextor_be`)](./vextor_be/README.md)
-- 🛢️ [Documentación de BD (`vextor_bd`)](./vextor_bd/Readme.md)
+- 🔒 [Seguridad, JWT y RBAC](./docs/SECURITY.md)
