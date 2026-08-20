@@ -1,15 +1,29 @@
 # Configuración local y credenciales
 .env
-.env.*
+.env*
 !.env.example
 vextor_be/.env
-vextor_be/.env.*
+vextor_be/.env*
 !vextor_be/.env.example
 
-# Artefactos locales
+# Datos pesados de OSRM y mapas (PBF y grafos procesados .osrm.*)
+infra/osrm/data/*
+!infra/osrm/data/.gitignore
+!infra/osrm/data/.gitkeep
+
+# Artefactos de compilación y dependencias
 .pnpm-store/
+node_modules/
 vextor_fe/node_modules/
 vextor_fe/dist/
 vextor_be/.venv/
 __pycache__/
 *.py[cod]
+*.log
+
+# Archivos de sistema operativo y editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json

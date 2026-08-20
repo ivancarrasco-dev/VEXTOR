@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, ArrowRight, ArrowLeft, CheckCircle2, ShieldCheck, Truck, Activity, BarChart3 } from 'lucide-react';
 import axios from 'axios';
+import { API_BASE_URL } from '../../config/api';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Logo } from '../../components/ui/Logo';
@@ -34,7 +35,7 @@ const ForgotPassword = () => {
     setIsLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:8000/api/auth/forgot-password', {
+      const response = await axios.post(`${API_BASE_URL}/api/auth/forgot-password`, {
         email: email.trim()
       });
       setMessage(response.data?.message || 'Si existe una cuenta asociada a este correo, recibirás instrucciones para restablecer tu contraseña.');

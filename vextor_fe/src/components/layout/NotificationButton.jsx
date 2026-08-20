@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Bell, X, Info, Check, CheckCheck, Loader2, AlertCircle, RotateCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import { API_BASE_URL } from '../../config/api';
 import { cn } from '../../utils/cn';
 
 /**
@@ -23,7 +24,7 @@ const NotificationButton = () => {
     setIsLoading(true);
     setIsError(false);
     try {
-      const response = await axios.get('http://localhost:8000/api/notifications');
+      const response = await axios.get(`${API_BASE_URL}/api/notifications`);
       if (response.data) {
         setNotifications(response.data);
       }
@@ -48,8 +49,8 @@ const NotificationButton = () => {
     if (e) e.stopPropagation();
     const isCurrentlyRead = notif.leido;
     const endpoint = isCurrentlyRead
-      ? `http://localhost:8000/api/notifications/${notif.id_notificacion}/unread`
-      : `http://localhost:8000/api/notifications/${notif.id_notificacion}/read`;
+      ? `${API_BASE_URL}/api/notifications/${notif.id_notificacion}/unread`
+      : `${API_BASE_URL}/api/notifications/${notif.id_notificacion}/read`;
 
     // Optimistic local update
     setNotifications(prev =>
@@ -71,7 +72,7 @@ const NotificationButton = () => {
     // Optimistic update
     setNotifications(prev => prev.map(n => ({ ...n, leido: true })));
     try {
-      await axios.put('http://localhost:8000/api/notifications/read-all');
+      await axios.put(`${API_BASE_URL}/api/notifications/read-all`);
     } catch (error) {
       console.error('Error marking all as read:', error);
       fetchNotifications();

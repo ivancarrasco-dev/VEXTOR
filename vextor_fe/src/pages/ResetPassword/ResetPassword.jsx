@@ -3,6 +3,7 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Lock, Eye, EyeOff, ShieldCheck, ArrowRight, CheckCircle2, AlertCircle, Check, X } from 'lucide-react';
 import axios from 'axios';
+import { API_BASE_URL } from '../../config/api';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Logo } from '../../components/ui/Logo';
@@ -40,7 +41,7 @@ const ResetPassword = () => {
       }
 
       try {
-        await axios.post('http://localhost:8000/api/auth/verify-reset-token', { token });
+        await axios.post(`${API_BASE_URL}/api/auth/verify-reset-token`, { token });
         setIsTokenValid(true);
       } catch (err) {
         setIsTokenValid(false);
@@ -76,7 +77,7 @@ const ResetPassword = () => {
     setIsLoading(true);
 
     try {
-      await axios.post('http://localhost:8000/api/auth/reset-password', {
+      await axios.post(`${API_BASE_URL}/api/auth/reset-password`, {
         token,
         newPassword
       });

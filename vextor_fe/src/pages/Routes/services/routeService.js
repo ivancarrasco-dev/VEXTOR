@@ -1,7 +1,8 @@
 import axios from 'axios';
+import { API_BASE_URL } from '../../../config/api';
 
-const API_URL = 'http://localhost:8000/api/routes';
-const ROUTING_API_URL = 'http://localhost:8000/api/routing';
+const API_URL = `${API_BASE_URL}/api/routes`;
+const ROUTING_API_URL = `${API_BASE_URL}/api/routing`;
 
 export const routeService = {
   async getRoutes() {

@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import { cn } from '../../utils/cn';
 import axios from 'axios';
+import { API_BASE_URL } from '../../config/api';
 
 // Import modular sections
 import ProfileSection from './sections/ProfileSection';
@@ -130,7 +131,7 @@ const Settings = () => {
   const handleProfileSave = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.put(`http://localhost:8000/api/auth/profile?name=${encodeURIComponent(profileData.name)}&email=${encodeURIComponent(profileData.email)}&phone=${encodeURIComponent(profileData.phone)}&photo=${profileData.photo ? encodeURIComponent(profileData.photo) : ''}`);
+      const response = await axios.put(`${API_BASE_URL}/api/auth/profile?name=${encodeURIComponent(profileData.name)}&email=${encodeURIComponent(profileData.email)}&phone=${encodeURIComponent(profileData.phone)}&photo=${profileData.photo ? encodeURIComponent(profileData.photo) : ''}`);
       if (response.data) {
         showToast('¡Información de perfil actualizada con éxito!');
         // Update local session
@@ -164,7 +165,7 @@ const Settings = () => {
   useEffect(() => {
     const fetchCompanyData = async () => {
       try {
-        const response = await axios.get('http://localhost:8000/api/company');
+        const response = await axios.get(`${API_BASE_URL}/api/company`);
         if (response.data) {
           setCompanyData(response.data);
         }
@@ -178,7 +179,7 @@ const Settings = () => {
   const handleCompanySave = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.put('http://localhost:8000/api/company', companyData);
+      const response = await axios.put(`${API_BASE_URL}/api/company`, companyData);
       if (response.data) {
         setCompanyData(response.data);
         showToast('¡Datos de la empresa actualizados correctamente!');
@@ -205,7 +206,7 @@ const Settings = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get('http://localhost:8000/api/users');
+      const response = await axios.get(`${API_BASE_URL}/api/users`);
       setUsersList(response.data);
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -219,7 +220,7 @@ const Settings = () => {
   const handleUserToggleStatus = async (usr) => {
     try {
       const nextStatus = usr.estado_usuario === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO';
-      const response = await axios.put(`http://localhost:8000/api/users/${usr.id_usuario}`, {
+      const response = await axios.put(`${API_BASE_URL}/api/users/${usr.id_usuario}`, {
         estado_usuario: nextStatus
       });
       if (response.data) {
@@ -256,7 +257,7 @@ const Settings = () => {
     e.preventDefault();
     try {
       if (isEditingUser) {
-        await axios.put(`http://localhost:8000/api/users/${userForm.id_usuario}`, {
+        await axios.put(`${API_BASE_URL}/api/users/${userForm.id_usuario}`, {
           nombres_usuario: userForm.nombres_usuario,
           apellidos_usuario: userForm.apellidos_usuario,
           correo_usuario: userForm.correo_usuario,
@@ -265,7 +266,7 @@ const Settings = () => {
         });
         showToast('Usuario editado correctamente.');
       } else {
-        await axios.post('http://localhost:8000/api/users', {
+        await axios.post(`${API_BASE_URL}/api/users`, {
           nombres_usuario: userForm.nombres_usuario,
           apellidos_usuario: userForm.apellidos_usuario,
           correo_usuario: userForm.correo_usuario,
@@ -285,7 +286,7 @@ const Settings = () => {
 
   const handleDeleteUser = async (id) => {
     try {
-      await axios.delete(`http://localhost:8000/api/users/${id}`);
+      await axios.delete(`${API_BASE_URL}/api/users/${id}`);
       showToast('Usuario eliminado del sistema.');
       fetchUsers();
     } catch (error) {

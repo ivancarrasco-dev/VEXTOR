@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE_URL, WS_BASE_URL } from '../../config/api';
 import {
   MapPin,
   Clock,
@@ -48,7 +49,7 @@ const ActiveRoutePage = () => {
   const fetchActiveRoute = async () => {
     try {
       setLoading(true);
-      const res = await axios.get('http://localhost:8000/api/routes/driver/my-routes');
+      const res = await axios.get(`${API_BASE_URL}/api/routes/driver/my-routes`);
       const active = res.data.active_route;
 
       if (active) {
@@ -78,7 +79,7 @@ const ActiveRoutePage = () => {
 
     // 1. Establish WebSocket Connection
     try {
-      const ws = new WebSocket('ws://localhost:8000/ws/tracking');
+      const ws = new WebSocket(`${WS_BASE_URL}/ws/tracking`);
       ws.onopen = () => {
         console.log('Tracking WebSocket connected');
       };
@@ -116,7 +117,7 @@ const ActiveRoutePage = () => {
           }));
         } else {
           // Fallback via HTTP POST
-          axios.post(`http://localhost:8000/api/routes/${activeRoute.id_ruta}/location`, {
+          axios.post(`${API_BASE_URL}/api/routes/${activeRoute.id_ruta}/location`, {
             id_ruta: activeRoute.id_ruta,
             latitud: lat,
             longitud: lng,
@@ -186,7 +187,7 @@ const ActiveRoutePage = () => {
     if (!confirm.isConfirmed) return;
 
     try {
-      await axios.post(`http://localhost:8000/api/routes/${activeRoute.id_ruta}/finish`);
+      await axios.post(`${API_BASE_URL}/api/routes/${activeRoute.id_ruta}/finish`);
 
       // Stop GPS immediately
       if (watchIdRef.current !== null) {

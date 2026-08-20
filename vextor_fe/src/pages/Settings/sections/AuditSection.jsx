@@ -22,6 +22,7 @@ import { Select } from '../../../components/ui/Select';
 import { Input } from '../../../components/ui/Input';
 import { cn } from '../../../utils/cn';
 import axios from 'axios';
+import { API_BASE_URL } from '../../../config/api';
 
 const formatFriendlyDate = (dateStr) => {
   if (!dateStr) return '';
@@ -115,7 +116,7 @@ const AuditSection = ({ showToast }) => {
       if (fechaInicio) params.fecha_inicio = fechaInicio;
       if (fechaFin) params.fecha_fin = fechaFin;
 
-      const response = await axios.get('http://localhost:8000/api/activities', { params });
+      const response = await axios.get(`${API_BASE_URL}/api/activities`, { params });
 
       if (response.data && typeof response.data === 'object' && 'items' in response.data) {
         setLogs(response.data.items || []);

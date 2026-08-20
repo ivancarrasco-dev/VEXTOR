@@ -27,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
 import { Select } from '../../components/ui/Select';
 import { routeService } from './services/routeService';
+import { WS_BASE_URL } from '../../config/api';
 import { driverService } from '../Drivers/services/driverService';
 import { vehicleService } from '../Vehicles/services/vehicleService';
 import MapComponent from './components/MapComponent';
@@ -146,7 +147,7 @@ const Routes = () => {
     // Setup WebSocket for live updates
     let ws = null;
     try {
-      ws = new WebSocket('ws://localhost:8000/ws/tracking');
+      ws = new WebSocket(`${WS_BASE_URL}/ws/tracking`);
       ws.onmessage = (event) => {
         try {
           const payload = JSON.parse(event.data);

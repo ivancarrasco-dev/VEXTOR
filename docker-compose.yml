@@ -1,0 +1,68 @@
+name: vextor
+
+services:
+  # ---------------------------------------------------------------------------
+  # 1. SERVIDOR DE ROUTING OSRM (COLOMBIA MLD)
+  # ---------------------------------------------------------------------------
+  osrm:
+    image: ghcr.io/project-osrm/osrm-backend:v26.7.3-debian
+    container_name: vextor-osrm
+    command: osrm-routed --algorithm mld --ip 0.0.0.0 --port 5000 /data/colombia-latest.osrm
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./infra/osrm/data:/data
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # HERRAMIENTAS OSRM PARA PREPARACIÓN DEL GRAFO (PIPELINE MLD)
+  # ---------------------------------------------------------------------------
+  osrm-tools:
+    image: ghcr.io/project-osrm/osrm-backend:v26.7.3-debian
+    container_name: vextor-osrm-tools
+    profiles: ["tools"]
+    volumes:
+      - ./infra/osrm/data:/data
+
+  # ---------------------------------------------------------------------------
+  # 2. BACKEND FASTAPI
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./vextor_be
+      dockerfile: Dockerfile
+    container_name: vextor-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # Dentro de Docker Compose, Backend habla con OSRM a través del nombre de servicio
+      - OSRM_URL=http://osrm:5000
+    depends_on:
+      - osrm
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/')\" || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  # ---------------------------------------------------------------------------
+  # 3. FRONTEND REACT (NGINX)
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./vextor_fe
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:8000
+        VITE_WS_BASE_URL: ws://localhost:8000
+    container_name: vextor-frontend
+    ports:
+      - "80:80"
+      - "5173:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
