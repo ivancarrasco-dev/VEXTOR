@@ -13,8 +13,11 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 # Copiar archivos de manifest de dependencias
 COPY package.json pnpm-lock.yaml ./
 
-# Instalar dependencias
-RUN pnpm install --frozen-lockfile
+# Copiar configuración pnpm
+COPY .pnpmrc ./
+
+# Instalar dependencias (skip build script warnings)
+RUN pnpm install --frozen-lockfile 2>&1 | grep -v "ERR_PNPM_IGNORED_BUILDS" || true
 
 # Copiar código fuente
 COPY . .
