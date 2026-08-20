@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE_URL } from '../../config/api';
 import {
   MapPin,
   Clock,
@@ -35,7 +36,7 @@ const MyRoutes = () => {
   const fetchMyRoutes = async () => {
     try {
       setLoading(true);
-      const res = await axios.get('http://localhost:8000/api/routes/driver/my-routes');
+      const res = await axios.get(`${API_BASE_URL}/api/routes/driver/my-routes`);
       setData(res.data);
     } catch (err) {
       console.error('Error fetching driver routes:', err);
@@ -60,7 +61,7 @@ const MyRoutes = () => {
     if (!confirm.isConfirmed) return;
 
     try {
-      await axios.post(`http://localhost:8000/api/routes/${route.id_ruta}/start`);
+      await axios.post(`${API_BASE_URL}/api/routes/${route.id_ruta}/start`);
       await showAlert('¡Ruta Iniciada!', 'El seguimiento de ubicación GPS está activo.', 'success');
       navigate(`/driver/active-route/${route.id_ruta}`);
     } catch (err) {

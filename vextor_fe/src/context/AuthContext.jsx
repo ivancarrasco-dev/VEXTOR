@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
 const AuthContext = createContext(undefined);
 
@@ -33,7 +34,7 @@ export const AuthProvider = ({ children }) => {
           axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
         }
 
-        const response = await axios.get('http://localhost:8000/api/auth/me');
+        const response = await axios.get(`${API_BASE_URL}/api/auth/me`);
         if (response.data) {
           setUser(response.data);
           setIsAuthenticated(true);
@@ -56,7 +57,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     setIsLoading(true);
     try {
-      const response = await axios.post('http://localhost:8000/api/auth/login', {
+      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
         email,
         password
       });
@@ -83,7 +84,7 @@ export const AuthProvider = ({ children }) => {
     setIsLoading(true);
     try {
       // Registrar usuario
-      await axios.post('http://localhost:8000/api/auth/register', {
+      await axios.post(`${API_BASE_URL}/api/auth/register`, {
         fullName: userData.fullName,
         email: userData.email,
         password: userData.password
@@ -101,7 +102,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await axios.post('http://localhost:8000/api/auth/logout');
+      await axios.post(`${API_BASE_URL}/api/auth/logout`);
     } catch (error) {
       console.error('Error logging out on backend:', error);
     } finally {

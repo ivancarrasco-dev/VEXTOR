@@ -4,6 +4,7 @@ import { Button } from '../../../components/ui/Button';
 import { cn } from '../../../utils/cn';
 import { Laptop, Smartphone, ShieldCheck, RefreshCw, AlertCircle, LogOut } from 'lucide-react';
 import axios from 'axios';
+import { API_BASE_URL } from '../../../config/api';
 import { vextorSwal, showConfirm } from '../../../utils/sweetalert';
 
 const getRelativeTime = (dateStr) => {
@@ -54,7 +55,7 @@ const SecuritySection = ({
   const fetchActiveSessions = useCallback(async () => {
     setIsLoadingSessions(true);
     try {
-      const response = await axios.get('http://localhost:8000/api/security/sessions');
+      const response = await axios.get(`${API_BASE_URL}/api/security/sessions`);
       setSessions(response.data || []);
     } catch (error) {
       console.error('Error fetching active sessions:', error);
@@ -91,7 +92,7 @@ const SecuritySection = ({
 
     setIsChangingPassword(true);
     try {
-      await axios.post('http://localhost:8000/api/security/change-password', {
+      await axios.post(`${API_BASE_URL}/api/security/change-password`, {
         current_password: passwordForm.current,
         new_password: passwordForm.next
       });
@@ -125,7 +126,7 @@ const SecuritySection = ({
 
     setRevokingId(sessionId);
     try {
-      await axios.delete(`http://localhost:8000/api/security/sessions/${sessionId}`);
+      await axios.delete(`${API_BASE_URL}/api/security/sessions/${sessionId}`);
       showToast('Sesión revocada correctamente.');
       fetchActiveSessions();
     } catch (error) {
@@ -157,7 +158,7 @@ const SecuritySection = ({
 
     setIsRevokingOthers(true);
     try {
-      const response = await axios.delete('http://localhost:8000/api/security/sessions-others/all');
+      const response = await axios.delete(`${API_BASE_URL}/api/security/sessions-others/all`);
       showToast(`Se cerraron ${response.data.count || otherCount} sesión(es) exitosamente.`);
       fetchActiveSessions();
     } catch (error) {
