@@ -6,7 +6,8 @@
 [Docker](https://www.docker.com/) es una plataforma de contenedorización que permite ejecutar aplicaciones dentro de entornos aislados e independientes llamados **contenedores**. Incluye todo lo necesario para que el software se ejecute: código, dependencias, librerías del sistema y configuraciones.
 
 ### ¿Por qué VEXTOR utiliza Docker?
-VEXTOR utiliza Docker para levantar **OSRM (Open Source Routing Machine)**. OSRM requiere un compilado C++ específico de alto rendimiento con dependencias nativas del sistema operativo. Mediante Docker, cualquier integrante del equipo puede levantar OSRM en Windows, Linux o macOS utilizando exactamente la misma versión (`ghcr.io/project-osrm/osrm-backend:v26.7.3-debian`) sin necesidad de compilar C++ ni instalar paquetes complejos en su máquina host.
+VEXTOR utiliza Docker para orquestar toda la plataforma: **Frontend (React + Nginx)**, **Backend (FastAPI)** y **OSRM (Open Source Routing Machine)**.
+OSRM requiere un compilado C++ específico de alto rendimiento con dependencias nativas del sistema operativo. Mediante Docker, cualquier integrante del equipo o estudiante del SENA puede levantar la plataforma completa en Windows, Linux o macOS utilizando exactamente las mismas versiones (`ghcr.io/project-osrm/osrm-backend:v26.7.3-debian`) sin necesidad de compilar C++ ni instalar paquetes complejos en su máquina host.
 
 ### ¿Qué es OSRM?
 [OSRM (Open Source Routing Machine)](https://project-osrm.org/) es un motor de enrutamiento vial de código abierto diseñado para calcular el camino más rápido sobre la red de carreteras de OpenStreetMap. VEXTOR lo utiliza para obtener:
@@ -14,14 +15,14 @@ VEXTOR utiliza Docker para levantar **OSRM (Open Source Routing Machine)**. OSRM
 2. **Métricas:** Distancia proyectada en metros y tiempo estimado de viaje en segundos.
 3. **Indicaciones giro a giro:** Pasos descriptivos ("Gira a la derecha por la Carrera 7", "Continúa por la Autopista Norte").
 
-### ¿Por qué VEXTOR tiene su propio servidor OSRM local (`localhost:5000`)?
+### ¿Por qué VEXTOR tiene su propio servidor OSRM local?
 1. **Independencia y Disponibilidad:** El servidor demo público (`router.project-osrm.org`) no ofrece garantías de disponibilidad, impone límites de tasa de peticiones y puede caerse en cualquier momento.
 2. **Privacidad y Control:** Las consultas de rutas de la flota no se comparten con servidores de terceros.
-3. **Baja Latencia:** Las peticiones desde el backend local a `http://localhost:5000` responden en pocos milisegundos.
+3. **Baja Latencia:** Las peticiones desde el backend local a la instancia OSRM responden en pocos milisegundos.
 
 ---
 
-## 2. Arquitectura de Routing vs Base de Datos
+## 2. Arquitectura de Routing vs Base de Datos en Docker
 
 Es fundamental comprender la separación clara entre la infraestructura de enrutamiento y la persistencia de datos en VEXTOR:
 
@@ -30,7 +31,7 @@ Es fundamental comprender la separación clara entre la infraestructura de enrut
 │                            FLUJO DE ROUTING (MAPA)                          │
 │                                                                             │
 │   Frontend React ──► FastAPI (/api/routing/route) ──► OSRM Docker local     │
-│   (Vite SPA)         (Python 3.12 Backend)           (http://localhost:5000)│
+│   (Port 80)          (Port 8000)                     (http://osrm:5000)     │
 └─────────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -42,21 +43,21 @@ Es fundamental comprender la separación clara entre la infraestructura de enrut
 ```
 
 **Puntos Clave:**
-- **Supabase contiene la Base de Datos PostgreSQL:** Almacena usuarios, vehículos, conductores, historiales, reportes, sesiones y asignación de rutas.
-- **OSRM NO está en Supabase:** OSRM es un servicio independiente enfocado únicamente en algoritmos de grafos viales.
-- **OSRM corre localmente mediante Docker:** Por este motivo, un desarrollador en un PC nuevo requiere instalar Docker Desktop y ejecutar la preparación de OSRM.
-- **No se requiere instalar PostgreSQL localmente:** Si VEXTOR está configurado con la cadena de conexión de Supabase en `DATABASE_URL`, la base de datos ya está disponible en la nube.
+- **Dentro de Docker Compose:** El backend FastAPI se comunica con OSRM mediante la URL interna del servicio `http://osrm:5000` (definida en `docker-compose.yml`).
+- **Desde el Host/Navegador:** OSRM está expuesto en `http://localhost:5000`, Backend en `http://localhost:8000` y Frontend en `http://localhost`.
+- **Supabase contiene la Base de Datos PostgreSQL:** Almacena usuarios, vehículos, conductores, historiales, reportes, sesiones y asignación de rutas. OSRM es un servicio totalmente independiente enfocado únicamente en algoritmos de grafos viales.
 
 ---
 
-## 3. Estructura de `infra/osrm/` y Archivos Generados
+## 3. Estructura de `infra/osrm/` y Generación Local (Opción B)
 
 La carpeta `infra/osrm/` contiene la configuración de Docker y los datos procesados:
 
 ```text
 infra/osrm/
-├── docker-compose.yml       # Definición de servicios Docker (osrm y osrm-tools)
+├── docker-compose.yml       # Definición standalone de servicios OSRM
 └── data/                    # Directorio de datos y grafo procesado (Ignorado en Git)
+    ├── .gitignore                       # Garantiza que archivos pesados no se suban a GitHub
     ├── colombia-latest.osm.pbf          # Extracto crudo de OpenStreetMap para Colombia
     ├── colombia-latest.osrm              # Grafo de red vial extraído
     ├── colombia-latest.osrm.properties   # Propiedades y metadatos del grafo
@@ -65,76 +66,59 @@ infra/osrm/
     └── colombia-latest.osrm.tls          # Tablas de giros y restricciones
 ```
 
-### Explicación de los archivos:
-- **`colombia-latest.osm.pbf`:** Es el archivo fuente descargado de Geofabrik que contiene la información geográfica abierta de carreteras de Colombia (~150 MB a ~200 MB).
-- **Archivos `.osrm.*`:** Son los archivos binarios generados tras procesar el mapa con el algoritmo **MLD (Multi-Level Dijkstra)** (`osrm-extract`, `osrm-partition`, `osrm-customize`).
-- **¿Por qué ocupan espacio?** El procesamiento convierte las calles y nodos de todo Colombia en estructuras de datos indexadas en memoria rápida, generando entre 1.5 GB y 3 GB de archivos binarios.
-- **¿Por qué NO se suben a GitHub?** Ocupan gigabytes de espacio, son archivos binarios generados derivativamente y pueden ser regenerados automáticamente en cualquier equipo mediante el script `setup-osrm.ps1`. Por ello, están explícitamente incluidos en `.gitignore`.
+### ¿Por qué NO se suben a GitHub los datos de Colombia?
+- **Opciones de Diseño (Opción B Elegida):** Los datos procesados ocupan gigabytes de espacio. Subirlos a GitHub ralentizaría el repositorio y consumiría límites de almacenamiento.
+- **Procesamiento Inteligente Local:** `setup-vextor.ps1` descarga automáticamente `colombia-latest.osm.pbf` de Geofabrik si no existe y ejecuta la pipeline MLD (`osrm-extract`, `osrm-partition`, `osrm-customize`) utilizando Docker.
+- **Idempotencia:** Si el archivo PBF y el grafo ya existen en la máquina del desarrollador, el script los reutiliza al instante sin descargar ni procesar de nuevo.
 
 ---
 
-## 4. Funcionamiento del Script `setup-osrm.ps1`
+## 4. Scripts Automatizados: `setup-vextor.ps1` vs `setup-osrm.ps1`
 
-El script `setup-osrm.ps1` ubicado en la raíz del repositorio automatiza y simplifica la configuración de OSRM en cualquier PC con Windows/PowerShell.
+- **`setup-vextor.ps1` (Instalador Principal):**
+  Alista la plataforma VEXTOR completa en un computador nuevo:
+  1. Comprueba Docker Engine y Docker Compose.
+  2. Inicializa `.env` desde `.env.example`.
+  3. Prepara los datos de OSRM (descarga PBF + procesa MLD si hace falta).
+  4. Construye y levanta Frontend, Backend y OSRM con `docker compose up -d --build`.
+  5. Ejecuta Health Checks en todos los endpoints (`http://localhost`, `http://localhost:8000`, `http://localhost:5000`, `/api/routing/health`).
 
-### Lo que hace el script paso a paso:
-1. **Verificación de Docker:** Comprueba que `docker` esté instalado y que Docker Desktop esté en ejecución (`docker info`). Si no lo está, le indica exactamente qué hacer al usuario.
-2. **Verificación de Docker Compose:** Confirma que `docker compose` esté disponible.
-3. **Directorio de datos:** Crea la carpeta `infra/osrm/data` si no existe.
-4. **Descarga de mapa:** Comprueba si ya existe `colombia-latest.osm.pbf`. Si ya existe, **no lo vuelve a descargar** (idempotente). Si no existe, lo descarga desde Geofabrik.
-5. **Verificación de Grafo Integro:** Comprueba la existencia de los múltiples archivos binarios del grafo (`.osrm`, `.properties`, `.cells`, `.partition`, `.tls`).
-   - **Primera vez:** Detecta que faltan los archivos del grafo, explica lo que sucederá y ejecuta secuencialmente los tres comandos MLD (`osrm-extract`, `osrm-partition`, `osrm-customize`).
-   - **Reejecuciones:** Detecta que el grafo ya está completo e íntegro, omite el procesamiento pesado y procede directamente a levantar el contenedor.
-6. **Despliegue del contenedor:** Ejecuta `docker compose up -d osrm`.
-7. **Prueba de Salud y Enrutamiento Real:** Realiza peticiones periódicas a `http://localhost:5000` con la ruta Bogotá-Medellín hasta que el servicio responda HTTP 200 OK con un JSON de ruta válido (`code: "Ok"`).
-8. **Resumen visual:** Imprime una tabla consolidada del estado del entorno.
+- **`setup-osrm.ps1` (Instalador Standalone de OSRM):**
+  Uso exclusivo si se desea preparar o probar únicamente el servidor de mapas OSRM de forma aislada sin levantar Frontend/Backend.
 
 ---
 
-## 5. Comandos Útiles y Gestión de OSRM
+## 5. Comandos Útiles y Gestión de Contenedores
 
-### Verificar estado del contenedor
+### Ver estado de los contenedores
 ```powershell
-docker compose -f infra/osrm/docker-compose.yml ps
+docker compose ps
 ```
 
 ### Ver logs del servidor OSRM en tiempo real
 ```powershell
-docker compose -f infra/osrm/docker-compose.yml logs -f osrm
+docker compose logs -f osrm
 ```
 
-### Detener OSRM sin eliminar los datos
-```powershell
-docker compose -f infra/osrm/docker-compose.yml stop osrm
-```
-
-### Volver a iniciar OSRM (cuando los datos ya están procesados)
-```powershell
-docker compose -f infra/osrm/docker-compose.yml start osrm
-```
-
-### Probar el endpoint directamente desde PowerShell
+### Probar el endpoint de routing directamente desde PowerShell
 ```powershell
 Invoke-RestMethod 'http://localhost:5000/route/v1/driving/-74.0721,4.7110;-75.5812,6.2442?overview=false'
+```
+
+### Probar la salud de la integración Backend -> OSRM
+```powershell
+Invoke-RestMethod 'http://localhost:8000/api/routing/health'
 ```
 
 ---
 
 ## 6. Solución de Problemas Frecuentes (Troubleshooting)
 
-### Problema 1: "ERROR: Docker Desktop no esta ejecutandose" o `docker info` falla
-- **Síntoma:** El script `setup-osrm.ps1` se detiene en el paso 1 indicando error de Docker Engine.
-- **Causa:** La aplicación Docker Desktop está cerrada o el motor Docker aún se está iniciando.
-- **Solución:** Abre Docker Desktop desde el menú Inicio, espera a que la barra inferior indique "Docker Desktop is running" (ícono ballena azul estático) y vuelve a ejecutar el script.
+### Problema 1: "Docker Desktop no está ejecutándose"
+- **Solución:** Abre Docker Desktop desde el menú Inicio, espera a que el ícono de la ballena azul esté estático ("Docker Desktop is running") y vuelve a ejecutar `.\setup-vextor.ps1`.
 
-### Problema 2: "El puerto 5000 está ocupado" (`port is already allocated`)
-- **Síntoma:** Docker Compose reporta un conflicto de puertos al intentar levantar `osrm`.
-- **Causa:** Otra aplicación (como AirPlay en macOS o un servicio local en Windows) está utilizando el puerto 5000.
-- **Solución:**
-  1. Para identificar qué proceso usa el puerto en Windows: `netstat -ano | findstr :5000`
-  2. Si deseas cambiar el puerto de OSRM en VEXTOR, modifica el mapeo en `infra/osrm/docker-compose.yml` (por ejemplo `"5001:5000"`) y actualiza `OSRM_URL=http://localhost:5001` en `vextor_be/.env`.
+### Problema 2: Conflicto de Puertos (5000 / 8000 / 80)
+- **Solución:** Verifica qué aplicación usa el puerto (`netstat -ano | findstr :5000` en Windows) o ajusta los puertos mapeados en `docker-compose.yml`.
 
-### Problema 3: OSRM se detiene al iniciar (`exit 1`)
-- **Síntoma:** El contenedor OSRM se crea pero se apaga inmediatamente.
-- **Causa:** Los archivos binarios en `infra/osrm/data/` están corruptos, incompletos o fueron procesados con una versión diferente de OSRM.
-- **Solución:** Elimina los archivos binarios de `infra/osrm/data/` (conservando `colombia-latest.osm.pbf`) y vuelve a ejecutar `setup-osrm.ps1` para forzar la regeneración del grafo.
+### Problema 3: Grafo OSRM corrupto o versión incompatible
+- **Solución:** Borra los archivos binarios de `infra/osrm/data/` (conservando `colombia-latest.osm.pbf`) y vuelve a ejecutar `.\setup-vextor.ps1` para forzar la regeneración del grafo OSRM.

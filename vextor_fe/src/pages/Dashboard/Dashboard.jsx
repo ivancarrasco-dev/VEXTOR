@@ -19,6 +19,7 @@ import {
   Info
 } from 'lucide-react';
 import axios from 'axios';
+import { API_BASE_URL } from '../../config/api';
 import { cn } from '../../utils/cn';
 import StatsCard from './components/StatsCard';
 import QuickActionCard from './components/QuickActionCard';
@@ -123,8 +124,8 @@ const Dashboard = () => {
     setIsLoading(true);
     try {
       const [statsRes, activitiesRes] = await Promise.all([
-        axios.get('http://localhost:8000/api/dashboard/stats'),
-        axios.get('http://localhost:8000/api/activities')
+        axios.get(`${API_BASE_URL}/api/dashboard/stats`),
+        axios.get(`${API_BASE_URL}/api/activities`)
       ]);
 
       if (statsRes.data) {

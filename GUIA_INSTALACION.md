@@ -1,151 +1,168 @@
-# Guía de Instalación Paso a Paso de VEXTOR desde Cero
+# Guía de Instalación y Despliegue de VEXTOR
 
-Esta guía está diseñada para que cualquier integrante del equipo o desarrollador pueda clonar el proyecto **VEXTOR** en una máquina totalmente nueva y ponerlo a funcionar paso a paso sin complicaciones.
+Esta guía está diseñada para que cualquier persona (desarrolladores o estudiantes del SENA) pueda clonar el repositorio de **VEXTOR** en un computador nuevo con Docker Desktop instalado y poner a funcionar toda la plataforma ejecutando **únicamente un comando**:
 
----
-
-## 1. Requisitos del Sistema
-
-Antes de comenzar, asegúrate de contar con los siguientes programas instalados en tu computadora:
-
-- **Sistema Operativo:** Windows 10/11 (64-bit), macOS o Linux.
-- **Git:** Control de versiones ([https://git-scm.com/](https://git-scm.com/)).
-- **Node.js:** Versión 20 o superior ([https://nodejs.org/](https://nodejs.org/)).
-- **pnpm:** Gestor de paquetes de Node (`npm install -g pnpm`).
-- **Python:** Versión 3.12 o superior ([https://www.python.org/](https://www.python.org/)).
-- **Docker Desktop:** Para ejecutar el servidor de mapas OSRM local ([https://www.docker.com/products/docker-desktop/](https://www.docker.com/products/docker-desktop/)).
+```powershell
+.\setup-vextor.ps1
+```
 
 ---
 
-## 2. Paso a Paso para la Instalación
+## 1. Requisitos Previos
+
+Antes de comenzar, asegúrate de contar con lo siguiente en tu computador:
+
+1. **Git:** Control de versiones ([https://git-scm.com/](https://git-scm.com/)).
+2. **Docker Desktop:** Entorno de contenedores para Windows/macOS/Linux ([https://www.docker.com/products/docker-desktop/](https://www.docker.com/products/docker-desktop/)).
+   - Asegúrate de abrir Docker Desktop y verificar que la barra inferior indique **"Docker Desktop is running"**.
+
+---
+
+## 2. Instalación Automática en un Comando (Recomendado)
 
 ### Paso 1: Clonar el Repositorio
-Abre tu terminal (PowerShell en Windows, CMD o Bash) y clona el proyecto:
+Abre PowerShell o tu terminal preferida y clona VEXTOR:
 
-```bash
+```powershell
 git clone <URL_DEL_REPOSITORIO_VEXTOR>
 cd VEXTOR
 ```
 
----
-
-### Paso 2: Iniciar Docker Desktop
-1. Abre la aplicación **Docker Desktop** desde el menú de inicio de tu sistema operativo.
-2. Espera unos segundos a que el ícono de Docker muestre que el motor está activo ("Docker Desktop is running").
-
----
-
-### Paso 3: Configurar el Servidor de Mapas OSRM
-VEXTOR utiliza su propio servidor OSRM local para calcular rutas sobre el mapa de Colombia. Ejecuta el script automatizado desde la raíz del repositorio en PowerShell:
+### Paso 2: Ejecutar el Instalador Automático
+En PowerShell desde la raíz del proyecto, ejecuta:
 
 ```powershell
-.\setup-osrm.ps1
-```
-
-> **¿Qué hace este script?**
-> - Verifica que Docker y Docker Compose estén listos.
-> - Descarga los datos geográficos de Colombia de Geofabrik (`colombia-latest.osm.pbf`).
-> - Procesa el grafo vial MLD si es la primera vez.
-> - Levanta el contenedor de OSRM en `http://localhost:5000`.
-> - Realiza una prueba de ruta Bogotá - Medellín para validar que el servidor esté activo.
-
-Si ves el mensaje `STATUS: OSRM LISTO Y OPERATIVO EN LOCAL`, puedes continuar.
-
----
-
-### Paso 4: Configurar Variables de Entorno (`.env`)
-
-Crea un archivo `.env` en la carpeta `vextor_be/` utilizando como plantilla `.env.example`:
-
-1. En Windows PowerShell:
-   ```powershell
-   Copy-Item .env.example vextor_be\.env
-   ```
-2. Abre `vextor_be\.env` y verifica que contenga las siguientes variables esenciales:
-
-```env
-# URL de conexión a la Base de Datos PostgreSQL de Supabase
-DATABASE_URL=postgresql+psycopg://vextor_user:Vextor7.!<>@localhost:5432/vextor_db
-
-# Clave secreta para la firma de tokens JWT
-JWT_SECRET_KEY=clave-secreta-de-desarrollo-vextor-2025
-
-# URL del servidor OSRM local
-OSRM_URL=http://localhost:5000
-OSRM_TIMEOUT_SECONDS=10
-
-# URL del frontend
-FRONTEND_URL=http://localhost:5173
-```
-
-> **Nota:** La base de datos PostgreSQL se encuentra alojada en **Supabase**. No necesitas instalar PostgreSQL localmente si utilizas la URL remota de Supabase provista por el equipo.
-
----
-
-### Paso 5: Instalar Dependencias del Backend (`vextor_be`)
-
-Navega al directorio del backend, crea un entorno virtual e instala los paquetes de Python:
-
-```bash
-cd vextor_be
-
-# Crear entorno virtual de Python
-python -m venv venv
-
-# Activar entorno virtual
-# En Windows (PowerShell):
-.\venv\Scripts\Activate.ps1
-# En Linux/macOS:
-# source venv/bin/activate
-
-# Instalar dependencias
-pip install -r requirements.txt
+.\setup-vextor.ps1
 ```
 
 ---
 
-### Paso 6: Instalar Dependencias del Frontend (`vextor_fe`)
+## 3. Flujo Interno de `setup-vextor.ps1`
 
-Abre una nueva terminal, navega a la carpeta del frontend e instala las dependencias con `pnpm`:
+Cuando ejecutas `.\setup-vextor.ps1`, el script realiza automáticamente todas las siguientes etapas:
 
-```bash
-cd vextor_fe
-pnpm install
+```text
+  PC NUEVO
+     │
+     ▼
+Git clone VEXTOR
+     │
+     ▼
+.\setup-vextor.ps1
+     │
+     ├─► [1/6] Verificar Docker Engine y Docker Compose
+     │
+     ├─► [2/6] Crear .env desde .env.example (sin sobrescribir credenciales)
+     │
+     ├─► [3/6] Preparar OSRM Colombia
+     │        ├─► Descargar colombia-latest.osm.pbf (si no existe)
+     │        └─► Ejecutar extract, partition y customize vía Docker (si el grafo no existe)
+     │
+     ├─► [4/6] Construir contenedores de Frontend (Nginx), Backend (FastAPI) y OSRM
+     │
+     ├─► [5/6] Iniciar servicios con Docker Compose (docker compose up -d)
+     │
+     └─► [6/6] Ejecutar Health Checks (Frontend, Backend, OSRM y /api/routing/health)
+     │
+     ▼
+VEXTOR FUNCIONANDO DOCKERIZADO
 ```
 
 ---
 
-### Paso 7: Iniciar el Servidor Backend (FastAPI)
+## 4. Acceso a los Servicios
 
-En la terminal con el entorno virtual activado de `vextor_be`:
+Una vez finalizado el setup, accede a los servicios en tu navegador:
 
-```bash
-uvicorn main:app --reload --port 8000
-```
-
-El backend quedará disponible en: `http://localhost:8000`
-Documentación interactiva de API: `http://localhost:8000/docs`
+- 💻 **Frontend Web App:** `http://localhost` (o `http://localhost:5173`)
+- ⚙️ **Backend REST & WebSockets:** `http://localhost:8000`
+- 📖 **Documentación Swagger API:** `http://localhost:8000/docs`
+- 🗺️ **Motor OSRM Local:** `http://localhost:5000`
 
 ---
 
-### Paso 8: Iniciar el Cliente Frontend (React + Vite)
+## 5. Gestión y Comandos Útiles de Docker
 
-En la terminal de `vextor_fe`:
+No necesitas memorizar comandos complejos, pero si deseas administrar los contenedores:
 
-```bash
-pnpm run dev
+### Ver estado de los contenedores
+```powershell
+docker compose ps
 ```
 
-El cliente web abrirá en: `http://localhost:5173`
+### Ver logs en tiempo real de todos los servicios
+```powershell
+docker compose logs -f
+```
+
+### Ver logs de un servicio específico (ej: backend u osrm)
+```powershell
+docker compose logs -f backend
+docker compose logs -f osrm
+```
+
+### Detener VEXTOR
+```powershell
+docker compose down
+```
+
+### Reiniciar VEXTOR
+```powershell
+docker compose restart
+```
+
+### Reconstruir contenedores tras modificar el código
+```powershell
+docker compose up -d --build
+```
 
 ---
 
-## 3. Comprobación Final del Sistema
+## 6. Explicación de la Arquitectura Docker y OSRM
 
-1. Abre tu navegador web e ingresa a `http://localhost:5173`.
-2. Inicia sesión con las credenciales de prueba o de tu usuario asignado.
-3. Dirígete a la sección **Rutas** (`/rutas`).
-4. Selecciona un punto de Origen (ej: Bogotá) y un Destino (ej: Medellín).
-5. Verifica que el mapa dibuje la línea azul de la carretera y muestre la distancia en kilómetros y el tiempo estimado en horas/minutos.
+```text
+                  ┌───────────────┐
+                  │   FRONTEND    │ (React 19 + Nginx en Puerto 80)
+                  └───────┬───────┘
+                          │
+                          ▼
+                  ┌───────────────┐
+                  │    BACKEND    │ (FastAPI en Puerto 8000)
+                  │    FASTAPI    │
+                  └───────┬───────┘
+                          │
+                          ▼
+                  ┌───────────────┐
+                  │     OSRM      │ (Motor de Ruteo Colombia MLD en Puerto 5000)
+                  └───────────────┘
 
-Si la ruta se dibuja correctamente, **VEXTOR está 100% instalado y funcional en tu equipo**.
+                  BACKEND
+                     │
+                     ▼
+                  SUPABASE (PostgreSQL Persistente en la Nube)
+```
+
+### ¿Por qué los datos pesados de OSRM NO están en GitHub?
+El procesamiento del mapa de Colombia genera entre 1.5 GB y 3 GB de archivos binarios (`colombia-latest.osrm*`). Para mantener el repositorio de Git liviano y rápido:
+1. **NO subimos archivos pesados a GitHub:** `.gitignore` ignora todos los datos de `infra/osrm/data/`.
+2. **Generación Local:** `setup-vextor.ps1` descarga el mapa original PBF de Colombia y procesa el grafo localmente la primera vez mediante Docker.
+3. **Reutilización:** En ejecuciones posteriores, el script detecta los archivos procesados y los reutiliza al instante sin descargar ni procesar de nuevo.
+
+---
+
+## 7. Solución de Problemas Frecuentes (Troubleshooting)
+
+### 1. "Docker no está ejecutándose"
+- **Causa:** La aplicación Docker Desktop está cerrada.
+- **Solución:** Abre Docker Desktop desde el menú Inicio, espera a que el ícono de la ballena esté estático y vuelve a ejecutar `.\setup-vextor.ps1`.
+
+### 2. "Puerto en uso" (80, 8000 o 5000)
+- **Causa:** Otra aplicación (como Skype, IIS, Apache u otro proyecto) está ocupando uno de los puertos.
+- **Solución:** Cierra la aplicación en conflicto o cambia el mapeo de puertos en `docker-compose.yml`.
+
+### 3. "DATABASE_URL requiere ser configurada"
+- **Causa:** `.env` no tiene las credenciales válidas de la base de datos PostgreSQL de Supabase.
+- **Solución:** Abre el archivo `.env` en la raíz del proyecto y asigna tu cadena de conexión real de Supabase en `DATABASE_URL`.
+
+### 4. OSRM no responde o da timeout
+- **Solución:** Revisa los logs de OSRM con `docker compose logs osrm` o vuelve a generar el grafo borrando los archivos dentro de `infra/osrm/data/` (dejando `.gitignore`).

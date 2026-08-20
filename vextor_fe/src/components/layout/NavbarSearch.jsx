@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, MapPin, Truck, Users, Wrench } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE_URL } from '../../config/api';
 import { cn } from '../../utils/cn';
 
 const NavbarSearch = () => {
@@ -32,10 +33,10 @@ const NavbarSearch = () => {
 
     try {
       const [vRes, dRes, rRes, mRes] = await Promise.all([
-        axios.get('http://localhost:8000/api/vehicles'),
-        axios.get('http://localhost:8000/api/drivers'),
-        axios.get('http://localhost:8000/api/routes'),
-        axios.get('http://localhost:8000/api/maintenance')
+        axios.get(`${API_BASE_URL}/api/vehicles`),
+        axios.get(`${API_BASE_URL}/api/drivers`),
+        axios.get(`${API_BASE_URL}/api/routes`),
+        axios.get(`${API_BASE_URL}/api/maintenance`)
       ]);
 
       const matchedResults = [];

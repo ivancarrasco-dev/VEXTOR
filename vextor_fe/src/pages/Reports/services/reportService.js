@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { API_BASE_URL } from '../../../config/api';
 
-const API_URL = 'http://localhost:8000/api/reports';
+const API_URL = `${API_BASE_URL}/api/reports`;
 
 export const reportService = {
   /**
