@@ -50,7 +50,7 @@ Write-Host " Docker Compose:   OK" -ForegroundColor Green
 # [2/6] Preparar y Validar Variables de Entorno (.env)
 # --------------------------------------------------
 Write-Host ""
-Write-Host "[2/6] Verificando y validando variables de entorno (.env)..." -ForegroundColor Yellow
+Write-Host "[2/6] Verificando y configurando variables de entorno (.env)..." -ForegroundColor Yellow
 
 $EnvFile = Join-Path $PSScriptRoot ".env"
 $EnvExample = Join-Path $PSScriptRoot ".env.example"
@@ -64,10 +64,10 @@ if (-not (Test-Path $EnvFile)) {
         exit 1
     }
 } else {
-    Write-Host " Archivo '.env' detectado. Manteniendo configuracion existente." -ForegroundColor Green
+    Write-Host " Archivo '.env' detectado. Validando y actualizando..." -ForegroundColor Green
 }
 
-# Parsear .env para validacion estricta de variables criticas
+# Parsear .env para validacion y actualizacion
 $envMap = @{}
 Get-Content $EnvFile | ForEach-Object {
     $line = $_.Trim()
@@ -79,52 +79,81 @@ Get-Content $EnvFile | ForEach-Object {
     }
 }
 
-$criticalKeys = @(
-    "DATABASE_URL",
-    "JWT_SECRET_KEY",
-    "OSRM_URL",
-    "OSRM_TIMEOUT_SECONDS",
-    "FRONTEND_URL"
-)
-
-$placeholders = @(
-    "tu_password",
-    "tu_ref",
-    "change-me",
-    "tu_password_aqui",
-    "tu_referencia_aqui",
-    "reemplaza-esta-clave"
-)
-
-$hasEnvError = $false
-
-foreach ($key in $criticalKeys) {
-    if (-not $envMap.ContainsKey($key) -or [string]::IsNullOrWhiteSpace($envMap[$key])) {
-        Write-Host " ERROR: La variable '$key' no esta configurada en .env." -ForegroundColor Red
-        $hasEnvError = $true
-        continue
-    }
-
-    $val = $envMap[$key]
-    foreach ($ph in $placeholders) {
-        if ($val.Contains($ph)) {
-            Write-Host " ERROR: La variable '$key' requiere ser configurada en .env (sigue teniendo el placeholder '$ph')." -ForegroundColor Red
-            $hasEnvError = $true
-            break
-        }
-    }
-}
-
-if ($hasEnvError) {
+# --- VALIDACION DE DATABASE_URL (UNICA VARIABLE CRITICA) ---
+if (-not $envMap.ContainsKey("DATABASE_URL") -or [string]::IsNullOrWhiteSpace($envMap["DATABASE_URL"])) {
+    Write-Host " ERROR: La variable 'DATABASE_URL' no esta configurada en .env." -ForegroundColor Red
     Write-Host ""
     Write-Host "==========================================" -ForegroundColor Red
     Write-Host "         VEXTOR NO ESTA LISTO             " -ForegroundColor Red
     Write-Host "==========================================" -ForegroundColor Red
-    Write-Host "Por favor edita el archivo '.env' en la raiz del proyecto con credenciales reales y vuelve a ejecutar .\setup-vextor.ps1" -ForegroundColor Yellow
+    Write-Host "Por favor edita el archivo '.env' en la raiz del proyecto y configura DATABASE_URL con tus credenciales de Supabase o PostgreSQL, luego vuelve a ejecutar .\setup-vextor.ps1" -ForegroundColor Yellow
     exit 1
 }
 
-Write-Host " Variables de entorno criticas validadas correctamente." -ForegroundColor Green
+if ($envMap["DATABASE_URL"].Contains("tu_password") -or $envMap["DATABASE_URL"].Contains("reemplaza") -or $envMap["DATABASE_URL"].Contains("change-me")) {
+    Write-Host " ERROR: DATABASE_URL aun contiene placeholders. Configurala con credenciales reales." -ForegroundColor Red
+    exit 1
+}
+
+Write-Host " DATABASE_URL configurada correctamente." -ForegroundColor Green
+
+# --- AUTO-GENERAR JWT_SECRET_KEY SI NO EXISTE O TIENE PLACEHOLDER ---
+if (-not $envMap.ContainsKey("JWT_SECRET_KEY") -or [string]::IsNullOrWhiteSpace($envMap["JWT_SECRET_KEY"]) -or $envMap["JWT_SECRET_KEY"].Contains("reemplaza")) {
+    Write-Host " Generando JWT_SECRET_KEY aleatorio..." -ForegroundColor Yellow
+    $randomBytes = [byte[]]::new(32)
+    $rng = [System.Security.Cryptography.RNGCryptoServiceProvider]::new()
+    $rng.GetBytes($randomBytes)
+    $jwtSecret = [Convert]::ToBase64String($randomBytes)
+    
+    # Actualizar en memoria y en el archivo
+    $envContent = Get-Content $EnvFile -Raw
+    if ($envContent -match "JWT_SECRET_KEY=") {
+        $envContent = $envContent -replace "JWT_SECRET_KEY=.*", "JWT_SECRET_KEY=$jwtSecret"
+    } else {
+        $envContent += "`nJWT_SECRET_KEY=$jwtSecret"
+    }
+    Set-Content $EnvFile $envContent
+    $envMap["JWT_SECRET_KEY"] = $jwtSecret
+    Write-Host " JWT_SECRET_KEY generada y guardada en .env" -ForegroundColor Green
+}
+
+# --- AUTO-CONFIGURAR SMTP SI ESTA VACIO O CON PLACEHOLDERS ---
+$smtpKeys = @("MAIL_HOST", "MAIL_PORT", "MAIL_USERNAME", "MAIL_PASSWORD", "MAIL_FROM")
+$needsSmtpUpdate = $false
+foreach ($key in $smtpKeys) {
+    if (-not $envMap.ContainsKey($key) -or [string]::IsNullOrWhiteSpace($envMap[$key]) -or $envMap[$key].Contains("tu-") -or $envMap[$key].Contains("reemplaza")) {
+        $needsSmtpUpdate = $true
+        break
+    }
+}
+
+if ($needsSmtpUpdate) {
+    Write-Host " Configurando SMTP con valores por defecto (deshabilitado)..." -ForegroundColor Yellow
+    $envContent = Get-Content $EnvFile -Raw
+    
+    $smtpDefaults = @{
+        "MAIL_HOST" = "smtp.gmail.com"
+        "MAIL_PORT" = "587"
+        "MAIL_USERNAME" = "disabled@example.com"
+        "MAIL_PASSWORD" = "disabled"
+        "MAIL_FROM" = "VEXTOR Fleet <noreply@vextor.local>"
+    }
+    
+    foreach ($smtpKey in $smtpDefaults.Keys) {
+        $smtpValue = $smtpDefaults[$smtpKey]
+        if ($envContent -match "$smtpKey=") {
+            $envContent = $envContent -replace "$smtpKey=.*", "$smtpKey=$smtpValue"
+        } else {
+            $envContent += "`n$smtpKey=$smtpValue"
+        }
+        $envMap[$smtpKey] = $smtpValue
+    }
+    Set-Content $EnvFile $envContent
+    Write-Host " SMTP configurado con valores por defecto (correos deshabilitados)." -ForegroundColor Green
+    Write-Host " Nota: Para habilitar correos, edita .env con credenciales reales de SMTP/Gmail." -ForegroundColor DarkYellow
+}
+
+Write-Host " Variables de entorno configuradas correctamente." -ForegroundColor Green
 
 
 # --------------------------------------------------
@@ -317,6 +346,11 @@ Write-Host "Comandos utiles:" -ForegroundColor Yellow
 Write-Host "  Ver logs de la aplicacion : docker compose logs -f" -ForegroundColor White
 Write-Host "  Detener VEXTOR            : docker compose down" -ForegroundColor White
 Write-Host "  Reiniciar VEXTOR          : docker compose restart" -ForegroundColor White
+Write-Host ""
+Write-Host "Nota sobre correos (SMTP):" -ForegroundColor Yellow
+Write-Host "  Actualmente los correos estan deshabilitados (credenciales dummy en .env)." -ForegroundColor DarkYellow
+Write-Host "  Para habilitar recuperacion de contrasena y notificaciones, edita .env" -ForegroundColor DarkYellow
+Write-Host "  con credenciales reales de Gmail o tu proveedor SMTP preferido." -ForegroundColor DarkYellow
 Write-Host ""
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host ""

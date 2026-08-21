@@ -11,15 +11,12 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # Copiar archivos de manifest de dependencias
-COPY package.json pnpm-lock.yaml ./
-
-# Copiar configuración pnpm
-COPY .pnpmrc ./
+COPY package.json pnpm-lock.yaml .pnpmrc ./
 
 # Instalar dependencias (skip build script warnings)
 RUN pnpm install --frozen-lockfile 2>&1 | grep -v "ERR_PNPM_IGNORED_BUILDS" || true
 
-# Copiar código fuente
+# Copiar código fuente (DESPUÉS de instalar, para evitar conflictos con .gitignore)
 COPY . .
 
 # Argumentos de construcción para variables VITE_*
