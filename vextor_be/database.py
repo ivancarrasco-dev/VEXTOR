@@ -5,7 +5,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise RuntimeError(
-        "DATABASE_URL no está configurada. Crea vextor_be/.env a partir de .env.example."
+        "DATABASE_URL no está configurada. Crea .env en la raíz del proyecto a partir de .env.example."
     )
 
 engine = create_engine(

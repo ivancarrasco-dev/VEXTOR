@@ -12,7 +12,8 @@ from typing import List
 
 # Carga la configuración local antes de inicializar la base de datos y los servicios.
 # Las variables ya definidas por el entorno tienen prioridad sobre el archivo .env.
-load_dotenv(Path(__file__).with_name(".env"))
+# Se busca el archivo .env en la raíz del repositorio VEXTOR.
+load_dotenv(Path(__file__).parent.parent / ".env")
 
 from database import engine, SessionLocal
 import models

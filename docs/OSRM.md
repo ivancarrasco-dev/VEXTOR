@@ -55,7 +55,6 @@ La carpeta `infra/osrm/` contiene la configuración de Docker y los datos proces
 
 ```text
 infra/osrm/
-├── docker-compose.yml       # Definición standalone de servicios OSRM
 └── data/                    # Directorio de datos y grafo procesado (Ignorado en Git)
     ├── .gitignore                       # Garantiza que archivos pesados no se suban a GitHub
     ├── colombia-latest.osm.pbf          # Extracto crudo de OpenStreetMap para Colombia
@@ -73,18 +72,15 @@ infra/osrm/
 
 ---
 
-## 4. Scripts Automatizados: `setup-vextor.ps1` vs `setup-osrm.ps1`
+## 4. Script Automatizado: `setup-vextor.ps1`
 
-- **`setup-vextor.ps1` (Instalador Principal):**
+- **`setup-vextor.ps1` (Instalador Único y Centralizado):**
   Alista la plataforma VEXTOR completa en un computador nuevo:
   1. Comprueba Docker Engine y Docker Compose.
-  2. Inicializa `.env` desde `.env.example`.
+  2. Inicializa y valida `.env` desde `.env.example`.
   3. Prepara los datos de OSRM (descarga PBF + procesa MLD si hace falta).
   4. Construye y levanta Frontend, Backend y OSRM con `docker compose up -d --build`.
   5. Ejecuta Health Checks en todos los endpoints (`http://localhost`, `http://localhost:8000`, `http://localhost:5000`, `/api/routing/health`).
-
-- **`setup-osrm.ps1` (Instalador Standalone de OSRM):**
-  Uso exclusivo si se desea preparar o probar únicamente el servidor de mapas OSRM de forma aislada sin levantar Frontend/Backend.
 
 ---
 
