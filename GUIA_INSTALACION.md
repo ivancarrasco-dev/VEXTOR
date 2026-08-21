@@ -52,17 +52,15 @@ Git clone VEXTOR
      │
      ├─► [1/6] Verificar Docker Engine y Docker Compose
      │
-     ├─► [2/6] Crear .env desde .env.example (sin sobrescribir credenciales)
+     ├─► [2/6] Verificación y Validación de Variables de Entorno (.env)
      │
-     ├─► [3/6] Preparar OSRM Colombia
-     │        ├─► Descargar colombia-latest.osm.pbf (si no existe)
-     │        └─► Ejecutar extract, partition y customize vía Docker (si el grafo no existe)
+     ├─► [3/6] Preparar OSRM Colombia (Descarga PBF + Pipeline MLD si no existe)
      │
-     ├─► [4/6] Construir contenedores de Frontend (Nginx), Backend (FastAPI) y OSRM
+     ├─► [4/6] Construir e Iniciar Contenedores con Docker Compose (Frontend, Backend, OSRM)
      │
-     ├─► [5/6] Iniciar servicios con Docker Compose (docker compose up -d)
+     ├─► [5/6] Verificación Determinista de Salud (Frontend, Backend, OSRM, /api/routing/health)
      │
-     └─► [6/6] Ejecutar Health Checks (Frontend, Backend, OSRM y /api/routing/health)
+     └─► [6/6] Confirmación de Estado de Despliegue (exit 0 si OK, exit 1 si falla)
      │
      ▼
 VEXTOR FUNCIONANDO DOCKERIZADO

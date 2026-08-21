@@ -61,18 +61,20 @@ pip install -r requirements.txt
 ```
 
 ### Variables de Entorno (`.env`)
-Crear un archivo `.env` en la raíz de `vextor_be/`:
+Las variables de entorno se leen centralizadamente desde el archivo `.env` ubicado en la raíz del proyecto (`VEXTOR/.env`), creado a partir de `.env.example`:
 ```env
 DATABASE_URL=postgresql+psycopg://postgres:tu_password@localhost:5432/vextor_db
-SECRET_KEY=tu_clave_secreta_super_segura
-JWT_ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=480
+JWT_SECRET_KEY=tu_clave_secreta_super_segura
+OSRM_URL=http://osrm:5000
+OSRM_TIMEOUT_SECONDS=10
+FRONTEND_URL=http://localhost
 
-# Configuración de Correo (Opcional en dev)
-SMTP_SERVER=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=tu_correo@gmail.com
-SMTP_PASSWORD=tu_password_de_aplicacion
+# Configuración de Correo (SMTP)
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=tu_correo@gmail.com
+MAIL_PASSWORD=tu_password_de_aplicacion
+MAIL_FROM=VEXTOR Fleet <tu_correo@gmail.com>
 ```
 
 ### Ejecutar Servidor Backend

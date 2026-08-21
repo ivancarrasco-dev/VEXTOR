@@ -17,7 +17,7 @@ from email_utils import send_recovery_email
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 if not SECRET_KEY:
     raise RuntimeError(
-        "JWT_SECRET_KEY no está configurada. Crea vextor_be/.env a partir de .env.example."
+        "JWT_SECRET_KEY no está configurada. Crea .env en la raíz del proyecto a partir de .env.example."
     )
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440 # 24 hours
