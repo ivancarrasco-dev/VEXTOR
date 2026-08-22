@@ -1,7 +1,7 @@
 """Modelos de Tracking en Tiempo Real"""
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, DateTime, ForeignKey, Numeric, CheckConstraint
+from sqlalchemy import Column, DateTime, ForeignKey, Numeric, CheckConstraint, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship

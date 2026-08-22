@@ -8,7 +8,11 @@ from dotenv import load_dotenv
 
 # Load .env from project root
 env_file = Path(__file__).parent.parent.parent / ".env"
-load_dotenv(env_file)
+if env_file.exists():
+    load_dotenv(env_file)
+else:
+    # Si no existe .env, cargar desde el entorno (útil en Docker)
+    load_dotenv()
 
 
 class Settings:
