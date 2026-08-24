@@ -168,6 +168,10 @@ const Vehicles = () => {
       errors.documentacion_vehiculo = 'Máximo 255 caracteres';
     }
 
+    if (currentVehicle && currentVehicle.estado_vehiculo === 'EN_RUTA' && formData.estado_vehiculo === 'DISPONIBLE') {
+      errors.estado_vehiculo = 'No se puede cambiar a DISPONIBLE mientras el vehículo tenga una ruta activa o asignada.';
+    }
+
     return errors;
   };
 
@@ -695,6 +699,9 @@ const Vehicles = () => {
                         <option key={st.value} value={st.value}>{st.label}</option>
                       ))}
                     </Select>
+                    {formErrors.estado_vehiculo && (
+                      <p className="text-xs text-red-500 mt-0.5 font-medium">{formErrors.estado_vehiculo}</p>
+                    )}
                   </div>
 
                   {/* Documentación */}

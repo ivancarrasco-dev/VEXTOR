@@ -330,8 +330,7 @@ const Routes = () => {
         showFeedback('success', 'Nueva ruta programada correctamente.');
       }
       handleClearForm();
-      const updatedList = await routeService.getRoutes();
-      setRoutes(updatedList);
+      await loadData();
     } catch (err) {
       showFeedback('error', err.message || 'Error al procesar la ruta.');
     } finally {
@@ -404,8 +403,7 @@ const Routes = () => {
       }
 
       setRouteToDelete(null);
-      const updatedList = await routeService.getRoutes();
-      setRoutes(updatedList);
+      await loadData();
     } catch (err) {
       showFeedback('error', err.message || 'Error al eliminar la ruta.');
     } finally {
@@ -873,7 +871,7 @@ const Routes = () => {
                     <option value="">Seleccione Vehículo...</option>
                     {vehicles.filter(v => v.estado_vehiculo === 'DISPONIBLE' || v.id_vehiculo === formData.id_vehiculo).map(v => (
                       <option key={v.id_vehiculo} value={v.id_vehiculo}>
-                        {v.placa} — {v.marca} {v.modelo}
+                        {v.placa} — {v.marca} {v.modelo} ({v.estado_vehiculo})
                       </option>
                     ))}
                   </Select>
