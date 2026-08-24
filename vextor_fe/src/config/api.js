@@ -19,3 +19,4 @@ const getWsBaseUrl = () => {
 
 export const API_BASE_URL = getApiBaseUrl();
 export const WS_BASE_URL = getWsBaseUrl();
+export const TOMTOM_API_KEY = (import.meta.env.VITE_TOMTOM_API_KEY || '').trim();
