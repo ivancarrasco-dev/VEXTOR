@@ -139,6 +139,10 @@ const Drivers = () => {
       errors.fecha_ingreso = 'La fecha de ingreso es obligatoria';
     }
 
+    if (currentDriver && currentDriver.estado_conductor === 'EN_RUTA' && (formData.estado_conductor === 'DISPONIBLE' || formData.estado_conductor === 'ACTIVO')) {
+      errors.estado_conductor = 'No se puede cambiar a DISPONIBLE mientras el conductor tenga una ruta activa o asignada.';
+    }
+
     return errors;
   };
 
@@ -599,6 +603,9 @@ const Drivers = () => {
                       <option key={st.value} value={st.value}>{st.label}</option>
                     ))}
                   </Select>
+                  {formErrors.estado_conductor && (
+                    <p className="text-xs text-red-500 mt-0.5 font-medium">{formErrors.estado_conductor}</p>
+                  )}
                 </div>
 
                 {/* Modal Footer */}
