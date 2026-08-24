@@ -33,8 +33,8 @@ const UsersSection = ({
 
       {/* Users List Table */}
       <div className="border border-v-dark-border rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+        <div className="overflow-x-auto w-full custom-scrollbar">
+          <table className="w-full text-left border-collapse min-w-[550px]">
             <thead>
               <tr className="bg-v-dark/40 border-b border-v-dark-border">
                 <th className="p-3 text-xs font-bold uppercase text-v-gray">Nombre</th>

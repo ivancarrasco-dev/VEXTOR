@@ -510,7 +510,7 @@ const Routes = () => {
         /* VISTA "CONDUCTORES EN RUTA" EN TIEMPO REAL */
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start text-left animate-in fade-in duration-300">
           {/* Active Drivers Map (2 Columns) */}
-          <div className="lg:col-span-2 h-137.5 lg:h-175 relative rounded-3xl overflow-hidden border border-v-dark-border shadow-2xl">
+          <div className="lg:col-span-2 h-80 sm:h-137.5 lg:h-175 relative rounded-3xl overflow-hidden border border-v-dark-border shadow-2xl">
             <MapComponent
               routes={routes}
               activeRoute={selectedTracking ? {
@@ -603,7 +603,7 @@ const Routes = () => {
 
         {/* PANEL IZQUIERDO: Mapa Interactivo (60% width on LG screen) */}
         <div className="lg:col-span-3 flex flex-col gap-4">
-          <div className="h-112.5 lg:h-170">
+          <div className="h-80 sm:h-112.5 lg:h-170">
             <MapComponent
               routes={routes}
               activeRoute={selectedRoute}
@@ -1029,8 +1029,8 @@ const Routes = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse text-xs">
+                <div className="overflow-x-auto w-full custom-scrollbar">
+                  <table className="w-full text-left border-collapse text-xs min-w-[500px]">
                     <thead>
                       <tr className="border-b border-v-dark-border bg-v-dark/40">
                         <th className="p-3 font-bold uppercase text-v-gray">Ruta</th>
@@ -1097,7 +1097,7 @@ const Routes = () => {
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                  <div className="flex items-center justify-between pt-3 border-t border-v-dark-border text-xs">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-v-dark-border text-xs text-center sm:text-left">
                     <span className="text-v-gray">
                       Pág. <span className="font-semibold text-v-white">{currentPage}</span> de <span className="font-semibold text-v-white">{totalPages}</span>
                     </span>
