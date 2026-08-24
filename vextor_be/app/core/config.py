@@ -32,6 +32,7 @@ class Settings:
     )
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 horas
+    SECURE_COOKIE: bool = os.getenv("SECURE_COOKIE", "false").lower() in ("true", "1", "yes")
 
     # ========== EMAIL / SMTP ==========
     MAIL_HOST: str = os.getenv("MAIL_HOST") or os.getenv("SMTP_HOST")

@@ -288,6 +288,30 @@ class RouteService:
         conductor_id = route_data.pop("id_conductor", None)
         vehicle_id = route_data.pop("id_vehiculo", None)
 
+        # Validar disponibilidad de vehículo
+        if vehicle_id:
+            active_v = db.query(AsignacionVehiculo).join(Ruta).filter(
+                AsignacionVehiculo.id_vehiculo == vehicle_id,
+                Ruta.estado_ruta.in_(["PROGRAMADA", "EN_PROCESO"])
+            ).first()
+            if active_v:
+                raise HTTPException(
+                    status_code=400,
+                    detail="El vehículo seleccionado ya está asignado a una ruta activa."
+                )
+
+        # Validar disponibilidad de conductor
+        if conductor_id:
+            active_c = db.query(AsignacionConductor).join(Ruta).filter(
+                AsignacionConductor.id_conductor == conductor_id,
+                Ruta.estado_ruta.in_(["PROGRAMADA", "EN_PROCESO"])
+            ).first()
+            if active_c:
+                raise HTTPException(
+                    status_code=400,
+                    detail="El conductor seleccionado ya está asignado a una ruta activa."
+                )
+
         ruta = Ruta(**route_data)
         db.add(ruta)
         db.commit()
@@ -317,6 +341,23 @@ class RouteService:
         if not ruta:
             raise HTTPException(status_code=404, detail="Ruta no encontrada")
 
+        # Máquina de estados para transiciones de ruta
+        new_status = route_data.get("estado_ruta")
+        if new_status and new_status != ruta.estado_ruta:
+            valid_transitions = {
+                "PROGRAMADA": ["EN_PROCESO", "CANCELADA", "SUSPENDIDA"],
+                "EN_PROCESO": ["COMPLETADA", "SUSPENDIDA", "CANCELADA"],
+                "SUSPENDIDA": ["EN_PROCESO", "CANCELADA"],
+                "COMPLETADA": [],
+                "CANCELADA": [],
+            }
+            allowed = valid_transitions.get(ruta.estado_ruta, [])
+            if new_status not in allowed:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Transición de estado no válida de '{ruta.estado_ruta}' a '{new_status}'."
+                )
+
         old_asig_c = db.query(AsignacionConductor).filter(
             AsignacionConductor.id_ruta == route_id
         ).first()
@@ -329,6 +370,32 @@ class RouteService:
 
         conductor_id = route_data.pop("id_conductor", None)
         vehicle_id = route_data.pop("id_vehiculo", None)
+
+        # Validar disponibilidad de vehículo si cambia
+        if vehicle_id and vehicle_id != old_vehicle_id:
+            active_v = db.query(AsignacionVehiculo).join(Ruta).filter(
+                AsignacionVehiculo.id_vehiculo == vehicle_id,
+                AsignacionVehiculo.id_ruta != route_id,
+                Ruta.estado_ruta.in_(["PROGRAMADA", "EN_PROCESO"])
+            ).first()
+            if active_v:
+                raise HTTPException(
+                    status_code=400,
+                    detail="El vehículo seleccionado ya está asignado a otra ruta activa."
+                )
+
+        # Validar disponibilidad de conductor si cambia
+        if conductor_id and conductor_id != old_driver_id:
+            active_c = db.query(AsignacionConductor).join(Ruta).filter(
+                AsignacionConductor.id_conductor == conductor_id,
+                AsignacionConductor.id_ruta != route_id,
+                Ruta.estado_ruta.in_(["PROGRAMADA", "EN_PROCESO"])
+            ).first()
+            if active_c:
+                raise HTTPException(
+                    status_code=400,
+                    detail="El conductor seleccionado ya está asignado a otra ruta activa."
+                )
 
         for key, value in route_data.items():
             if value is not None:

@@ -13,7 +13,7 @@ from app.services.email_service import EmailService
 from app.utils import get_client_ip
 
 # Crear router
-router = APIRouter(tags=["Authentication"])
+router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
 def get_current_user_from_token(token: str, db: Session, request: Request = None):
@@ -37,8 +37,12 @@ def get_current_user(request: Request, db: Session = Depends(get_db)):
     return get_current_user_from_token(token, db, request)
 
 
+from app.core.rate_limiter import auth_rate_limiter
+
+
 @router.post("/register")
-def register(req: RegisterRequest, db: Session = Depends(get_db)):
+def register(req: RegisterRequest, request: Request, db: Session = Depends(get_db)):
+    auth_rate_limiter.check(request, "register")
     """Registra un nuevo usuario"""
     try:
         user = AuthService.register_user(req.email, req.password, req.fullName, db)
@@ -58,21 +62,24 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error en registro: {e}")
+        raise HTTPException(status_code=500, detail="Ocurrió un error interno procesando la solicitud.")
 
 
 @router.post("/login")
 def login(req: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)):
+    auth_rate_limiter.check(request, "login")
     """Autentica un usuario"""
     try:
         token, user_info = AuthService.login_user(req.email, req.password, request, db)
         
+        from app.core.config import settings
         # Set cookie
         response.set_cookie(
             key="vextor_auth_token",
             value=token,
             httponly=True,
-            secure=False,  # Change to True in production with SSL
+            secure=settings.SECURE_COOKIE,
             samesite="lax",
             max_age=1440 * 60,  # 24 horas
         )
@@ -96,11 +103,13 @@ def login(req: LoginRequest, request: Request, response: Response, db: Session =
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error en login: {e}")
+        raise HTTPException(status_code=500, detail="Ocurrió un error interno procesando la solicitud.")
 
 
 @router.post("/forgot-password")
-def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
+def forgot_password(req: ForgotPasswordRequest, request: Request, db: Session = Depends(get_db)):
+    auth_rate_limiter.check(request, "forgot_password")
     """Solicita reseteo de contraseña"""
     try:
         success, raw_token = AuthService.request_password_reset(req.email, db)
@@ -192,6 +201,11 @@ def update_profile(
     db: Session = Depends(get_db),
 ):
     """Actualiza el perfil del usuario"""
+    if photo and len(photo) > 3 * 1024 * 1024:  # ~2MB binario en Base64
+        raise HTTPException(
+            status_code=400,
+            detail="La foto de perfil excede el tamaño máximo permitido (2MB)."
+        )
     try:
         user_info = AuthService.update_profile(
             current_user.id_usuario,
