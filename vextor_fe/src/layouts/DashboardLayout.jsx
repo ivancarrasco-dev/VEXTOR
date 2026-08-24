@@ -49,8 +49,8 @@ const DashboardLayout = () => {
       >
         <Navbar onMenuClick={() => setIsMobileOpen(true)} />
 
-        <main className="flex-1 p-6 overflow-y-auto">
-          <div className="max-w-7xl mx-auto">
+        <main className="flex-1 p-3.5 sm:p-6 overflow-y-auto min-w-0">
+          <div className="max-w-7xl mx-auto w-full">
             <Outlet />
           </div>
         </main>

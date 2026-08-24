@@ -227,7 +227,7 @@ const NotificationButton = () => {
                     animate={{ x: 0 }}
                     exit={{ x: '100%' }}
                     transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-                    className="w-screen max-w-md bg-v-dark-soft border-l border-v-dark-border shadow-2xl flex flex-col text-left"
+                    className="w-full max-w-full sm:max-w-md bg-v-dark-soft border-l border-v-dark-border shadow-2xl flex flex-col text-left"
                   >
                     {/* Header */}
                     <div className="px-6 py-5 border-b border-v-dark-border bg-v-dark/40 flex items-center justify-between shrink-0">

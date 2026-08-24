@@ -346,7 +346,7 @@ const ActiveRoutePage = () => {
       {/* Main Grid: Map & Navigation Metrics */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* Map Container (Takes 2 Columns) */}
-        <div className="lg:col-span-2 h-[500px] lg:h-[650px] relative rounded-3xl overflow-hidden border border-v-dark-border shadow-2xl">
+        <div className="lg:col-span-2 h-[340px] sm:h-[500px] lg:h-[650px] relative rounded-3xl overflow-hidden border border-v-dark-border shadow-2xl">
           <MapComponent
             routes={[]}
             activeRoute={activeRoute}
