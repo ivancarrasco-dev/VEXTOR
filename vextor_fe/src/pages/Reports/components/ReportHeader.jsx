@@ -26,7 +26,7 @@ export const ReportHeader = ({ onExport, isExporting }) => {
   };
 
   return (
-    <section className="relative rounded-3xl p-8 bg-v-dark-soft border border-v-dark-border flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+    <section className="relative rounded-3xl p-5 sm:p-8 bg-v-dark-soft border border-v-dark-border flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
       {/* Background glow in absolute container with pointer-events-none */}
       <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
         <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 blur-[100px] -mr-32 -mt-32" />
@@ -37,7 +37,7 @@ export const ReportHeader = ({ onExport, isExporting }) => {
           <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
             <BarChart3 size={20} />
           </div>
-          <h2 className="text-3xl font-bold text-v-white">{t('reports.title', 'Centro de Reportes')}</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-v-white">{t('reports.title', 'Centro de Reportes')}</h2>
         </div>
         <p className="text-v-gray text-sm md:text-base leading-relaxed">
           {t('reports.subtitle', 'Monitoreo consolidado, métricas en tiempo real y exportación en múltiples formatos para toda la flota.')}

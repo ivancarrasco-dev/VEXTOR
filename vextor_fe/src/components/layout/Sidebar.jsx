@@ -72,7 +72,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
     expanded: { width: 260, x: 0 },
     collapsed: { width: 80, x: 0 },
     mobileOpen: { width: 280, x: 0 },
-    mobileClosed: { x: -300 }
+    mobileClosed: { x: -340 }
   };
 
   const currentVariant = isMobile
@@ -101,7 +101,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
         variants={sidebarVariants}
         transition={{ type: 'tween', duration: 0.3, ease: 'easeInOut' }}
         className={cn(
-          "fixed top-0 left-0 z-50 h-screen bg-v-dark-soft border-r border-v-dark-border",
+          "fixed top-0 left-0 z-50 h-screen bg-v-dark-soft border-r border-v-dark-border max-w-[85vw] lg:max-w-none",
           isMobile ? "w-70" : (isCollapsed ? "w-20" : "w-65")
         )}
       >

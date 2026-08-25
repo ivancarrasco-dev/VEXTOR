@@ -513,9 +513,9 @@ const Settings = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
         {/* LEFT SIDEBAR: Categories */}
-        <div className="lg:col-span-3 bg-v-dark-soft border border-v-dark-border rounded-2xl p-4 space-y-1 overflow-hidden">
-          <p className="text-xs font-bold text-v-gray uppercase tracking-wider px-3 mb-3">{t('common.all')}</p>
-          <div className="space-y-1 max-h-[70vh] overflow-y-auto custom-scrollbar pr-1">
+        <div className="lg:col-span-3 bg-v-dark-soft border border-v-dark-border rounded-2xl p-3 sm:p-4 overflow-hidden">
+          <p className="text-xs font-bold text-v-gray uppercase tracking-wider px-3 mb-3 hidden lg:block">{t('common.all')}</p>
+          <div className="flex lg:flex-col gap-1.5 overflow-x-auto lg:overflow-y-auto lg:max-h-[70vh] custom-scrollbar pb-2 lg:pb-0 pr-1">
             {visibleCategories.map((cat) => {
               const Icon = cat.icon;
               const isActive = activeCategory === cat.id;
@@ -527,7 +527,7 @@ const Settings = () => {
                     localStorage.setItem('vextor_active_settings_tab', cat.id);
                   }}
                   className={cn(
-                    "w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all duration-200 group relative cursor-pointer",
+                    "flex items-center gap-2 sm:gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-200 group relative cursor-pointer shrink-0 lg:shrink whitespace-nowrap lg:whitespace-normal",
                     isActive
                       ? "bg-primary/10 text-primary font-semibold"
                       : "text-v-gray hover:text-v-white hover:bg-v-dark/40"
@@ -540,12 +540,12 @@ const Settings = () => {
                       isActive ? "text-primary" : "text-v-gray group-hover:text-v-white group-hover:scale-105"
                     )}
                   />
-                  <span className="text-sm truncate">{t(`settings.categories.${cat.id}`)}</span>
+                  <span className="text-xs sm:text-sm truncate">{t(`settings.categories.${cat.id}`)}</span>
 
                   {isActive && (
                     <motion.div
                       layoutId="active-setting-pill"
-                      className="absolute left-0 w-1 h-5 bg-primary rounded-r-full"
+                      className="absolute bottom-0 lg:bottom-auto lg:left-0 left-2 right-2 lg:right-auto h-0.5 lg:h-5 lg:w-1 bg-primary rounded-full lg:rounded-r-full"
                       transition={{ type: "spring", stiffness: 300, damping: 30 }}
                     />
                   )}

@@ -151,8 +151,8 @@ export const ReportPreviewTable = ({
           <p className="text-v-gray text-xs max-w-sm">No existen datos que cumplan los filtros actuales en este reporte. Modifique las fechas, el estado o el término de búsqueda.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-175">
+        <div className="overflow-x-auto w-full custom-scrollbar">
+          <table className="w-full text-left border-collapse min-w-[700px]">
             <thead>
               <tr className="border-b border-v-dark-border bg-v-dark/30">
                 {activeReport === 'vehicles' && (
@@ -378,7 +378,7 @@ export const ReportPreviewTable = ({
 
       {/* Table pagination footer controls */}
       {!isLoadingPreview && totalPages > 1 && (
-        <div className="p-4 flex items-center justify-between border-t border-v-dark-border bg-v-dark/30 text-sm">
+        <div className="p-4 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-v-dark-border bg-v-dark/30 text-sm text-center sm:text-left">
           <span className="text-v-gray text-xs">
             Mostrando <span className="font-bold text-v-white">{startIndex + 1}</span> - <span className="font-bold text-v-white">{Math.min(startIndex + itemsPerPage, totalItems)}</span> de <span className="font-bold text-v-white">{totalItems}</span> registros
           </span>

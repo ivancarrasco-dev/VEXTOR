@@ -42,27 +42,28 @@ const Navbar = ({ onMenuClick }) => {
   };
 
   return (
-    <header className="h-20 bg-v-dark/50 backdrop-blur-md border-b border-v-dark-border sticky top-0 z-30 px-6">
+    <header className="h-20 bg-v-dark/50 backdrop-blur-md border-b border-v-dark-border sticky top-0 z-30 px-3.5 sm:px-6">
       <div className="h-full flex items-center justify-between">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
           <button
             onClick={onMenuClick}
-            className="p-2 rounded-lg hover:bg-v-dark-border text-v-gray hover:text-v-white lg:hidden"
+            className="p-2 rounded-lg hover:bg-v-dark-border text-v-gray hover:text-v-white lg:hidden shrink-0 cursor-pointer"
+            aria-label="Abrir Menú"
           >
             <Menu size={20} />
           </button>
 
-          <div className="lg:hidden">
+          <div className="lg:hidden shrink-0">
             <Logo variant="iso" size="sm" />
           </div>
 
-          <div className="hidden lg:block">
+          <div className="hidden lg:block shrink-0">
             <Logo size="sm" />
           </div>
 
-          <div className="hidden lg:block w-px h-6 bg-v-dark-border mx-2" />
+          <div className="hidden lg:block w-px h-6 bg-v-dark-border mx-1 shrink-0" />
 
-          <h1 className="text-xl font-bold text-v-white hidden sm:block">
+          <h1 className="text-sm sm:text-xl font-bold text-v-white truncate max-w-[120px] xs:max-w-[180px] sm:max-w-none">
             {getPageTitle()}
           </h1>
         </div>
@@ -70,10 +71,10 @@ const Navbar = ({ onMenuClick }) => {
         {/* Global Search */}
         <NavbarSearch />
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           <ThemeToggle />
           <NotificationButton />
-          <div className="w-px h-8 bg-v-dark-border mx-2 hidden sm:block" />
+          <div className="w-px h-8 bg-v-dark-border mx-1 hidden sm:block" />
           <UserMenu />
         </div>
       </div>

@@ -26,4 +26,5 @@ COPY . .
 EXPOSE 8000
 
 # Comando de inicio del servidor FastAPI
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Ahora apunta a app.main:app debido a la reestructuración
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

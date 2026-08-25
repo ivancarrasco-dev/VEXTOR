@@ -163,13 +163,13 @@ const Dashboard = () => {
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       {/* Header Section */}
-      <section className="relative overflow-hidden rounded-3xl p-8 bg-v-dark-soft border border-v-dark-border">
+      <section className="relative overflow-hidden rounded-3xl p-5 sm:p-8 bg-v-dark-soft border border-v-dark-border">
         <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 blur-[100px] -mr-32 -mt-32" />
         <div className="relative z-10 text-left">
           <motion.h2
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="text-3xl font-bold text-v-white mb-2"
+            className="text-2xl sm:text-3xl font-bold text-v-white mb-2"
           >
             {t('dashboard.welcome')} {user?.name?.split(' ')[0] || 'Admin'}
           </motion.h2>
@@ -254,23 +254,25 @@ const Dashboard = () => {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.05 * idx }}
-                      className="p-4 flex items-center gap-4 hover:bg-v-dark-border/20 transition-colors cursor-pointer group"
+                      className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-v-dark-border/20 transition-colors cursor-pointer group"
                     >
-                      <div className={cn("h-12 w-12 rounded-xl flex items-center justify-center shrink-0", meta.bg, meta.color)}>
-                        <Icon size={22} />
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className={cn("h-10 w-10 sm:h-12 sm:w-12 rounded-xl flex items-center justify-center shrink-0", meta.bg, meta.color)}>
+                          <Icon size={20} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-v-white truncate">{activity.descripcion}</p>
+                          <p className="text-xs text-v-gray truncate">
+                            Por {activity.nombres_usuario || 'Sistema'} • {getRelativeTime(activity.fecha_hora)}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-v-white truncate">{activity.descripcion}</p>
-                        <p className="text-xs text-v-gray truncate">
-                          Por {activity.nombres_usuario || 'Sistema'} • {getRelativeTime(activity.fecha_hora)}
-                        </p>
-                      </div>
-                      <div className="text-right shrink-0">
+                      <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
                         <span className={cn("text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border", meta.bg, meta.color)}>
                           {activity.tipo_accion}
                         </span>
+                        <ChevronRight size={18} className="text-v-dark-border group-hover:text-v-white transition-colors" />
                       </div>
-                      <ChevronRight size={18} className="text-v-dark-border group-hover:text-v-white transition-colors" />
                     </motion.div>
                   );
                 })}
@@ -335,7 +337,7 @@ const Dashboard = () => {
                 animate={{ x: 0 }}
                 exit={{ x: '100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-                className="w-screen max-w-lg bg-v-dark-soft border-l border-v-dark-border shadow-2xl flex flex-col"
+                className="w-full max-w-full sm:max-w-lg bg-v-dark-soft border-l border-v-dark-border shadow-2xl flex flex-col"
               >
                 {/* Drawer Header */}
                 <div className="px-6 py-5 border-b border-v-dark-border bg-v-dark/20 flex items-center justify-between">

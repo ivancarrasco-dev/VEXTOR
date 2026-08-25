@@ -168,6 +168,10 @@ const Vehicles = () => {
       errors.documentacion_vehiculo = 'Máximo 255 caracteres';
     }
 
+    if (currentVehicle && currentVehicle.estado_vehiculo === 'EN_RUTA' && formData.estado_vehiculo === 'DISPONIBLE') {
+      errors.estado_vehiculo = 'No se puede cambiar a DISPONIBLE mientras el vehículo tenga una ruta activa o asignada.';
+    }
+
     return errors;
   };
 
@@ -376,8 +380,8 @@ const Vehicles = () => {
       ) : (
         <div className="bg-v-dark-soft border border-v-dark-border rounded-2xl overflow-hidden shadow-xl">
           {/* Responsive Table Wrapper */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="overflow-x-auto w-full custom-scrollbar">
+            <table className="w-full text-left border-collapse min-w-[650px]">
               <thead>
                 <tr className="border-b border-v-dark-border bg-v-dark/40">
                   <th className="p-4 text-xs font-bold uppercase text-v-gray tracking-wider">Placa</th>
@@ -447,7 +451,7 @@ const Vehicles = () => {
 
           {/* Pagination Controls */}
           {totalPages > 1 && (
-            <div className="p-4 flex items-center justify-between border-t border-v-dark-border bg-v-dark/20 text-sm">
+            <div className="p-4 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-v-dark-border bg-v-dark/20 text-sm text-center sm:text-left">
               <span className="text-v-gray">
                 Mostrando <span className="font-bold text-v-white">{indexOfFirstItem + 1}</span> - <span className="font-bold text-v-white">{Math.min(indexOfLastItem, totalItems)}</span> de <span className="font-bold text-v-white">{totalItems}</span> unidades
               </span>
@@ -478,7 +482,7 @@ const Vehicles = () => {
       {/* CREATE & EDIT FORM MODAL */}
       <AnimatePresence>
         {isFormOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4">
             {/* Modal Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
@@ -496,7 +500,7 @@ const Vehicles = () => {
               className="relative w-full max-w-2xl bg-v-dark-soft border border-v-dark-border rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col z-10"
             >
               {/* Modal Header */}
-              <div className="flex justify-between items-center px-6 py-5 border-b border-v-dark-border bg-v-dark/20">
+              <div className="flex justify-between items-center px-4 sm:px-6 py-4 sm:py-5 border-b border-v-dark-border bg-v-dark/20">
                 <div>
                   <h3 className="text-xl font-bold text-v-white">
                     {currentVehicle ? 'Editar Vehículo' : 'Registrar Nuevo Vehículo'}
@@ -514,7 +518,7 @@ const Vehicles = () => {
               </div>
 
               {/* Modal Form */}
-              <form onSubmit={handleFormSubmit} className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar">
+              <form onSubmit={handleFormSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-5 custom-scrollbar text-left">
                 {apiError && (
                   <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm flex items-start gap-2.5">
                     <AlertTriangle className="shrink-0 mt-0.5" size={16} />
@@ -695,6 +699,9 @@ const Vehicles = () => {
                         <option key={st.value} value={st.value}>{st.label}</option>
                       ))}
                     </Select>
+                    {formErrors.estado_vehiculo && (
+                      <p className="text-xs text-red-500 mt-0.5 font-medium">{formErrors.estado_vehiculo}</p>
+                    )}
                   </div>
 
                   {/* Documentación */}

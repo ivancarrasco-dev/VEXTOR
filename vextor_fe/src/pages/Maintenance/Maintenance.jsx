@@ -347,8 +347,8 @@ const Maintenance = () => {
       ) : (
         <div className="bg-v-dark-soft border border-v-dark-border rounded-2xl overflow-hidden shadow-xl">
           {/* Responsive Table Wrapper */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="overflow-x-auto w-full custom-scrollbar">
+            <table className="w-full text-left border-collapse min-w-[650px]">
               <thead>
                 <tr className="border-b border-v-dark-border bg-v-dark/40">
                   <th className="p-4 text-xs font-bold uppercase text-v-gray tracking-wider">Vehículo</th>
@@ -427,7 +427,7 @@ const Maintenance = () => {
 
           {/* Pagination Controls */}
           {totalPages > 1 && (
-            <div className="p-4 flex items-center justify-between border-t border-v-dark-border bg-v-dark/20 text-sm">
+            <div className="p-4 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-v-dark-border bg-v-dark/20 text-sm text-center sm:text-left">
               <span className="text-v-gray">
                 Mostrando <span className="font-bold text-v-white">{indexOfFirstItem + 1}</span> - <span className="font-bold text-v-white">{Math.min(indexOfLastItem, totalItems)}</span> de <span className="font-bold text-v-white">{totalItems}</span> órdenes
               </span>
@@ -458,7 +458,7 @@ const Maintenance = () => {
       {/* CREATE & EDIT FORM MODAL */}
       <AnimatePresence>
         {isFormOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -470,11 +470,11 @@ const Maintenance = () => {
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              exit={{ opacity: 0, scale: 1, y: 0 }}
               className="relative w-full max-w-2xl bg-v-dark-soft border border-v-dark-border rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col z-10"
             >
               {/* Modal Header */}
-              <div className="flex justify-between items-center px-6 py-5 border-b border-v-dark-border bg-v-dark/20">
+              <div className="flex justify-between items-center px-4 sm:px-6 py-4 sm:py-5 border-b border-v-dark-border bg-v-dark/20">
                 <div>
                   <h3 className="text-xl font-bold text-v-white">
                     {currentMaintenance ? 'Editar Registro de Mantenimiento' : 'Agendar Nuevo Mantenimiento'}
@@ -492,7 +492,7 @@ const Maintenance = () => {
               </div>
 
               {/* Modal Form */}
-              <form onSubmit={handleFormSubmit} className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar">
+              <form onSubmit={handleFormSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-5 custom-scrollbar text-left">
                 {apiError && (
                   <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm flex items-start gap-2.5">
                     <AlertTriangle className="shrink-0 mt-0.5" size={16} />

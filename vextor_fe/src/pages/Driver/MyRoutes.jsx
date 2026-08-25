@@ -297,8 +297,8 @@ const MyRoutes = () => {
           </div>
         ) : (
           <div className="bg-v-dark-soft border border-v-dark-border rounded-2xl overflow-hidden shadow-lg">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+            <div className="overflow-x-auto w-full custom-scrollbar">
+              <table className="w-full text-left text-xs min-w-[600px]">
                 <thead className="bg-v-dark border-b border-v-dark-border text-v-gray uppercase font-semibold">
                   <tr>
                     <th className="p-4">Código / Ruta</th>

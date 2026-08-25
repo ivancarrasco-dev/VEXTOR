@@ -86,8 +86,7 @@ VEXTOR/
 │   ├── SECURITY.md       # Esquema de autenticación JWT y RBAC
 │   └── README.md         # Índice general de documentación
 ├── infra/                # Infraestructura Docker y datos de mapas OSRM
-│   └── osrm/             # Docker Compose y volumen de datos de Colombia
-│       └── docker-compose.yml
+│   └── osrm/             # Volumen y datos de mapa de Colombia
 ├── vextor_bd/            # DDL SQL y scripts del esquema PostgreSQL
 │   ├── Readme.md
 │   └── vextor_bd.sql
@@ -106,7 +105,6 @@ VEXTOR/
 ├── docker-compose.yml    # Orquestador principal Docker Compose (Frontend + Backend + OSRM)
 ├── GUIA_INSTALACION.md   # Guía paso a paso para instalación y despliegue
 ├── README.md             # Documentación general de VEXTOR
-├── setup-osrm.ps1        # Preparador de OSRM standalone
 └── setup-vextor.ps1      # Script automatizado de despliegue completo de VEXTOR
 ```
 

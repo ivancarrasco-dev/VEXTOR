@@ -47,10 +47,10 @@ Write-Host " Docker Compose:   OK" -ForegroundColor Green
 
 
 # --------------------------------------------------
-# [2/6] Preparar Variables de Entorno (.env)
+# [2/6] Preparar y Validar Variables de Entorno (.env)
 # --------------------------------------------------
 Write-Host ""
-Write-Host "[2/6] Verificando archivo de variables de entorno (.env)..." -ForegroundColor Yellow
+Write-Host "[2/6] Verificando y configurando variables de entorno (.env)..." -ForegroundColor Yellow
 
 $EnvFile = Join-Path $PSScriptRoot ".env"
 $EnvExample = Join-Path $PSScriptRoot ".env.example"
@@ -64,21 +64,100 @@ if (-not (Test-Path $EnvFile)) {
         exit 1
     }
 } else {
-    Write-Host " Archivo '.env' detectado. Manteniendo configuracion existente." -ForegroundColor Green
+    Write-Host " Archivo '.env' detectado. Validando y actualizando..." -ForegroundColor Green
 }
 
-# Leer .env para validaciones clave
-$envContent = Get-Content $EnvFile -Raw
-if ($envContent -match "DATABASE_URL=(.*)") {
-    $dbUrl = $Matches[1].Trim()
-    if ([string]::IsNullOrWhiteSpace($dbUrl) -or $dbUrl.Contains("tu_password") -or $dbUrl.Contains("tu_ref")) {
-        Write-Host " AVISO: DATABASE_URL requiere ser configurada con credenciales reales de Supabase en .env" -ForegroundColor Yellow
+# Parsear .env para validacion y actualizacion
+$envMap = @{}
+Get-Content $EnvFile | ForEach-Object {
+    $line = $_.Trim()
+    if ($line -and -not $line.StartsWith("#") -and $line.Contains("=")) {
+        $parts = $line.Split("=", 2)
+        $key = $parts[0].Trim()
+        $val = $parts[1].Trim()
+        $envMap[$key] = $val
     }
 }
 
+# --- VALIDACION DE DATABASE_URL (UNICA VARIABLE CRITICA) ---
+if (-not $envMap.ContainsKey("DATABASE_URL") -or [string]::IsNullOrWhiteSpace($envMap["DATABASE_URL"])) {
+    Write-Host " ERROR: La variable 'DATABASE_URL' no esta configurada en .env." -ForegroundColor Red
+    Write-Host ""
+    Write-Host "==========================================" -ForegroundColor Red
+    Write-Host "         VEXTOR NO ESTA LISTO             " -ForegroundColor Red
+    Write-Host "==========================================" -ForegroundColor Red
+    Write-Host "Por favor edita el archivo '.env' en la raiz del proyecto y configura DATABASE_URL con tus credenciales de Supabase o PostgreSQL, luego vuelve a ejecutar .\setup-vextor.ps1" -ForegroundColor Yellow
+    exit 1
+}
+
+if ($envMap["DATABASE_URL"].Contains("tu_password") -or $envMap["DATABASE_URL"].Contains("reemplaza") -or $envMap["DATABASE_URL"].Contains("change-me")) {
+    Write-Host " ERROR: DATABASE_URL aun contiene placeholders. Configurala con credenciales reales." -ForegroundColor Red
+    exit 1
+}
+
+Write-Host " DATABASE_URL configurada correctamente." -ForegroundColor Green
+
+# --- AUTO-GENERAR JWT_SECRET_KEY SI NO EXISTE O TIENE PLACEHOLDER ---
+if (-not $envMap.ContainsKey("JWT_SECRET_KEY") -or [string]::IsNullOrWhiteSpace($envMap["JWT_SECRET_KEY"]) -or $envMap["JWT_SECRET_KEY"].Contains("reemplaza")) {
+    Write-Host " Generando JWT_SECRET_KEY aleatorio..." -ForegroundColor Yellow
+    $randomBytes = [byte[]]::new(32)
+    $rng = [System.Security.Cryptography.RNGCryptoServiceProvider]::new()
+    $rng.GetBytes($randomBytes)
+    $jwtSecret = [Convert]::ToBase64String($randomBytes)
+    
+    # Actualizar en memoria y en el archivo
+    $envContent = Get-Content $EnvFile -Raw
+    if ($envContent -match "JWT_SECRET_KEY=") {
+        $envContent = $envContent -replace "JWT_SECRET_KEY=.*", "JWT_SECRET_KEY=$jwtSecret"
+    } else {
+        $envContent += "`nJWT_SECRET_KEY=$jwtSecret"
+    }
+    Set-Content $EnvFile $envContent
+    $envMap["JWT_SECRET_KEY"] = $jwtSecret
+    Write-Host " JWT_SECRET_KEY generada y guardada en .env" -ForegroundColor Green
+}
+
+# --- AUTO-CONFIGURAR SMTP SI ESTA VACIO O CON PLACEHOLDERS ---
+$smtpKeys = @("MAIL_HOST", "MAIL_PORT", "MAIL_USERNAME", "MAIL_PASSWORD", "MAIL_FROM")
+$needsSmtpUpdate = $false
+foreach ($key in $smtpKeys) {
+    if (-not $envMap.ContainsKey($key) -or [string]::IsNullOrWhiteSpace($envMap[$key]) -or $envMap[$key].Contains("tu-") -or $envMap[$key].Contains("reemplaza")) {
+        $needsSmtpUpdate = $true
+        break
+    }
+}
+
+if ($needsSmtpUpdate) {
+    Write-Host " Configurando SMTP con valores por defecto (deshabilitado)..." -ForegroundColor Yellow
+    $envContent = Get-Content $EnvFile -Raw
+    
+    $smtpDefaults = @{
+        "MAIL_HOST" = "smtp.gmail.com"
+        "MAIL_PORT" = "587"
+        "MAIL_USERNAME" = "disabled@example.com"
+        "MAIL_PASSWORD" = "disabled"
+        "MAIL_FROM" = "VEXTOR Fleet <noreply@vextor.local>"
+    }
+    
+    foreach ($smtpKey in $smtpDefaults.Keys) {
+        $smtpValue = $smtpDefaults[$smtpKey]
+        if ($envContent -match "$smtpKey=") {
+            $envContent = $envContent -replace "$smtpKey=.*", "$smtpKey=$smtpValue"
+        } else {
+            $envContent += "`n$smtpKey=$smtpValue"
+        }
+        $envMap[$smtpKey] = $smtpValue
+    }
+    Set-Content $EnvFile $envContent
+    Write-Host " SMTP configurado con valores por defecto (correos deshabilitados)." -ForegroundColor Green
+    Write-Host " Nota: Para habilitar correos, edita .env con credenciales reales de SMTP/Gmail." -ForegroundColor DarkYellow
+}
+
+Write-Host " Variables de entorno configuradas correctamente." -ForegroundColor Green
+
 
 # --------------------------------------------------
-# [3/6] Preparar OSRM Colombia (Inteligente)
+# [3/6] Preparar OSRM Colombia (Inteligente e Idempotente)
 # --------------------------------------------------
 Write-Host ""
 Write-Host "[3/6] Preparando datos de mapas de OSRM Colombia..." -ForegroundColor Yellow
@@ -170,7 +249,7 @@ Write-Host " Contenedores iniciados correctamente." -ForegroundColor Green
 
 
 # --------------------------------------------------
-# [5/6] Verificacion de Servicios y Health Checks
+# [5/6] Verificación Determinista de Servicios y Health Checks
 # --------------------------------------------------
 Write-Host ""
 Write-Host "[5/6] Verificando salud de los servicios de VEXTOR..." -ForegroundColor Yellow
@@ -181,57 +260,73 @@ $backendHealthy = $false
 $routingHealth = $false
 $frontendHealthy = $false
 
-# 1. Comprobar OSRM Directo
-Write-Host " Esperando disponibilidad de OSRM (http://localhost:5000)..." -NoNewline
+Write-Host " Esperando disponibilidad de los servicios..." -ForegroundColor Yellow
+
 for ($i = 0; $i -lt $maxAttempts; $i++) {
     Start-Sleep -Seconds 2
-    try {
-        $res = Invoke-WebRequest -Uri "http://localhost:5000/nearest/v1/driving/-74.0721,4.7110" -UseBasicParsing -TimeoutSec 3
-        if ($res.StatusCode -eq 200) {
-            $osrmHealthy = $true
-            break
-        }
-    } catch { Write-Host "." -NoNewline }
-}
-if ($osrmHealthy) { Write-Host " OK" -ForegroundColor Green } else { Write-Host " FALLO" -ForegroundColor Red }
 
-# 2. Comprobar Backend FastAPI Root
-Write-Host " Esperando disponibilidad del Backend FastAPI (http://localhost:8000)..." -NoNewline
-for ($i = 0; $i -lt $maxAttempts; $i++) {
-    Start-Sleep -Seconds 2
-    try {
-        $res = Invoke-WebRequest -Uri "http://localhost:8000/" -UseBasicParsing -TimeoutSec 3
-        if ($res.StatusCode -eq 200) {
-            $backendHealthy = $true
-            break
-        }
-    } catch { Write-Host "." -NoNewline }
-}
-if ($backendHealthy) { Write-Host " OK" -ForegroundColor Green } else { Write-Host " FALLO" -ForegroundColor Red }
-
-# 3. Comprobar Backend -> OSRM Routing Health Endpoint
-Write-Host " Comprobando integracion Backend -> OSRM (/api/routing/health)..." -NoNewline
-try {
-    $res = Invoke-WebRequest -Uri "http://localhost:8000/api/routing/health" -UseBasicParsing -TimeoutSec 5
-    if ($res.StatusCode -eq 200) {
-        $routingHealth = $true
+    if (-not $osrmHealthy) {
+        try {
+            $res = Invoke-WebRequest -Uri "http://localhost:5000/nearest/v1/driving/-74.0721,4.7110" -UseBasicParsing -TimeoutSec 3
+            if ($res.StatusCode -eq 200) { $osrmHealthy = $true }
+        } catch {}
     }
-} catch { }
-if ($routingHealth) { Write-Host " OK" -ForegroundColor Green } else { Write-Host " FALLO / REVISAR LOGS" -ForegroundColor Yellow }
 
-# 4. Comprobar Frontend React (Nginx)
-Write-Host " Esperando disponibilidad del Frontend (http://localhost)..." -NoNewline
-for ($i = 0; $i -lt $maxAttempts; $i++) {
-    Start-Sleep -Seconds 2
-    try {
-        $res = Invoke-WebRequest -Uri "http://localhost" -UseBasicParsing -TimeoutSec 3
-        if ($res.StatusCode -eq 200) {
-            $frontendHealthy = $true
-            break
-        }
-    } catch { Write-Host "." -NoNewline }
+    if (-not $backendHealthy) {
+        try {
+            $res = Invoke-WebRequest -Uri "http://localhost:8000/" -UseBasicParsing -TimeoutSec 3
+            if ($res.StatusCode -eq 200) { $backendHealthy = $true }
+        } catch {}
+    }
+
+    if ($backendHealthy -and -not $routingHealth) {
+        try {
+            $res = Invoke-WebRequest -Uri "http://localhost:8000/api/routing/health" -UseBasicParsing -TimeoutSec 3
+            if ($res.StatusCode -eq 200) { $routingHealth = $true }
+        } catch {}
+    }
+
+    if (-not $frontendHealthy) {
+        try {
+            $res = Invoke-WebRequest -Uri "http://localhost" -UseBasicParsing -TimeoutSec 3
+            if ($res.StatusCode -eq 200) { $frontendHealthy = $true }
+        } catch {}
+    }
+
+    if ($osrmHealthy -and $backendHealthy -and $routingHealth -and $frontendHealthy) {
+        break
+    }
 }
-if ($frontendHealthy) { Write-Host " OK" -ForegroundColor Green } else { Write-Host " FALLO" -ForegroundColor Red }
+
+Write-Host "  OSRM Routing Engine (5000)     : $(if ($osrmHealthy) { 'OPERATIVO [OK]' } else { 'DESCONECTADO' })" -ForegroundColor $(if ($osrmHealthy) { 'Green' } else { 'Red' })
+Write-Host "  FastAPI Backend (8000)         : $(if ($backendHealthy) { 'OPERATIVO [OK]' } else { 'DESCONECTADO' })" -ForegroundColor $(if ($backendHealthy) { 'Green' } else { 'Red' })
+Write-Host "  Backend -> OSRM Routing Health : $(if ($routingHealth) { 'CONECTADO [OK]' } else { 'FALLO' })" -ForegroundColor $(if ($routingHealth) { 'Green' } else { 'Red' })
+Write-Host "  Frontend React Web App (80)    : $(if ($frontendHealthy) { 'OPERATIVO [OK]' } else { 'DESCONECTADO' })" -ForegroundColor $(if ($frontendHealthy) { 'Green' } else { 'Red' })
+
+$allHealthy = $osrmHealthy -and $backendHealthy -and $routingHealth -and $frontendHealthy
+
+if (-not $allHealthy) {
+    Write-Host ""
+    Write-Host "Detalle de fallos detectados:" -ForegroundColor Red
+    if (-not $osrmHealthy) {
+        Write-Host " - Servidor OSRM no responde en http://localhost:5000. Revisa los logs con: docker compose logs osrm" -ForegroundColor Yellow
+    }
+    if (-not $backendHealthy) {
+        Write-Host " - FastAPI Backend no responde en http://localhost:8000. Revisa los logs con: docker compose logs backend" -ForegroundColor Yellow
+    }
+    if (-not $routingHealth) {
+        Write-Host " - Integracion Backend -> OSRM fallo en http://localhost:8000/api/routing/health. Revisa los logs con: docker compose logs backend" -ForegroundColor Yellow
+    }
+    if (-not $frontendHealthy) {
+        Write-Host " - Frontend React no responde en http://localhost. Revisa los logs con: docker compose logs frontend" -ForegroundColor Yellow
+    }
+
+    Write-Host ""
+    Write-Host "==========================================" -ForegroundColor Red
+    Write-Host "         VEXTOR NO ESTA LISTO             " -ForegroundColor Red
+    Write-Host "==========================================" -ForegroundColor Red
+    exit 1
+}
 
 
 # --------------------------------------------------
@@ -247,16 +342,16 @@ Write-Host " Backend API (FastAPI)    : http://localhost:8000" -ForegroundColor 
 Write-Host " Documentacion Swagger    : http://localhost:8000/docs" -ForegroundColor White
 Write-Host " Servidor OSRM Local      : http://localhost:5000" -ForegroundColor White
 Write-Host ""
-Write-Host "Estado de Servicios:" -ForegroundColor Yellow
-Write-Host "  OSRM Routing Engine     : $(if ($osrmHealthy) { 'OPERATIVO [OK]' } else { 'DESCONECTADO' })" -ForegroundColor $(if ($osrmHealthy) { 'Green' } else { 'Red' })
-Write-Host "  FastAPI Backend         : $(if ($backendHealthy) { 'OPERATIVO [OK]' } else { 'DESCONECTADO' })" -ForegroundColor $(if ($backendHealthy) { 'Green' } else { 'Red' })
-Write-Host "  Backend -> OSRM Routing : $(if ($routingHealth) { 'CONECTADO [OK]' } else { 'NO RESPOMDE' })" -ForegroundColor $(if ($routingHealth) { 'Green' } else { 'Yellow' })
-Write-Host "  Frontend React Web App  : $(if ($frontendHealthy) { 'OPERATIVO [OK]' } else { 'DESCONECTADO' })" -ForegroundColor $(if ($frontendHealthy) { 'Green' } else { 'Red' })
-Write-Host ""
 Write-Host "Comandos utiles:" -ForegroundColor Yellow
 Write-Host "  Ver logs de la aplicacion : docker compose logs -f" -ForegroundColor White
 Write-Host "  Detener VEXTOR            : docker compose down" -ForegroundColor White
 Write-Host "  Reiniciar VEXTOR          : docker compose restart" -ForegroundColor White
 Write-Host ""
+Write-Host "Nota sobre correos (SMTP):" -ForegroundColor Yellow
+Write-Host "  Actualmente los correos estan deshabilitados (credenciales dummy en .env)." -ForegroundColor DarkYellow
+Write-Host "  Para habilitar recuperacion de contrasena y notificaciones, edita .env" -ForegroundColor DarkYellow
+Write-Host "  con credenciales reales de Gmail o tu proveedor SMTP preferido." -ForegroundColor DarkYellow
+Write-Host ""
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host ""
+exit 0

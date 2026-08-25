@@ -2,9 +2,6 @@
 .env
 .env*
 !.env.example
-vextor_be/.env
-vextor_be/.env*
-!vextor_be/.env.example
 
 # Datos pesados de OSRM y mapas (PBF y grafos procesados .osrm.*)
 infra/osrm/data/*
