@@ -312,6 +312,37 @@ def get_users(
     return UserService.get_all(db)[skip : skip + limit]
 
 
+@users_router.post("", response_model=Usuario)
+def create_user(
+    user_data: UsuarioCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_admin),
+):
+    res = UserService.create(user_data.model_dump(), db)
+    AuditService.record_activity(
+        db, current_user.id_usuario,
+        f"{current_user.nombres_usuario} {current_user.apellidos_usuario}".strip(),
+        "CREACION", "Usuarios", f"Usuario creado: {res.correo_usuario}"
+    )
+    return res
+
+
+@users_router.put("/{id_usuario}", response_model=Usuario)
+def update_user(
+    id_usuario: UUID,
+    user_data: UsuarioUpdate,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_admin),
+):
+    res = UserService.update(id_usuario, user_data.model_dump(exclude_unset=True), db)
+    AuditService.record_activity(
+        db, current_user.id_usuario,
+        f"{current_user.nombres_usuario} {current_user.apellidos_usuario}".strip(),
+        "ACTUALIZACION", "Usuarios", f"Usuario actualizado ID: {id_usuario}"
+    )
+    return res
+
+
 @users_router.delete("/{id_usuario}")
 def delete_user(
     id_usuario: UUID,
