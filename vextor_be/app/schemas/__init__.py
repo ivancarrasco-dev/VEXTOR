@@ -66,12 +66,15 @@ class UsuarioBase(BaseModel):
 class UsuarioCreate(UsuarioBase):
     id_rol: UUID
     contrasenia_usuario: str = Field(..., max_length=255)
+    requiere_cambio_clave: Optional[bool] = False
 
 
 class UsuarioUpdate(BaseModel):
     nombres_usuario: Optional[str] = Field(None, max_length=100)
     apellidos_usuario: Optional[str] = Field(None, max_length=100)
     correo_usuario: Optional[EmailStr] = None
+    id_rol: Optional[UUID] = None
+    contrasenia_usuario: Optional[str] = Field(None, max_length=255)
     telefono_usuario: Optional[str] = Field(None, max_length=20)
     estado_usuario: Optional[str] = Field(None, max_length=20)
     foto_perfil: Optional[str] = None
