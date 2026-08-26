@@ -613,6 +613,40 @@ class UserService:
         if not usuario:
             raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
+        current_rol = db.query(Rol).filter(Rol.id_rol == usuario.id_rol).first()
+        is_current_admin = current_rol and current_rol.nombre_rol == "Administrador"
+
+        new_role_id = user_data.get("id_rol")
+        if new_role_id and new_role_id != usuario.id_rol:
+            rol = db.query(Rol).filter(Rol.id_rol == new_role_id).first()
+            if not rol:
+                raise HTTPException(status_code=400, detail="El rol especificado no existe.")
+
+            if is_current_admin and rol.nombre_rol != "Administrador":
+                admin_count = db.query(Usuario).join(Rol).filter(
+                    Rol.nombre_rol == "Administrador",
+                    Usuario.estado_usuario == "ACTIVO"
+                ).count()
+                if admin_count <= 1:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="No se puede cambiar el rol del único Administrador activo del sistema."
+                    )
+
+            usuario.id_rol = rol.id_rol
+
+        new_status = user_data.get("estado_usuario")
+        if new_status and new_status == "INACTIVO" and is_current_admin:
+            admin_count = db.query(Usuario).join(Rol).filter(
+                Rol.nombre_rol == "Administrador",
+                Usuario.estado_usuario == "ACTIVO"
+            ).count()
+            if admin_count <= 1:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No se puede desactivar al único Administrador activo del sistema."
+                )
+
         new_email = user_data.get("correo_usuario")
         if new_email:
             email_clean = new_email.strip().lower()
@@ -621,13 +655,6 @@ class UserService:
                 if existing:
                     raise HTTPException(status_code=400, detail="El correo electrónico ya está en uso.")
                 usuario.correo_usuario = email_clean
-
-        new_role_id = user_data.get("id_rol")
-        if new_role_id:
-            rol = db.query(Rol).filter(Rol.id_rol == new_role_id).first()
-            if not rol:
-                raise HTTPException(status_code=400, detail="El rol especificado no existe.")
-            usuario.id_rol = rol.id_rol
 
         new_password = user_data.get("contrasenia_usuario")
         if new_password:
@@ -646,9 +673,22 @@ class UserService:
 
     @staticmethod
     def delete(user_id: UUID, db: Session):
+        from app.models import Rol
         usuario = UserService.get_by_id(user_id, db)
         if not usuario:
             raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+        current_rol = db.query(Rol).filter(Rol.id_rol == usuario.id_rol).first()
+        if current_rol and current_rol.nombre_rol == "Administrador":
+            admin_count = db.query(Usuario).join(Rol).filter(
+                Rol.nombre_rol == "Administrador",
+                Usuario.estado_usuario == "ACTIVO"
+            ).count()
+            if admin_count <= 1:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No se puede eliminar al único Administrador activo del sistema."
+                )
 
         db.delete(usuario)
         db.commit()

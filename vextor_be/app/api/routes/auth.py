@@ -238,4 +238,30 @@ def get_me(current_user = Depends(get_current_user), db: Session = Depends(get_d
         "avatar": avatar,
         "phone": current_user.telefono_usuario or "",
         "photo": current_user.foto_perfil,
+        "must_change_password": bool(current_user.requiere_cambio_clave),
     }
+
+
+@router.post("/change-password")
+def change_password(
+    req: ChangePasswordRequest,
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Cambia la contraseña del usuario autenticado (para usuarios normales o cambio forzado)"""
+    from app.core.security import verify_password, hash_password, validate_password_policy
+    if not verify_password(req.current_password, current_user.contrasenia_usuario):
+        raise HTTPException(
+            status_code=400,
+            detail="La contraseña actual ingresada es incorrecta."
+        )
+
+    is_valid, error_msg = validate_password_policy(req.new_password)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
+
+    current_user.contrasenia_usuario = hash_password(req.new_password)
+    current_user.requiere_cambio_clave = False
+    db.commit()
+
+    return {"message": "Su contraseña ha sido actualizada con éxito."}

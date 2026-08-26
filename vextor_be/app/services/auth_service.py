@@ -166,6 +166,7 @@ class AuthService:
             "avatar": avatar,
             "phone": user.telefono_usuario or "",
             "photo": user.foto_perfil,
+            "must_change_password": bool(user.requiere_cambio_clave),
         }
 
         return token, user_info
@@ -407,4 +408,5 @@ class AuthService:
             "avatar": avatar,
             "phone": user.telefono_usuario or "",
             "photo": user.foto_perfil,
+            "must_change_password": bool(user.requiere_cambio_clave),
         }

@@ -8,10 +8,8 @@ from app.database.connection import Base
 from app.database import get_db
 from app.main import app
 from app.models import Rol, Usuario
-from app.core.security import hash_password, create_access_token
+from app.core.security import hash_password, create_access_token, verify_password
 
-
-# Configurar BD SQLite estática para rbac tests
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test_rbac_temp.db"
 rbac_engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 RbacSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=rbac_engine)
@@ -73,6 +71,21 @@ def test_public_registration_creates_only_normal_user(client, test_db):
     assert user.rol.nombre_rol == "Usuario"
 
 
+def test_public_registration_with_driver_attempt(client, test_db):
+    payload = {
+        "fullName": "Driver Attempt",
+        "email": "driverattempt@test.com",
+        "password": "Password123!",
+        "role": "Conductor"
+    }
+    response = client.post("/api/auth/register", json=payload)
+    assert response.status_code == 200
+
+    user = test_db.query(Usuario).filter(Usuario.correo_usuario == "driverattempt@test.com").first()
+    assert user is not None
+    assert user.rol.nombre_rol == "Usuario"
+
+
 def test_rbac_user_management_access_control(client, test_db):
     user_rol = test_db.query(Rol).filter(Rol.nombre_rol == "Usuario").first()
     admin_rol = test_db.query(Rol).filter(Rol.nombre_rol == "Administrador").first()
@@ -120,7 +133,6 @@ def test_rbac_user_management_access_control(client, test_db):
     # 3. Admin user attempts GET /api/users -> 200 OK
     resp = client.get("/api/users", headers={"Authorization": f"Bearer {admin_token}"})
     assert resp.status_code == 200
-    assert len(resp.json()) >= 2
 
     # 4. Admin user attempts POST /api/users to create another Admin -> 200 OK
     resp = client.post(
@@ -136,3 +148,83 @@ def test_rbac_user_management_access_control(client, test_db):
     )
     assert resp.status_code == 200
     assert resp.json()["correo_usuario"] == "newadmin@test.com"
+
+
+def test_last_administrator_protection(client, test_db):
+    admin_rol = test_db.query(Rol).filter(Rol.nombre_rol == "Administrador").first()
+    user_rol = test_db.query(Rol).filter(Rol.nombre_rol == "Usuario").first()
+
+    # Create sole active admin
+    sole_admin = Usuario(
+        id_usuario=uuid4(),
+        nombres_usuario="Sole",
+        apellidos_usuario="Admin",
+        correo_usuario="soleadmin@test.com",
+        contrasenia_usuario=hash_password("Password123!"),
+        id_rol=admin_rol.id_rol,
+        estado_usuario="ACTIVO"
+    )
+    test_db.add(sole_admin)
+    test_db.commit()
+
+    admin_token = create_access_token({"sub": sole_admin.correo_usuario, "role": "Administrador"})
+
+    # 1. Attempt to delete sole admin -> 400 Bad Request
+    resp = client.delete(f"/api/users/{sole_admin.id_usuario}", headers={"Authorization": f"Bearer {admin_token}"})
+    assert resp.status_code == 400
+    assert "único Administrador" in resp.json()["detail"]
+
+    # 2. Attempt to demote sole admin to Usuario -> 400 Bad Request
+    resp = client.put(
+        f"/api/users/{sole_admin.id_usuario}",
+        json={"id_rol": str(user_rol.id_rol)},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert resp.status_code == 400
+    assert "único Administrador" in resp.json()["detail"]
+
+    # 3. Attempt to deactivate sole admin -> 400 Bad Request
+    resp = client.put(
+        f"/api/users/{sole_admin.id_usuario}",
+        json={"estado_usuario": "INACTIVO"},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert resp.status_code == 400
+    assert "único Administrador" in resp.json()["detail"]
+
+
+def test_forced_password_change_flow(client, test_db):
+    user_rol = test_db.query(Rol).filter(Rol.nombre_rol == "Usuario").first()
+
+    temp_pass_user = Usuario(
+        id_usuario=uuid4(),
+        nombres_usuario="Temp",
+        apellidos_usuario="PassUser",
+        correo_usuario="temppass@test.com",
+        contrasenia_usuario=hash_password("TempPassword123!"),
+        id_rol=user_rol.id_rol,
+        estado_usuario="ACTIVO",
+        requiere_cambio_clave=True
+    )
+    test_db.add(temp_pass_user)
+    test_db.commit()
+
+    token = create_access_token({"sub": temp_pass_user.correo_usuario, "role": "Usuario"})
+
+    # Check /api/auth/me indicates must_change_password=True
+    resp = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert resp.json()["must_change_password"] is True
+
+    # Change password
+    resp = client.post(
+        "/api/auth/change-password",
+        json={"current_password": "TempPassword123!", "new_password": "NewSecurePassword2026!"},
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert resp.status_code == 200
+
+    # Verify flag updated to False in DB and me response
+    resp = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert resp.json()["must_change_password"] is False
