@@ -596,6 +596,7 @@ class UserService:
             contrasenia_usuario=hashed_password,
             telefono_usuario=user_data.get("telefono_usuario", ""),
             estado_usuario=user_data.get("estado_usuario", "ACTIVO"),
+            requiere_cambio_clave=bool(user_data.get("requiere_cambio_clave", True)),
             foto_perfil=user_data.get("foto_perfil")
         )
 

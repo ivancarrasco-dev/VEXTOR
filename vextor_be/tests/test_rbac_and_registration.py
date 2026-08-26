@@ -154,6 +154,12 @@ def test_last_administrator_protection(client, test_db):
     admin_rol = test_db.query(Rol).filter(Rol.nombre_rol == "Administrador").first()
     user_rol = test_db.query(Rol).filter(Rol.nombre_rol == "Usuario").first()
 
+    # Deactivate any previously created admins to test sole admin protection
+    existing_admins = test_db.query(Usuario).filter(Usuario.id_rol == admin_rol.id_rol).all()
+    for u in existing_admins:
+        u.estado_usuario = "INACTIVO"
+    test_db.commit()
+
     # Create sole active admin
     sole_admin = Usuario(
         id_usuario=uuid4(),
@@ -162,7 +168,8 @@ def test_last_administrator_protection(client, test_db):
         correo_usuario="soleadmin@test.com",
         contrasenia_usuario=hash_password("Password123!"),
         id_rol=admin_rol.id_rol,
-        estado_usuario="ACTIVO"
+        estado_usuario="ACTIVO",
+        requiere_cambio_clave=False
     )
     test_db.add(sole_admin)
     test_db.commit()
