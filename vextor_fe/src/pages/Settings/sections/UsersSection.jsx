@@ -55,7 +55,11 @@ const UsersSection = ({
                     <td className="p-3 text-v-gray text-sm">{usr.correo_usuario}</td>
                     <td className="p-3 text-v-white text-sm">
                       <span className="px-2.5 py-1 bg-v-dark border border-v-dark-border rounded-lg text-xs font-medium text-primary">
-                        {usr.id_rol === '11111111-2222-3333-4444-555555555551' ? 'Administrador' : 'Conductor'}
+                        {usr.id_rol === '11111111-2222-3333-4444-555555555551'
+                          ? 'Administrador'
+                          : usr.id_rol === '11111111-2222-3333-4444-555555555552'
+                          ? 'Conductor'
+                          : 'Usuario'}
                       </span>
                     </td>
                     <td className="p-3">
@@ -146,6 +150,7 @@ const UsersSection = ({
                   >
                     <option value="11111111-2222-3333-4444-555555555551">Administrador</option>
                     <option value="11111111-2222-3333-4444-555555555552">Conductor</option>
+                    <option value="11111111-2222-3333-4444-555555555555">Usuario</option>
                   </Select>
                 </div>
                 <div className="space-y-1.5">

@@ -81,12 +81,18 @@ const Register = () => {
     setIsLoading(true);
 
     try {
-      await register({
+      const registeredUser = await register({
         fullName: formData.fullName,
         email: formData.email,
         password: formData.password
       });
-      navigate('/dashboard');
+      if (registeredUser?.role === 'Administrador') {
+        navigate('/dashboard');
+      } else if (registeredUser?.role === 'Conductor') {
+        navigate('/driver/my-routes');
+      } else {
+        navigate('/settings');
+      }
     } catch (err) {
       setErrors({ form: err.message || 'Error al crear la cuenta.' });
     } finally {
