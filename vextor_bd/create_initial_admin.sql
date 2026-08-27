@@ -5,7 +5,7 @@
 --   Correo: JAdmin@gmail.com
 --   Contraseña temporal: JAdmin2026!
 --   Algoritmo: bcrypt (Salting con factor de coste 12)
---   Hash almacenado: $2b$12$DQmqm5Ok.0CXMzP1ff4c4ujVXC17.KQ9w7Y93H7cdUEvbM1/xDsbq
+--   Hash almacenado: $2b$12$MgZNhC/kOXWIiax9vBxHzurU1ZVyfVdo9bmc7zQ7DeeUdbokFI7w6
 --   Exigir cambio de clave: Sí (requiere_cambio_clave = TRUE en primera inserción).
 -- =============================================================================
 
@@ -39,7 +39,7 @@ VALUES (
     'Administrador',
     'VEXTOR',
     'JAdmin@gmail.com',
-    '$2b$12$DQmqm5Ok.0CXMzP1ff4c4ujVXC17.KQ9w7Y93H7cdUEvbM1/xDsbq',
+    '$2b$12$MgZNhC/kOXWIiax9vBxHzurU1ZVyfVdo9bmc7zQ7DeeUdbokFI7w6',
     '+573000000000',
     'ACTIVO',
     TRUE,
