@@ -236,7 +236,6 @@ def test_driver_status_auto_en_ruta_and_reversion(db_session):
         DriverService.update(driver.id_conductor, {"estado_conductor": "DISPONIBLE"}, db_session)
     assert exc_info.value.status_code == 400
 
-    RouteService.update(route.id_ruta, {"estado_ruta": "EN_PROCESO"}, db_session)
     RouteService.update(route.id_ruta, {"estado_ruta": "COMPLETADA"}, db_session)
 
     driver_completed = DriverService.get_by_id(driver.id_conductor, db_session)
