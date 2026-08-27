@@ -2,7 +2,6 @@
 Pruebas de verificación de correcciones de seguridad
 """
 import pytest
-from uuid import uuid4
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -83,12 +82,8 @@ def test_rbac_restrictions():
     """Verifica que un Conductor no pueda realizar operaciones de edición administrativas"""
     db = TestingSessionLocal()
     driver_user = db.query(Usuario).filter(Usuario.correo_usuario == "driver@vextor.com").first()
-    session_id = uuid4()
-    from app.models import SesionUsuario
-    sess = SesionUsuario(id_sesion=session_id, id_usuario=driver_user.id_usuario, estado_sesion="ACTIVA")
-    db.add(sess)
-    db.commit()
-    token = create_access_token({"sub": driver_user.correo_usuario, "role": "Conductor", "sid": str(session_id)})
+    token = create_access_token({"sub": driver_user.correo_usuario, "role": "Conductor"})
+    db.close()
 
     headers = {"Authorization": f"Bearer {token}"}
 

@@ -61,15 +61,13 @@ class AuthService:
                 detail="El correo electrónico ya está registrado.",
             )
 
-        # Obtener o crear rol Usuario para registro público
-        rol = db.query(Rol).filter(Rol.nombre_rol == "Usuario").first()
-        if not rol:
-            rol = db.query(Rol).filter(Rol.id_rol == UUID("11111111-2222-3333-4444-555555555555")).first()
+        # Obtener o crear rol Administrador
+        rol = db.query(Rol).filter(Rol.nombre_rol == "Administrador").first()
         if not rol:
             rol = Rol(
-                id_rol=UUID("11111111-2222-3333-4444-555555555555"),
-                nombre_rol="Usuario",
-                descripcion_rol="Usuario normal con acceso limitado",
+                id_rol=uuid4(),
+                nombre_rol="Administrador",
+                descripcion_rol="Administrador de la flota",
             )
             db.add(rol)
             db.commit()
@@ -166,7 +164,6 @@ class AuthService:
             "avatar": avatar,
             "phone": user.telefono_usuario or "",
             "photo": user.foto_perfil,
-            "must_change_password": bool(user.requiere_cambio_clave),
         }
 
         return token, user_info
@@ -408,5 +405,4 @@ class AuthService:
             "avatar": avatar,
             "phone": user.telefono_usuario or "",
             "photo": user.foto_perfil,
-            "must_change_password": bool(user.requiere_cambio_clave),
         }

@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from '../components/layout/Sidebar';
 import Navbar from '../components/layout/Navbar';
-import ForcedPasswordModal from '../components/common/ForcedPasswordModal';
-import { useAuth } from '../context/AuthContext';
 
 /**
  * DashboardLayout
@@ -35,11 +33,8 @@ const DashboardLayout = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const { user } = useAuth();
-
   return (
     <div className="flex min-h-screen bg-v-dark text-v-white overflow-hidden">
-      {user?.must_change_password && <ForcedPasswordModal />}
       <Sidebar
         isCollapsed={isCollapsed}
         setIsCollapsed={setIsCollapsed}

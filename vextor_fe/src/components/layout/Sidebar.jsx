@@ -53,13 +53,8 @@ const driverMenuItems = [
 
 const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen }) => {
   const { user, logout } = useAuth();
-  const isAdmin = user?.role === 'Administrador' || user?.role === 'rol-administrador';
   const isConductor = user?.role === 'rol-conductor' || user?.role === 'Conductor';
-  const currentMenuItems = isAdmin
-    ? adminMenuItems
-    : isConductor
-    ? driverMenuItems
-    : [{ path: '/settings', labelText: 'Configuración', icon: Settings }];
+  const currentMenuItems = isConductor ? driverMenuItems : adminMenuItems;
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();

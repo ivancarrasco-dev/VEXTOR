@@ -29,7 +29,6 @@ class Usuario(Base):
     fecha_creacion = Column(DateTime, nullable=False, server_default=func.now())
     token_recuperacion = Column(String(255), nullable=True)
     foto_perfil = Column(Text, nullable=True)
-    requiere_cambio_clave = Column(Boolean, nullable=False, default=False)
 
     rol = relationship("Rol", back_populates="usuarios")
     conductor = relationship("Conductor", uselist=False, back_populates="usuario")
