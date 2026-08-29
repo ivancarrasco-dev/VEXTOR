@@ -65,9 +65,10 @@ const Settings = () => {
   const navigate = useNavigate();
 
   const isConductor = user?.role === 'rol-conductor' || user?.role === 'Conductor';
-  const driverCategories = ['profile', 'notifications', 'appearance', 'security'];
-  const visibleCategories = isConductor
-    ? categories.filter(cat => driverCategories.includes(cat.id))
+  const isNormalUser = user?.role === 'Usuario' || user?.role === 'rol-usuario';
+  const limitedCategories = ['profile', 'notifications', 'appearance', 'security'];
+  const visibleCategories = (isConductor || isNormalUser)
+    ? categories.filter(cat => limitedCategories.includes(cat.id))
     : categories;
 
   const [activeCategory, setActiveCategory] = useState(() => {

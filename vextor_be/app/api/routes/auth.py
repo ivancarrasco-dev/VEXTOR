@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.schemas import LoginRequest, RegisterRequest, ForgotPasswordRequest, VerifyResetTokenRequest, ResetPasswordRequest
+from app.schemas import LoginRequest, RegisterRequest, ForgotPasswordRequest, VerifyResetTokenRequest, ResetPasswordRequest, ChangePasswordRequest
 from app.services.auth_service import AuthService
 from app.services.audit_service import AuditService
 from app.services.email_service import EmailService
@@ -22,7 +22,7 @@ def get_current_user_from_token(token: str, db: Session, request: Request = None
 
 
 def get_current_user(request: Request, db: Session = Depends(get_db)):
-    """Dependency que extrae token de cookie o header"""
+    """Dependency que extrae token de cookie o header y valida cambio forzado de clave"""
     token = request.cookies.get("vextor_auth_token")
     if not token:
         auth_header = request.headers.get("Authorization")
@@ -34,7 +34,22 @@ def get_current_user(request: Request, db: Session = Depends(get_db)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
         )
-    return get_current_user_from_token(token, db, request)
+    user = get_current_user_from_token(token, db, request)
+
+    if user.requiere_cambio_clave:
+        allowed_paths = [
+            "/api/auth/me",
+            "/api/auth/change-password",
+            "/api/auth/logout",
+            "/api/auth/profile",
+        ]
+        if request and request.url.path not in allowed_paths:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Debe cambiar su contraseña antes de utilizar el sistema.",
+            )
+
+    return user
 
 
 from app.core.rate_limiter import auth_rate_limiter
@@ -238,4 +253,30 @@ def get_me(current_user = Depends(get_current_user), db: Session = Depends(get_d
         "avatar": avatar,
         "phone": current_user.telefono_usuario or "",
         "photo": current_user.foto_perfil,
+        "must_change_password": bool(current_user.requiere_cambio_clave),
     }
+
+
+@router.post("/change-password")
+def change_password(
+    req: ChangePasswordRequest,
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Cambia la contraseña del usuario autenticado (para usuarios normales o cambio forzado)"""
+    from app.core.security import verify_password, hash_password, validate_password_policy
+    if not verify_password(req.current_password, current_user.contrasenia_usuario):
+        raise HTTPException(
+            status_code=400,
+            detail="La contraseña actual ingresada es incorrecta."
+        )
+
+    is_valid, error_msg = validate_password_policy(req.new_password)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
+
+    current_user.contrasenia_usuario = hash_password(req.new_password)
+    current_user.requiere_cambio_clave = False
+    db.commit()
+
+    return {"message": "Su contraseña ha sido actualizada con éxito."}
