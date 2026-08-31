@@ -1,18 +1,16 @@
 # Módulo de Mantenimientos (`src/pages/Maintenance/`)
 
 ## 1. Visión General
-Control y programación de mantenimientos preventivos y correctivos para los vehículos de la flota.
+Control y programación de mantenimientos preventivos y correctivos para los vehículos de la flota, control de costos en Pesos Colombianos (`COP`) y cambio automático de estado vehicular.
 
 ## 2. Archivos del Módulo
 
 | Archivo | Tipo | Función | Utilizado por |
 | :--- | :--- | :--- | :--- |
-| `Maintenance.jsx` | Página | Registro de órdenes de mantenimiento, filtro por taller/estado y formato de costos COP. | `AppRouter.jsx` |
-| `services/maintenanceService.js` | Servicio | Peticiones HTTP a `/api/maintenance`. | `Maintenance.jsx` |
+| `Maintenance.jsx` | Página | Tabla de órdenes de taller, métricas de costos y formulario modal CRUD. | `AppRouter.jsx` |
+| `services/maintenanceService.js` | Servicio | Cliente HTTP con llamadas a `/api/maintenance`. | `Maintenance.jsx` |
 
-## 3. Representación Visual (`¿Dónde se muestra?`)
-- **Ruta:** `/mantenimientos`
-- **Ubicación en UI:** Menú lateral -> Opción "Mantenimientos"
-- **Elementos Visibles:**
-  - Métricas de inversión total en mantenimiento ($ COP).
-  - Listado de órdenes de trabajo clasificadas por estado (Programado, En Proceso, Completado).
+## 3. Representación Visual
+- **Ruta SPA:** `/maintenance`
+- **Ubicación en UI:** Menú lateral ➔ Opción "Mantenimientos"
+- **Acceso:** Exclusivo Administrador

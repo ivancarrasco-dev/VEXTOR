@@ -1,6 +1,6 @@
 # Enrutamiento de la Aplicación - `src/routes/`
 
-Configuración del sistema de navegación SPA mediante **React Router v7**.
+Configuración del sistema de navegación SPA mediante **React Router**.
 
 ---
 
@@ -10,18 +10,18 @@ Configuración del sistema de navegación SPA mediante **React Router v7**.
 | :--- | :--- | :--- | :--- | :--- |
 | `/` | `Landing.jsx` | Público | Todos | Ninguno |
 | `/login` | `Login.jsx` | Público | No autenticados | Ninguno |
-| `/register` | `Register.jsx` | Público | No autenticados | Ninguno |
+| `/register` | `Register.jsx` | Público | No autenticados (Asigna rol `Usuario`) | Ninguno |
 | `/forgot-password` | `ForgotPassword.jsx` | Público | No autenticados | Ninguno |
 | `/reset-password` | `ResetPassword.jsx` | Público | No autenticados | Ninguno |
-| `/dashboard` | `Dashboard.jsx` | Protegido | Administrador, Auditor, Mantenimiento | `DashboardLayout` |
-| `/vehiculos` | `Vehicles.jsx` | Protegido | Administrador | `DashboardLayout` |
-| `/conductores` | `Drivers.jsx` | Protegido | Administrador | `DashboardLayout` |
-| `/rutas` | `Routes.jsx` | Protegido | Administrador | `DashboardLayout` |
+| `/dashboard` | `Dashboard.jsx` | Protegido Admin | Administrador | `DashboardLayout` |
+| `/vehicles` | `Vehicles.jsx` | Protegido Admin | Administrador | `DashboardLayout` |
+| `/drivers` | `Drivers.jsx` | Protegido Admin | Administrador | `DashboardLayout` |
+| `/routes` | `Routes.jsx` | Protegido Admin | Administrador | `DashboardLayout` |
+| `/maintenance` | `Maintenance.jsx` | Protegido Admin | Administrador | `DashboardLayout` |
+| `/reports` | `Reports.jsx` | Protegido Admin | Administrador | `DashboardLayout` |
+| `/settings` | `Settings.jsx` | Protegido | Todos (Secciones restringidas a Admin) | `DashboardLayout` |
 | `/driver/my-routes` | `MyRoutes.jsx` | Protegido | Conductor | `DashboardLayout` |
-| `/driver/active-route/:idRuta` | `ActiveRoutePage.jsx` | Protegido | Conductor | `DashboardLayout` |
-| `/mantenimientos` | `Maintenance.jsx` | Protegido | Administrador, Mantenimiento | `DashboardLayout` |
-| `/reportes` | `Reports.jsx` | Protegido | Administrador, Auditor | `DashboardLayout` |
-| `/configuracion` | `Settings.jsx` | Protegido | Todos (Secciones filtradas por rol) | `DashboardLayout` |
+| `/driver/active-route/:idRuta?` | `ActiveRoutePage.jsx` | Protegido | Conductor | `DashboardLayout` |
 
 ---
 
@@ -30,5 +30,6 @@ Configuración del sistema de navegación SPA mediante **React Router v7**.
 ### `ProtectedRoute.jsx`
 - **Propósito:** Componente guardián que verifica `isAuthenticated` desde `AuthContext`.
 - **Comportamiento:**
-  - Si el usuario no está autenticado -> Redirige a `/login`.
-  - Si el usuario intenta acceder a una ruta restringida por rol -> Redirige al panel por defecto de su rol (ej: Conductor es redirigido a `/driver/my-routes`).
+  - Muestra la pantalla de carga (Splash Screen) mientras `isLoading` es `true`.
+  - Si el usuario no está autenticado (`!isAuthenticated`) ➔ Redirige a `/login`.
+  - Si la ruta requiere privilegios administrativos (`adminOnly={true}`) y el usuario es un `Conductor` ➔ Redirige automáticamente a `/driver/my-routes`.
