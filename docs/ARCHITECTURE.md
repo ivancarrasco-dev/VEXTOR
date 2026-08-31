@@ -35,7 +35,7 @@ HTTP Local  │ Routing Requests                        │ Connection Pool (psy
 
 | Componente | Tecnología | Responsabilidad Principal |
 | :--- | :--- | :--- |
-| **Frontend UI** | React 19, Vite, Tailwind CSS v4 | Renderizado de la interfaz de usuario, gestión de estado de sesión (`AuthContext`), mapas interactivos (`MapComponent`), gráficos de dashboard y formularios responsive. |
+| **Frontend UI** | React 19, Vite, Tailwind CSS v4 | Renderizado de la interfaz de usuario, gestión de estado de sesión (`AuthContext`), mapas interactivos (`MapComponent` con capas OSRM y TomTom Traffic), gráficos de dashboard y formularios responsive. |
 | **Backend API** | FastAPI, Python 3.12, Uvicorn | Exposición de endpoints REST, validación de schemas con Pydantic, encriptación bcrypt, emisión y verificación de JWT, manejo de WebSockets para GPS y fachada/proxy seguro hacia OSRM. |
 | **Base de Datos** | Supabase PostgreSQL | Persistencia relacional de datos de negocio: tablas de usuarios, roles, vehículos, conductores, asignación de rutas, mantenimientos, actividades de auditoría y registros de seguimiento GPS. |
 | **Motor OSRM** | Docker Container (`osrm-backend`) | Servidor local dedicado al cálculo de rutas sobre el grafo vial de Colombia. Procesa algoritmos MLD para devolver distancias, tiempos e indicaciones giro a giro. |
@@ -75,7 +75,16 @@ Cuando un usuario (Administrador o Conductor) selecciona o visualiza una ruta en
 
 ---
 
-## 4. Flujo de Telemetría y Tracking GPS en Tiempo Real
+## 4. Capa de Tráfico en Tiempo Real (TomTom Traffic)
+
+Adicionalmente al cálculo de geometría OSRM, el cliente React en `MapComponent.jsx` consume directamente la API pública de **TomTom Traffic Raster Flow Tiles** para renderizar el estado del tráfico vehicular en tiempo real:
+
+- **Protocolo & Formato:** Tile layer de Leaflet (`L.tileLayer`) mediante peticiones GET de mosaicos raster transparentes.
+- **Configuración:** La clave de API se configura mediante la variable de entorno `VITE_TOMTOM_API_KEY`.
+- **Modos de Visualización:** Se aplican automáticamente los estilos nítidos `relative0` (modo claro) y `relative0-dark` (modo oscuro) para mantener la definición sobre la jerarquía de vías sin generar efectos difuminados de mapa de calor.
+- **Desacoplamiento:** El tráfico opera en una capa independiente de Leaflet con su propio control e indicador de estado, sin depender de OSRM ni intervenir en la base de datos PostgreSQL.
+
+## 5. Flujo de Telemetría y Tracking GPS en Tiempo Real
 
 Diferente al enrutamiento estático, el **tracking** es el proceso dinámico mediante el cual se monitorea la posición real de un vehículo en movimiento:
 
@@ -98,7 +107,7 @@ Diferente al enrutamiento estático, el **tracking** es el proceso dinámico med
 
 ---
 
-## 5. Diferencia Clave entre Enrutamiento (Routing) y Seguimiento (Tracking)
+## 6. Diferencia Clave entre Enrutamiento (Routing) y Seguimiento (Tracking)
 
 | Aspecto | Enrutamiento (Routing) | Seguimiento (Tracking) |
 | :--- | :--- | :--- |

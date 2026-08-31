@@ -76,6 +76,7 @@ Una vez finalizado el setup, accede a los servicios en tu navegador:
 - ⚙️ **Backend REST & WebSockets:** `http://localhost:8000`
 - 📖 **Documentación Swagger API:** `http://localhost:8000/docs`
 - 🗺️ **Motor OSRM Local:** `http://localhost:5000`
+- 🚦 **Tráfico en Tiempo Real (TomTom):** Configurable mediante `VITE_TOMTOM_API_KEY` en `.env` (opcional).
 
 ---
 

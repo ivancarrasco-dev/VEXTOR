@@ -22,8 +22,10 @@ COPY . .
 # Argumentos de construcción
 ARG VITE_API_BASE_URL
 ARG VITE_WS_BASE_URL
+ARG VITE_TOMTOM_API_KEY
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 ENV VITE_WS_BASE_URL=$VITE_WS_BASE_URL
+ENV VITE_TOMTOM_API_KEY=$VITE_TOMTOM_API_KEY
 
 # Compilar - Vite/esbuild compila aunque los pre-build hayan fallado
 RUN pnpm run build || echo "Build intentado"

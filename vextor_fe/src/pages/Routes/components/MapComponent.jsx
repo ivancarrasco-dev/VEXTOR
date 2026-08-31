@@ -4,6 +4,7 @@ import { Layers, MapPin, Navigation, Compass, Loader2, ChevronDown, ChevronUp } 
 import { cn } from '../../../utils/cn';
 import { useTheme } from '../../../context/ThemeContext';
 import { routeService } from '../services/routeService';
+import { TOMTOM_API_KEY } from '../../../config/api';
 
 // Tile Providers configuration list
 const TILE_PROVIDERS = [
@@ -142,9 +143,12 @@ const MapComponent = ({
   const [hasTileError, setHasTileError] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isAutoFollowing, setIsAutoFollowing] = useState(true);
+  const [isTrafficEnabled, setIsTrafficEnabled] = useState(Boolean(TOMTOM_API_KEY));
+  const [showTrafficLegend, setShowTrafficLegend] = useState(false);
 
   // References to map layers and a generation token for asynchronous route requests.
   const tileLayerRef = useRef(null);
+  const trafficLayerRef = useRef(null);
   const activeLayersRef = useRef([]);
   const vehicleMarkerRef = useRef(null);
   const pathHistoryRef = useRef([]);
@@ -287,6 +291,11 @@ const MapComponent = ({
         }
         routePolylineRef.current = null;
 
+        if (trafficLayerRef.current && map.hasLayer(trafficLayerRef.current)) {
+          map.removeLayer(trafficLayerRef.current);
+        }
+        trafficLayerRef.current = null;
+
         activeLayersRef.current.forEach(layer => {
           if (layer && map.hasLayer(layer)) {
             map.removeLayer(layer);
@@ -300,6 +309,38 @@ const MapComponent = ({
       }
     };
   }, []);
+
+  // Update TomTom Traffic Layer dynamically when enabled status, theme, or map instance changes
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    // Always remove existing traffic layer to avoid duplication/leaks
+    if (trafficLayerRef.current && map.hasLayer(trafficLayerRef.current)) {
+      map.removeLayer(trafficLayerRef.current);
+      trafficLayerRef.current = null;
+    }
+
+    if (isTrafficEnabled && TOMTOM_API_KEY) {
+      // TomTom relative0 / relative0-dark style for crisp, clear non-blurred traffic lines
+      const trafficStyle = theme === 'dark' ? 'relative0-dark' : 'relative0';
+      const trafficUrl = `https://api.tomtom.com/traffic/map/4/tile/flow/${trafficStyle}/{z}/{x}/{y}.png?key=${TOMTOM_API_KEY}&tileSize=256`;
+
+      const layer = L.tileLayer(trafficUrl, {
+        attribution: '&copy; <a href="https://www.tomtom.com" target="_blank" rel="noopener noreferrer">TomTom</a> Traffic',
+        tileSize: 256,
+        maxZoom: 19,
+        opacity: 0.9,
+      });
+
+      layer.on('tileerror', (err) => {
+        console.warn('Error al cargar tiles de tráfico de TomTom (API Key inválida o límite excedido):', err);
+      });
+
+      layer.addTo(map);
+      trafficLayerRef.current = layer;
+    }
+  }, [isTrafficEnabled, theme]);
 
   // Switch tile layer automatically when global theme changes
   useEffect(() => {
@@ -644,28 +685,93 @@ const MapComponent = ({
         </div>
 
         {/* Traffic & Incidents Info Control */}
-        <div className="relative group">
+        <div className="relative flex items-center gap-1.5">
           <button
             type="button"
-            className="px-3 py-2 bg-v-dark-soft/95 backdrop-blur-md border border-v-dark-border rounded-xl shadow-2xl text-xs font-semibold text-v-white hover:border-amber-500/40 transition-all cursor-pointer flex items-center gap-1.5"
+            onClick={() => {
+              if (!TOMTOM_API_KEY) {
+                setShowTrafficLegend(!showTrafficLegend);
+                return;
+              }
+              setIsTrafficEnabled(!isTrafficEnabled);
+            }}
+            className={cn(
+              "px-3 py-2 bg-v-dark-soft/95 backdrop-blur-md border rounded-xl shadow-2xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 hover:scale-105 active:scale-95",
+              isTrafficEnabled
+                ? "border-emerald-500/60 text-emerald-400 bg-emerald-500/10"
+                : "border-v-dark-border text-v-gray hover:text-v-white"
+            )}
+            title={TOMTOM_API_KEY ? "Activar/desactivar tráfico en tiempo real" : "TomTom Traffic API Key no detectada"}
           >
-            <span>🚦 Tráfico</span>
+            <span>🚦</span>
+            <span>Tráfico</span>
+            <span className={cn(
+              "w-2 h-2 rounded-full transition-colors",
+              isTrafficEnabled ? "bg-emerald-500 animate-pulse" : "bg-v-gray/40"
+            )} />
           </button>
 
-          {/* Info Card Tooltip on Hover */}
-          <div className="absolute left-0 top-full mt-2 hidden group-hover:block w-72 p-4 bg-v-dark-soft/95 backdrop-blur-xl border border-v-dark-border rounded-2xl shadow-2xl z-50 text-left space-y-2 pointer-events-auto animate-in fade-in duration-200">
-            <div className="flex items-center gap-2 text-amber-400 font-bold text-xs">
-              <span>🚦</span>
-              <span>Información de Tráfico VEXTOR</span>
+          {/* Legend Details Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setShowTrafficLegend(!showTrafficLegend)}
+            className="p-2 bg-v-dark-soft/95 backdrop-blur-md border border-v-dark-border rounded-xl text-v-gray hover:text-v-white shadow-xl cursor-pointer text-xs font-bold transition-all hover:scale-105 active:scale-95"
+            title="Ver leyenda e información de tráfico"
+          >
+            ℹ️
+          </button>
+
+          {/* Traffic Legend & Info Modal Card */}
+          {showTrafficLegend && (
+            <div className="absolute left-0 top-full mt-2 w-72 sm:w-80 p-4 bg-v-dark-soft/95 backdrop-blur-xl border border-v-dark-border rounded-2xl shadow-2xl z-50 text-left space-y-3 animate-in fade-in slide-in-from-top-2 duration-150">
+              <div className="flex items-center justify-between border-b border-v-dark-border pb-2">
+                <div className="flex items-center gap-2 text-v-white font-bold text-xs">
+                  <span>🚦</span>
+                  <span>Tráfico TomTom en Tiempo Real</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowTrafficLegend(false)}
+                  className="text-v-gray hover:text-v-white text-xs font-bold px-1.5 py-0.5 rounded-md hover:bg-v-dark/60 cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {!TOMTOM_API_KEY && (
+                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-300 leading-relaxed">
+                  ⚠️ <strong>API Key Requerida:</strong> Configura <code>VITE_TOMTOM_API_KEY</code> en tu archivo <code>.env</code> para activar la capa visual en tiempo real.
+                </div>
+              )}
+
+              {/* Traffic Colors Legend */}
+              <div className="space-y-1.5 text-xs">
+                <div className="text-[10px] uppercase font-semibold text-v-gray tracking-wider">Estado del Tráfico</div>
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-v-dark/60 border border-v-dark-border">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shrink-0" />
+                    <span className="text-v-white">🟢 Fluido</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-v-dark/60 border border-v-dark-border">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-sm shrink-0" />
+                    <span className="text-v-white">🟡 Moderado</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-v-dark/60 border border-v-dark-border">
+                    <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-sm shrink-0" />
+                    <span className="text-v-white">🟠 Congestionado</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-v-dark/60 border border-v-dark-border">
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-600 shadow-sm shrink-0" />
+                    <span className="text-v-white">🔴 Muy congestionado</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-1 text-[10px] text-v-gray leading-relaxed border-t border-v-dark-border">
+                Capa independiente renderizada mediante la API oficial TomTom Raster Flow Tiles sin alterar las rutas calculadas por OSRM.
+              </div>
             </div>
-            <p className="text-[11px] text-v-gray leading-relaxed">
-              Las rutas y tiempos estimados se calculan con <strong>OSRM / OpenStreetMap</strong> basándose en las jerarquías de vías y velocidades promedio permitidas.
-            </p>
-            <div className="p-2.5 rounded-xl bg-v-dark/80 border border-v-dark-border text-[10px] text-v-gray space-y-1">
-              <span className="font-bold text-v-white block">Transparencia de Datos:</span>
-              <p>No simulamos tráfico ni incidentes falsos. Para integrar una capa de tráfico vehicular en tiempo real o alertas de incidentes sin costo adicional, el sistema está optimizado para conectarse a un proveedor de telemetría vial directo.</p>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 

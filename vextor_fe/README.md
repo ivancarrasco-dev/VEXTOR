@@ -48,7 +48,7 @@ vextor_fe/
 - **React 19:** Biblioteca principal para la construcción de interfaces mediante componentes funcionales y hooks.
 - **Tailwind CSS v4:** Motor de estilos mediante clases utilitarias de alto rendimiento con selector dark mode `.dark`.
 - **Framer Motion:** Biblioteca para animaciones fluidas, colapsado de barra lateral y transiciones de páginas.
-- **Leaflet & React-Leaflet:** Renderizado de mapas vectoriales sin dependencias de claves de API de pago.
+- **Leaflet & React-Leaflet:** Renderizado de mapas vectoriales con integración OSRM y soporte para capa de tráfico en tiempo real mediante **TomTom Traffic Raster Flow Tiles** (`VITE_TOMTOM_API_KEY`).
 - **SweetAlert2 (`sweetalert.js`):** Modales estilizados en tema oscuro/claro para confirmación de acciones destructivas o alertas.
 
 ---
