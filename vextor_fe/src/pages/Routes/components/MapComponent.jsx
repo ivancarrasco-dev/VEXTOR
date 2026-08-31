@@ -6,16 +6,16 @@ import { useTheme } from '../../../context/ThemeContext';
 import { routeService } from '../services/routeService';
 import { TOMTOM_API_KEY } from '../../../config/api';
 
-// Tile Providers configuration list
+// Tile Providers configuration list (100% free & keyless tile layers)
 const TILE_PROVIDERS = [
   {
-    id: 'carto-dark',
-    name: 'Carto Dark Matter',
+    id: 'esri-dark',
+    name: 'Esri Dark Gray',
     label: 'Oscuro',
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-    subdomains: 'abcd',
-    maxZoom: 20
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+    subdomains: [],
+    maxZoom: 16
   },
   {
     id: 'osm',
@@ -27,13 +27,13 @@ const TILE_PROVIDERS = [
     maxZoom: 19
   },
   {
-    id: 'carto-positron',
-    name: 'Carto Positron',
+    id: 'esri-light',
+    name: 'Esri Light Gray',
     label: 'Claro',
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-    subdomains: 'abcd',
-    maxZoom: 20
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+    subdomains: [],
+    maxZoom: 16
   },
   {
     id: 'opentopo',
@@ -138,7 +138,7 @@ const MapComponent = ({
   const mapInstanceRef = useRef(null);
 
   // UI States
-  const [activeTileId, setActiveTileId] = useState(theme === 'dark' ? 'carto-dark' : 'carto-positron');
+  const [activeTileId, setActiveTileId] = useState(theme === 'dark' ? 'esri-dark' : 'osm');
   const [isTilesLoading, setIsTilesLoading] = useState(false);
   const [hasTileError, setHasTileError] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -201,7 +201,7 @@ const MapComponent = ({
     mapInstanceRef.current = map;
 
     // Load initial tile layer based on current theme
-    const initialTileId = theme === 'dark' ? 'carto-dark' : 'carto-positron';
+    const initialTileId = theme === 'dark' ? 'esri-dark' : 'osm';
     switchTileLayer(initialTileId);
 
     // Pause auto-following when user interacts with map manually
@@ -345,7 +345,7 @@ const MapComponent = ({
   // Switch tile layer automatically when global theme changes
   useEffect(() => {
     if (mapInstanceRef.current) {
-      const targetTileId = theme === 'dark' ? 'carto-dark' : 'carto-positron';
+      const targetTileId = theme === 'dark' ? 'esri-dark' : 'osm';
       switchTileLayer(targetTileId);
     }
   }, [theme]);
