@@ -224,7 +224,7 @@ def test_driver_status_auto_en_ruta_and_reversion(db_session):
         "origen": "4.60,-74.08",
         "destino": "4.70,-74.05",
         "fecha_programada": datetime.now(timezone.utc),
-        "estado_ruta": "PROGRAMADA",
+        "estado_ruta": "EN_PROCESO",
         "id_conductor": driver.id_conductor
     }
     route = RouteService.create(r_data, db_session)

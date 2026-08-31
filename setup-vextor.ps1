@@ -153,6 +153,13 @@ if ($needsSmtpUpdate) {
     Write-Host " Nota: Para habilitar correos, edita .env con credenciales reales de SMTP/Gmail." -ForegroundColor DarkYellow
 }
 
+# --- VERIFICACION INFORMATIVA DE VITE_TOMTOM_API_KEY ---
+if ($envMap.ContainsKey("VITE_TOMTOM_API_KEY") -and -not [string]::IsNullOrWhiteSpace($envMap["VITE_TOMTOM_API_KEY"])) {
+    Write-Host " VITE_TOMTOM_API_KEY detectada y configurada para el Frontend." -ForegroundColor Green
+} else {
+    Write-Host " VITE_TOMTOM_API_KEY no configurada (capa de trafico TomTom opcional desactivada)." -ForegroundColor DarkYellow
+}
+
 Write-Host " Variables de entorno configuradas correctamente." -ForegroundColor Green
 
 
