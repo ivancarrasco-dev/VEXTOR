@@ -9,13 +9,13 @@ import { TOMTOM_API_KEY } from '../../../config/api';
 // Tile Providers configuration list
 const TILE_PROVIDERS = [
   {
-    id: 'carto-dark',
-    name: 'Carto Dark Matter',
+    id: 'esri-dark',
+    name: 'Esri Dark Gray Canvas',
     label: 'Oscuro',
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-    subdomains: 'abcd',
-    maxZoom: 20
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+    subdomains: [],
+    maxZoom: 18
   },
   {
     id: 'osm',
@@ -27,13 +27,13 @@ const TILE_PROVIDERS = [
     maxZoom: 19
   },
   {
-    id: 'carto-positron',
-    name: 'Carto Positron',
+    id: 'esri-light',
+    name: 'Esri Light Gray Canvas',
     label: 'Claro',
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-    subdomains: 'abcd',
-    maxZoom: 20
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+    subdomains: [],
+    maxZoom: 18
   },
   {
     id: 'opentopo',
@@ -138,13 +138,14 @@ const MapComponent = ({
   const mapInstanceRef = useRef(null);
 
   // UI States
-  const [activeTileId, setActiveTileId] = useState(theme === 'dark' ? 'carto-dark' : 'carto-positron');
+  const [activeTileId, setActiveTileId] = useState(theme === 'dark' ? 'esri-dark' : 'esri-light');
   const [isTilesLoading, setIsTilesLoading] = useState(false);
   const [hasTileError, setHasTileError] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isAutoFollowing, setIsAutoFollowing] = useState(true);
   const [isTrafficEnabled, setIsTrafficEnabled] = useState(Boolean(TOMTOM_API_KEY));
   const [showTrafficLegend, setShowTrafficLegend] = useState(false);
+  const [trafficErrorStatus, setTrafficErrorStatus] = useState(null);
 
   // References to map layers and a generation token for asynchronous route requests.
   const tileLayerRef = useRef(null);
@@ -201,7 +202,7 @@ const MapComponent = ({
     mapInstanceRef.current = map;
 
     // Load initial tile layer based on current theme
-    const initialTileId = theme === 'dark' ? 'carto-dark' : 'carto-positron';
+    const initialTileId = theme === 'dark' ? 'esri-dark' : 'esri-light';
     switchTileLayer(initialTileId);
 
     // Pause auto-following when user interacts with map manually
@@ -322,6 +323,7 @@ const MapComponent = ({
     }
 
     if (isTrafficEnabled && TOMTOM_API_KEY) {
+      setTrafficErrorStatus(null);
       // TomTom relative0 / relative0-dark style for crisp, clear non-blurred traffic lines
       const trafficStyle = theme === 'dark' ? 'relative0-dark' : 'relative0';
       const trafficUrl = `https://api.tomtom.com/traffic/map/4/tile/flow/${trafficStyle}/{z}/{x}/{y}.png?key=${TOMTOM_API_KEY}&tileSize=256`;
@@ -334,7 +336,8 @@ const MapComponent = ({
       });
 
       layer.on('tileerror', (err) => {
-        console.warn('Error al cargar tiles de tráfico de TomTom (API Key inválida o límite excedido):', err);
+        console.warn('Error al cargar tiles de tráfico de TomTom (API Key inválida, caducada o límite de cuota excedido):', err);
+        setTrafficErrorStatus('Respuesta HTTP fallida o API Key de TomTom rechazada por el servidor.');
       });
 
       layer.addTo(map);
@@ -345,7 +348,7 @@ const MapComponent = ({
   // Switch tile layer automatically when global theme changes
   useEffect(() => {
     if (mapInstanceRef.current) {
-      const targetTileId = theme === 'dark' ? 'carto-dark' : 'carto-positron';
+      const targetTileId = theme === 'dark' ? 'esri-dark' : 'esri-light';
       switchTileLayer(targetTileId);
     }
   }, [theme]);
@@ -738,9 +741,13 @@ const MapComponent = ({
                 </button>
               </div>
 
-              {!TOMTOM_API_KEY && (
+              {!TOMTOM_API_KEY ? (
                 <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-300 leading-relaxed">
                   ⚠️ <strong>API Key Requerida:</strong> Configura <code>VITE_TOMTOM_API_KEY</code> en tu archivo <code>.env</code> para activar la capa visual en tiempo real.
+                </div>
+              ) : trafficErrorStatus && (
+                <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/30 text-[11px] text-red-300 leading-relaxed">
+                  ⛔ <strong>Error de Servidor TomTom:</strong> La API Key está inyectada en el cliente pero TomTom no devolvió datos válidos (posible clave inválida, caducada o límite de cuota alcanzado).
                 </div>
               )}
 
