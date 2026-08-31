@@ -1,6 +1,6 @@
 # Documentación Técnica del Backend - VEXTOR (`vextor_be`)
 
-El backend de VEXTOR está desarrollado en **Python 3.12** utilizando **FastAPI** como framework web de alto rendimiento, **SQLAlchemy** como ORM para la interacción con PostgreSQL y **Pydantic v2** para la validación y serialización de esquemas de datos.
+El backend de VEXTOR está desarrollado en **Python 3.12** utilizando **FastAPI** como framework web de alto rendimiento, **SQLAlchemy** como ORM para la interacción relacional con PostgreSQL y **Pydantic v2** para la validación y serialización de esquemas de datos.
 
 ---
 
@@ -8,41 +8,64 @@ El backend de VEXTOR está desarrollado en **Python 3.12** utilizando **FastAPI*
 
 ```text
 vextor_be/
-├── main.py                 # Punto de entrada de FastAPI, configuración de CORS, middlewares y montaje de routers
-├── database.py             # Configuración del motor SQLAlchemy (Engine, SessionLocal) y conexión a PostgreSQL
-├── models.py               # Modelos de base de datos relacional ORM (SQLAlchemy)
-├── schemas.py              # Esquemas de datos Pydantic para Request/Response y validaciones
-├── router_auth.py          # Endpoints de autenticación, login, logout, registro, perfil y recuperación de contraseña
-├── router_vehicles.py      # CRUD de vehículos, filtrado y validación de borrado seguro
-├── router_drivers.py       # CRUD de conductores, licencias y estados operativos
-├── router_routes.py        # Gestión de rutas, asignación, estados y servidor WebSocket para GPS (/ws/tracking)
-├── router_routing.py       # API de routing que adapta la instancia OSRM propia para el frontend
-├── services/osrm_client.py # Cliente HTTP aislado de OSRM y su configuración de entorno
-├── router_maintenance.py   # Registro de mantenimientos preventivos/correctivos en COP
-├── router_reports.py       # Generación de reportes tabulares y exportación binaria (PDF, CSV, Excel)
-├── router_company.py       # Configuración y consulta de información corporativa
-├── router_users.py         # Administración de usuarios del sistema y asignación de roles (Exclusivo Administrador)
-├── router_activities.py    # Bitácora de auditoría y registros de actividad del sistema
-├── router_security.py      # Gestión de sesiones activas del usuario y revocación de dispositivos
-├── email_utils.py          # Utilidad para envío de correos SMTP y generación de tokens de recuperación
-├── email_service.py        # Servicio complementario de correo electrónico
+├── app/
+│   ├── api/                # Enrutadores HTTP REST
+│   │   ├── routes/
+│   │   │   ├── audit.py    # Bitácora de actividades, notificaciones, cambio de clave y sesiones
+│   │   │   ├── auth.py     # Endpoints de autenticación, login, logout, registro, perfil y password reset
+│   │   │   ├── crud.py     # Operaciones CRUD para vehículos, conductores, rutas, mantenimiento, usuarios y empresa
+│   │   │   └── routing.py  # Endpoints de proxy para health y enrutamiento vial OSRM
+│   ├── core/               # Configuración centralizada y utilidades de seguridad
+│   │   ├── config.py       # Lectura de variables de entorno desde el archivo raíz .env
+│   │   ├── exceptions.py   # Manejadores de excepciones globales
+│   │   ├── rate_limiter.py # Limitador de tasa en memoria (InMemoryRateLimiter)
+│   │   └── security.py     # Hashing bcrypt y generación/decodificación de tokens JWT
+│   ├── database/           # Configuración del ORM SQLAlchemy
+│   │   ├── connection.py   # Declaración de Base y creación del motor (engine)
+│   │   └── session.py      # Generador de sesión get_db y SessionLocal
+│   ├── external/           # Clientes HTTP hacia servicios externos
+│   │   └── osrm_client.py  # Cliente aislado para el motor OSRM
+│   ├── models/             # Modelos de base de datos relacional (SQLAlchemy)
+│   │   ├── audit.py        # Modelos Actividad y Notificación
+│   │   ├── company.py      # Modelo Empresa
+│   │   ├── driver.py       # Modelo Conductor
+│   │   ├── maintenance.py  # Modelo Mantenimiento
+│   │   ├── report.py       # Modelo Reporte
+│   │   ├── route.py        # Modelos Ruta, AsignacionConductor, AsignacionVehiculo y Novedad
+│   │   ├── tracking.py     # Modelos SeguimientoRuta e HistorialUbicacion
+│   │   ├── user.py         # Modelos Rol, Usuario y SesionUsuario
+│   │   └── vehicle.py      # Modelo Vehiculo
+│   ├── schemas/            # Esquemas de validación Pydantic v2 (DTOs)
+│   ├── services/           # Capa de lógica de negocio y servicios
+│   │   ├── audit_service.py # Registro automático de auditoría
+│   │   ├── auth_service.py  # Autenticación, JWT, sesiones y reseteo de clave
+│   │   ├── crud_services.py # Lógica de negocio y sincronización automática de estados
+│   │   ├── email_service.py # Envío de correos por SMTP (Gmail / SMTP custom)
+│   │   └── osrm_service.py  # Procesamiento de respuestas de routing
+│   ├── utils/              # Funciones auxiliares (parseo IP, user-agent, iniciales avatar)
+│   ├── websocket/          # Canales WebSocket para telemetría en tiempo real
+│   │   ├── manager.py      # Administrador de conexiones activas WebSocket
+│   │   └── tracking.py     # Endpoint /ws/tracking y validación Pydantic GPS
+│   └── main.py             # Punto de entrada de FastAPI, CORS, middlewares y montaje de routers
+├── tests/                  # Suite de pruebas automatizadas unitarias e integración con pytest
+├── Dockerfile              # Dockerfile del backend
 └── requirements.txt        # Dependencias de Python con versiones fijadas
 ```
 
 ---
 
-## 2. Descripción de Archivos Clave
+## 2. Descripción de Componentes Clave
 
-| Archivo | Tipo | Propósito / Responsabilidad | Archivos / Componentes Relacionados |
-| :--- | :--- | :--- | :--- |
-| `main.py` | Entrada | Configura FastAPI, habilita CORS, maneja errores globales e incluye todos los APIRouters. | Todos los `router_*.py` |
-| `database.py` | Config / DB | Maneja el SessionLocal de SQLAlchemy, conecta con `DATABASE_URL` y provee el generador `get_db`. | `models.py`, `router_*.py` |
-| `models.py` | Modelos | Define los mapeos objeto-relacional para `Usuario`, `Rol`, `Vehiculo`, `Conductor`, `Ruta`, `SeguimientoRuta`, etc. | `database.py`, `schemas.py` |
-| `schemas.py` | Schemas | Validaciones Pydantic de entrada/salida para la API, incluyendo validadores de placas, celulares y cédulas. | `models.py`, `router_*.py` |
-| `router_auth.py` | Router | Controla la autenticación JWT, hashing bcrypt y gestión de cookies HttpOnly. | `schemas.py`, `models.py` |
-| `router_routes.py` | Router & WS | Administra la lógica de rutas y aloja el endpoint WebSocket `/ws/tracking` para recepción y retransmisión de GPS. | `models.py`, `vextor_fe/src/pages/Routes/` |
-| `router_routing.py` | Router | Expone `/api/routing/health` y `/api/routing/route` sin revelar la URL interna de OSRM. | `services/osrm_client.py`, `schemas.py` |
-| `email_utils.py` | Utilidad | Maneja la configuración SMTP para el envío de enlaces de recuperación de contraseña. | `router_auth.py` |
+| Componente | Propósito / Responsabilidad | Archivos Relacionados |
+| :--- | :--- | :--- |
+| `app/main.py` | Configura FastAPI, habilita CORS, ejecuta migraciones de constraints al iniciar e incluye APIRouters. | `app/api/routes/` |
+| `app/database/` | Maneja la conexión con PostgreSQL (`DATABASE_URL`) y expone el generador de sesión `get_db`. | `connection.py`, `session.py` |
+| `app/models/` | Define el mapeo objeto-relacional para todas las tablas relacionales. | `app/database/connection.py` |
+| `app/schemas/` | Define esquemas Pydantic con validadores colombianos (placas, celulares, cédulas). | `app/api/routes/` |
+| `app/api/routes/auth.py` | Controla autenticación JWT, registro (asigna rol `Usuario`), login, logout y perfil. | `app/services/auth_service.py` |
+| `app/api/routes/crud.py` | Aloja operaciones CRUD con RBAC (`require_admin`), paginación y auditoría automática. | `app/services/crud_services.py` |
+| `app/websocket/tracking.py` | Endpoint WebSocket `/ws/tracking` para recepción de GPS y retransmisión en tiempo real. | `app/websocket/manager.py` |
+| `app/core/rate_limiter.py` | Limita peticiones por IP en endpoints de autenticación para mitigar ataques por fuerza bruta. | `app/api/routes/auth.py` |
 
 ---
 
@@ -50,7 +73,7 @@ vextor_be/
 
 ### Requisitos Previos
 - Python 3.12+
-- PostgreSQL (Local o Supabase)
+- Instancia de PostgreSQL (Supabase o Local)
 
 ### Instalación de Dependencias
 ```bash
@@ -61,9 +84,9 @@ pip install -r requirements.txt
 ```
 
 ### Variables de Entorno (`.env`)
-Las variables de entorno se leen centralizadamente desde el archivo `.env` ubicado en la raíz del proyecto (`VEXTOR/.env`), creado a partir de `.env.example`:
+Las variables de entorno se leen centralizadamente desde el archivo `.env` ubicado en la raíz del repositorio (`VEXTOR/.env`):
 ```env
-DATABASE_URL=postgresql+psycopg://postgres:tu_password@localhost:5432/vextor_db
+DATABASE_URL=postgresql+psycopg://usuario:password@localhost:5432/vextor_db
 JWT_SECRET_KEY=tu_clave_secreta_super_segura
 OSRM_URL=http://osrm:5000
 OSRM_TIMEOUT_SECONDS=10
@@ -74,11 +97,21 @@ MAIL_HOST=smtp.gmail.com
 MAIL_PORT=587
 MAIL_USERNAME=tu_correo@gmail.com
 MAIL_PASSWORD=tu_password_de_aplicacion
-MAIL_FROM=VEXTOR Fleet <tu_correo@gmail.com>
+MAIL_FROM=VEXTOR Fleet <noreply@vextor.local>
 ```
 
 ### Ejecutar Servidor Backend
 ```bash
-uvicorn main:app --reload --port 8000
+uvicorn app.main:app --reload --port 8000
 ```
-La documentación interactiva de Swagger estará disponible en: `http://localhost:8000/docs`
+La documentación interactiva OpenAPI (Swagger) estará disponible en: `http://localhost:8000/docs`
+
+---
+
+## 🧪 4. Ejecución de Pruebas
+
+Para ejecutar la suite de pruebas unitarias e integración con pytest en memoria:
+
+```bash
+PYTHONPATH=vextor_be DATABASE_URL="sqlite:///:memory:" JWT_SECRET_KEY="testsecretkey" pytest vextor_be/tests
+```
