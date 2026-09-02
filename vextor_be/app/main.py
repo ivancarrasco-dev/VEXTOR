@@ -10,7 +10,7 @@ from app.core.config import settings
 from app.database import engine, Base
 
 # Importar routers
-from app.api.routes import auth, crud, routing, audit, dashboard
+from app.api.routes import auth, crud, routing, audit, dashboard, driver_routes
 from app.websocket import websocket_tracking_endpoint
 
 # Crear app
@@ -77,6 +77,9 @@ app.include_router(crud.routes_router)
 app.include_router(crud.maintenance_router)
 app.include_router(crud.users_router)
 app.include_router(crud.company_router)
+
+# Driver Routes (my-routes endpoint)
+app.include_router(driver_routes.router)
 
 # Routing / OSRM
 app.include_router(routing.router)

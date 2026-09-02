@@ -21,7 +21,7 @@ def get_dashboard_stats(
 ) -> Dict[str, Any]:
     """
     Obtiene las estadísticas reales del Dashboard para la flota Vextor.
-    Calcula totales reales de vehículos, conductores activos, rutas programadas para hoy,
+    Calcula totales reales de vehículos, conductores activos, rutas programadas,
     mantenimientos activos y total de usuarios.
     """
     now = datetime.now()
@@ -36,10 +36,10 @@ def get_dashboard_stats(
         Conductor.estado_conductor.in_(["DISPONIBLE", "EN_RUTA", "ACTIVO"])
     ).scalar() or 0
 
-    # 3. Rutas de hoy (programadas o en proceso para el día actual)
-    routes_today = db.query(func.count(Ruta.id_ruta)).filter(
-        Ruta.fecha_programada >= today_start,
-        Ruta.fecha_programada <= today_end
+    # 3. Rutas programadas (TODAS, no solo las de hoy - más informativo para admin)
+    # Filtra rutas que estén en estado PROGRAMADA o EN_RUTA
+    routes_total = db.query(func.count(Ruta.id_ruta)).filter(
+        Ruta.estado_ruta.in_(["PROGRAMADA", "EN_RUTA"])
     ).scalar() or 0
 
     # 4. Mantenimientos activos (PROGRAMADO, EN_PROCESO)
@@ -64,7 +64,7 @@ def get_dashboard_stats(
             "trendValue": None
         },
         "routes": {
-            "value": routes_today,
+            "value": routes_total,
             "trend": "up",
             "trendValue": None
         },

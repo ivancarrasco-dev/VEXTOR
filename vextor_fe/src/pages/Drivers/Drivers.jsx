@@ -49,15 +49,16 @@ const Drivers = () => {
   // Modals state
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [currentDriver, setCurrentDriver] = useState(null); // null for Create, driver object for Edit
+  const [currentDriver, setCurrentDriver] = useState(null);
   const [driverToDelete, setDriverToDelete] = useState(null);
 
-  // Form state
+  // Form state - ACTUALIZADO CON correo_conductor
   const [formData, setFormData] = useState({
     nombre_conductor: '',
     apellido_conductor: '',
     cedula_conductor: '',
     telefono_conductor: '',
+    correo_conductor: '', // NUEVO
     licencia: 'C2',
     estado_conductor: 'DISPONIBLE',
     fecha_ingreso: ''
@@ -86,7 +87,6 @@ const Drivers = () => {
     loadDrivers();
   }, []);
 
-  // Handle URL query parameters to trigger "Create Driver" from Dashboard Quick Action
   useEffect(() => {
     if (searchParams.get('action') === 'new' && drivers.length > 0) {
       handleOpenCreate();
@@ -106,7 +106,7 @@ const Drivers = () => {
     }
   };
 
-  // Form validator
+  // Form validator - ACTUALIZADO CON validación de correo
   const validateForm = () => {
     const errors = {};
 
@@ -124,14 +124,22 @@ const Drivers = () => {
 
     if (!formData.cedula_conductor.trim()) {
       errors.cedula_conductor = 'La cédula es obligatoria';
-    } else if (!/^[0-9]{3,10}$/.test(formData.cedula_conductor.trim())) {
-      errors.cedula_conductor = 'Debe tener entre 3 y 10 dígitos (numéricos únicamente)';
+    } else if (!/^[0-9]{3,20}$/.test(formData.cedula_conductor.trim())) {
+      errors.cedula_conductor = 'Debe tener entre 3 y 20 dígitos (numéricos únicamente)';
     }
 
     if (formData.telefono_conductor) {
       const cleanPhone = formData.telefono_conductor.replace(/\s+/g, '');
       if (!/^(\+57|57)?3[0-9]{9}$/.test(cleanPhone)) {
-        errors.telefono_conductor = 'Formato de celular colombiano inválido. Debe tener 10 dígitos y comenzar con 3 (ej. 3123456789).';
+        errors.telefono_conductor = 'Formato de celular colombiano inválido. Debe comenzar con 3 (ej. 3123456789 o +573123456789).';
+      }
+    }
+
+    // Validar correo electrónico
+    if (formData.correo_conductor && formData.correo_conductor.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.correo_conductor.trim())) {
+        errors.correo_conductor = 'El correo electrónico es inválido';
       }
     }
 
@@ -140,7 +148,7 @@ const Drivers = () => {
     }
 
     if (currentDriver && currentDriver.estado_conductor === 'EN_RUTA' && (formData.estado_conductor === 'DISPONIBLE' || formData.estado_conductor === 'ACTIVO')) {
-      errors.estado_conductor = 'No se puede cambiar a DISPONIBLE mientras el conductor tenga una ruta activa o asignada.';
+      errors.estado_conductor = 'No se puede cambiar a DISPONIBLE mientras el conductor tenga una ruta activa.';
     }
 
     return errors;
@@ -154,6 +162,7 @@ const Drivers = () => {
       apellido_conductor: '',
       cedula_conductor: '',
       telefono_conductor: '',
+      correo_conductor: '',
       licencia: 'C2',
       estado_conductor: 'DISPONIBLE',
       fecha_ingreso: new Date().toISOString().split('T')[0]
@@ -171,6 +180,7 @@ const Drivers = () => {
       apellido_conductor: driver.apellido_conductor,
       cedula_conductor: driver.cedula_conductor,
       telefono_conductor: driver.telefono_conductor || '',
+      correo_conductor: driver.correo_conductor || '',
       licencia: driver.licencia,
       estado_conductor: driver.estado_conductor,
       fecha_ingreso: driver.fecha_ingreso
@@ -194,10 +204,8 @@ const Drivers = () => {
 
     try {
       if (currentDriver) {
-        // Edit Mode
         await driverService.updateDriver(currentDriver.id_conductor, formData);
       } else {
-        // Create Mode
         await driverService.createDriver(formData);
       }
       setIsFormOpen(false);
@@ -239,7 +247,8 @@ const Drivers = () => {
       driver.nombre_conductor.toLowerCase().includes(query) ||
       driver.apellido_conductor.toLowerCase().includes(query) ||
       driver.cedula_conductor.includes(query) ||
-      driver.licencia.toLowerCase().includes(query);
+      driver.licencia.toLowerCase().includes(query) ||
+      (driver.correo_conductor && driver.correo_conductor.toLowerCase().includes(query));
 
     const matchesStatus = statusFilter ? driver.estado_conductor === statusFilter : true;
 
@@ -261,7 +270,6 @@ const Drivers = () => {
     if (currentPage < totalPages) setCurrentPage(currentPage + 1);
   };
 
-  // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [search, statusFilter]);
@@ -285,7 +293,6 @@ const Drivers = () => {
 
       {/* Filters Bar */}
       <div className="flex flex-col sm:flex-row gap-4 bg-v-dark-soft p-4 rounded-xl border border-v-dark-border">
-        {/* Search Input */}
         <div className="relative flex-1">
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-v-gray" />
           <input
@@ -297,7 +304,6 @@ const Drivers = () => {
           />
         </div>
 
-        {/* Filters dropdowns */}
         <div className="flex gap-3">
           <div className="flex items-center gap-1.5 bg-v-dark border border-v-dark-border px-3 py-1.5 rounded-lg shrink-0">
             <SlidersHorizontal size={15} className="text-v-gray" />
@@ -331,14 +337,14 @@ const Drivers = () => {
         </div>
       ) : (
         <div className="bg-v-dark-soft border border-v-dark-border rounded-2xl overflow-hidden shadow-xl">
-          {/* Responsive Table Wrapper */}
           <div className="overflow-x-auto w-full custom-scrollbar">
             <table className="w-full text-left border-collapse min-w-162.5">
               <thead>
                 <tr className="border-b border-v-dark-border bg-v-dark/40">
                   <th className="p-4 text-xs font-bold uppercase text-v-gray tracking-wider">Cédula</th>
                   <th className="p-4 text-xs font-bold uppercase text-v-gray tracking-wider">Conductor</th>
-                  <th className="p-4 text-xs font-bold uppercase text-v-gray tracking-wider">Teléfono / Licencia</th>
+                  <th className="p-4 text-xs font-bold uppercase text-v-gray tracking-wider">Correo / Teléfono</th>
+                  <th className="p-4 text-xs font-bold uppercase text-v-gray tracking-wider">Licencia</th>
                   <th className="p-4 text-xs font-bold uppercase text-v-gray tracking-wider">Fecha Ingreso</th>
                   <th className="p-4 text-xs font-bold uppercase text-v-gray tracking-wider">Estado</th>
                   <th className="p-4 text-xs font-bold uppercase text-v-gray tracking-wider text-right">Acciones</th>
@@ -361,8 +367,14 @@ const Drivers = () => {
                         <div className="text-v-gray text-xs mt-0.5">ID: {driver.id_conductor.substring(0, 8)}...</div>
                       </td>
                       <td className="p-4">
-                        <div className="text-v-white text-sm">{driver.licencia}</div>
+                        <div className="text-v-white text-sm flex items-center gap-1">
+                          <Mail size={14} className="text-primary" />
+                          {driver.correo_conductor || 'Sin correo'}
+                        </div>
                         <div className="text-v-gray text-xs mt-0.5">{driver.telefono_conductor || 'Sin teléfono'}</div>
+                      </td>
+                      <td className="p-4">
+                        <div className="text-v-white text-sm font-medium">{driver.licencia}</div>
                       </td>
                       <td className="p-4">
                         <div className="text-v-white text-sm font-medium">{driver.fecha_ingreso}</div>
@@ -397,7 +409,6 @@ const Drivers = () => {
             </table>
           </div>
 
-          {/* Pagination Controls */}
           {totalPages > 1 && (
             <div className="p-4 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-v-dark-border bg-v-dark/20 text-sm text-center sm:text-left">
               <span className="text-v-gray">
@@ -473,7 +484,6 @@ const Drivers = () => {
                 )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Nombre */}
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-v-gray">Nombre(s)</label>
                     <div className="relative">
@@ -493,7 +503,6 @@ const Drivers = () => {
                     {formErrors.nombre_conductor && <p className="text-xs text-red-500 mt-0.5 font-medium">{formErrors.nombre_conductor}</p>}
                   </div>
 
-                  {/* Apellido */}
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-v-gray">Apellido(s)</label>
                     <div className="relative">
@@ -515,7 +524,6 @@ const Drivers = () => {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Cédula */}
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-v-gray">Documento de Cédula / DNI</label>
                     <div className="relative">
@@ -523,7 +531,7 @@ const Drivers = () => {
                       <input
                         type="text"
                         name="cedula_conductor"
-                        placeholder="Mínimo 10 dígitos"
+                        placeholder="Ej. 1234567890"
                         value={formData.cedula_conductor}
                         onChange={handleInputChange}
                         className={cn(
@@ -535,7 +543,6 @@ const Drivers = () => {
                     {formErrors.cedula_conductor && <p className="text-xs text-red-500 mt-0.5 font-medium">{formErrors.cedula_conductor}</p>}
                   </div>
 
-                  {/* Teléfono */}
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-v-gray">Teléfono (Opcional)</label>
                     <div className="relative">
@@ -543,7 +550,7 @@ const Drivers = () => {
                       <input
                         type="text"
                         name="telefono_conductor"
-                        placeholder="Ej. +57 98 765 4321"
+                        placeholder="Ej. +57 312 1234567"
                         value={formData.telefono_conductor}
                         onChange={handleInputChange}
                         className={cn(
@@ -556,8 +563,28 @@ const Drivers = () => {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-v-gray">Correo Electrónico (Opcional)</label>
+                    <div className="relative">
+                      <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-v-gray" />
+                      <input
+                        type="email"
+                        name="correo_conductor"
+                        placeholder="Ej. conductor@empresa.com"
+                        value={formData.correo_conductor}
+                        onChange={handleInputChange}
+                        className={cn(
+                          "w-full bg-v-dark border focus:border-primary text-v-white text-sm pl-10 pr-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all",
+                          formErrors.correo_conductor ? "border-red-500 focus:ring-red-500/10" : "border-v-dark-border"
+                        )}
+                      />
+                    </div>
+                    {formErrors.correo_conductor && <p className="text-xs text-red-500 mt-0.5 font-medium">{formErrors.correo_conductor}</p>}
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Tipo de Licencia */}
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-v-gray">Tipo de Licencia</label>
                     <Select
@@ -571,7 +598,6 @@ const Drivers = () => {
                     </Select>
                   </div>
 
-                  {/* Fecha de Ingreso */}
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-v-gray">Fecha de Ingreso</label>
                     <div className="relative">
@@ -591,7 +617,6 @@ const Drivers = () => {
                   </div>
                 </div>
 
-                {/* Estado Conductor */}
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-v-gray">Estado Laboral</label>
                   <Select
@@ -608,7 +633,6 @@ const Drivers = () => {
                   )}
                 </div>
 
-                {/* Modal Footer */}
                 <div className="flex justify-end gap-3 pt-4 border-t border-v-dark-border bg-v-dark-soft">
                   <Button
                     type="button"
@@ -657,7 +681,7 @@ const Drivers = () => {
                 <div>
                   <h3 className="text-lg font-bold text-v-white">¿Confirmar eliminación?</h3>
                   <p className="text-sm text-v-gray mt-1.5 leading-relaxed">
-                    Está a punto de eliminar el conductor <strong className="text-v-white font-semibold">{driverToDelete?.nombre_conductor} {driverToDelete?.apellido_conductor}</strong> (Cédula: <span className="font-mono">{driverToDelete?.cedula_conductor}</span>). Se desvinculará también su cuenta de usuario del sistema. Esta acción es irreversible.
+                    Está a punto de eliminar el conductor <strong className="text-v-white font-semibold">{driverToDelete?.nombre_conductor} {driverToDelete?.apellido_conductor}</strong> (Cédula: <span className="font-mono">{driverToDelete?.cedula_conductor}</span>). Esta acción es irreversible.
                   </p>
                 </div>
               </div>

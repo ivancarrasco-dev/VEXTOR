@@ -115,6 +115,7 @@ class ConductorBase(BaseModel):
     apellido_conductor: str = Field(..., max_length=100)
     cedula_conductor: str = Field(..., max_length=20)
     telefono_conductor: Optional[str] = Field(None, max_length=20)
+    correo_conductor: Optional[EmailStr] = None  # NUEVO: Correo vinculado al Usuario
     licencia: str = Field(..., max_length=50)
     estado_conductor: str = Field("DISPONIBLE", max_length=20)
     fecha_ingreso: date
@@ -129,6 +130,7 @@ class ConductorUpdate(BaseModel):
     apellido_conductor: Optional[str] = Field(None, max_length=100)
     cedula_conductor: Optional[str] = Field(None, max_length=20)
     telefono_conductor: Optional[str] = Field(None, max_length=20)
+    correo_conductor: Optional[EmailStr] = None  # NUEVO
     licencia: Optional[str] = Field(None, max_length=50)
     estado_conductor: Optional[str] = Field(None, max_length=20)
     fecha_ingreso: Optional[date] = None
