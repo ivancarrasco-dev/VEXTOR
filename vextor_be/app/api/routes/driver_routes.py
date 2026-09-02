@@ -355,6 +355,81 @@ def update_route_location(
 
 
 @router.get("/active-tracking")
-def get_active_tracking(db: Session = Depends(get_db)):
-    """Endpoint para rastreo activo de rutas en tiempo real"""
-    return {"status": "active", "message": "Rastreo en tiempo real disponible"}
+def get_active_tracking(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
+):
+    """
+    Obtiene la lista de seguimientos activos en tiempo real para el panel de administración.
+    Retorna un arreglo de objetos con información de la ruta, conductor, vehículo y coordenadas GPS.
+    """
+    rutas_activas = db.query(Ruta).filter(
+        Ruta.estado_ruta.in_(["EN_PROCESO", "EN_RUTA", "SUSPENDIDA"])
+    ).all()
+
+    result = []
+    now = datetime.now()
+
+    for ruta in rutas_activas:
+        seg = db.query(SeguimientoRuta).filter(
+            SeguimientoRuta.id_ruta == ruta.id_ruta
+        ).first()
+
+        # Obtener conductor asignado
+        asig_cond = db.query(AsignacionConductor).filter(
+            AsignacionConductor.id_ruta == ruta.id_ruta
+        ).first()
+        conductor_obj = asig_cond.conductor if asig_cond and asig_cond.conductor else None
+
+        # Obtener vehículo asignado
+        asig_veh = db.query(AsignacionVehiculo).filter(
+            AsignacionVehiculo.id_ruta == ruta.id_ruta
+        ).first()
+        vehiculo_obj = asig_veh.vehiculo if asig_veh and asig_veh.vehiculo else None
+
+        # Coordenadas por defecto (origen o Bogotá)
+        lat, lng = 4.7110, -74.0721
+        if seg and seg.latitud is not None and seg.longitud is not None:
+            lat = seg.latitud
+            lng = seg.longitud
+        elif ruta.origen and "," in ruta.origen:
+            try:
+                parts = ruta.origen.split(",")
+                lat, lng = float(parts[0].strip()), float(parts[1].strip())
+            except ValueError:
+                pass
+
+        last_update = seg.ultima_actualizacion if seg and seg.ultima_actualizacion else now
+        sec_elapsed = int((now - last_update).total_seconds()) if last_update else 0
+        is_stale = sec_elapsed > 45
+
+        result.append({
+            "id_seguimiento": str(seg.id_seguimiento) if seg else str(ruta.id_ruta),
+            "id_ruta": str(ruta.id_ruta),
+            "codigo_ruta": ruta.codigo_ruta,
+            "nombre_ruta": ruta.nombre_ruta,
+            "origen": ruta.origen,
+            "destino": ruta.destino,
+            "estado_ruta": ruta.estado_ruta,
+            "latitud": lat,
+            "longitud": lng,
+            "velocidad": seg.velocidad if seg else 0.0,
+            "heading": seg.heading if seg else 0.0,
+            "ultima_actualizacion": last_update.isoformat() if last_update else now.isoformat(),
+            "segundos_transcurridos": sec_elapsed,
+            "is_stale": is_stale,
+            "conductor": {
+                "id_conductor": str(conductor_obj.id_conductor) if conductor_obj else None,
+                "nombre": f"{conductor_obj.nombre_conductor} {conductor_obj.apellido_conductor}" if conductor_obj else "Sin Conductor",
+                "cedula": conductor_obj.cedula_conductor if conductor_obj else "",
+                "telefono": conductor_obj.telefono_conductor if conductor_obj else ""
+            },
+            "vehiculo": {
+                "id_vehiculo": str(vehiculo_obj.id_vehiculo) if vehiculo_obj else None,
+                "placa": vehiculo_obj.placa if vehiculo_obj else "N/A",
+                "marca": vehiculo_obj.marca if vehiculo_obj else "",
+                "modelo": vehiculo_obj.modelo if vehiculo_obj else ""
+            }
+        })
+
+    return result

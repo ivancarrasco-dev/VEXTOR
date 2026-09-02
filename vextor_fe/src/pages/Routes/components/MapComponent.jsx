@@ -206,6 +206,11 @@ const MapComponent = ({
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
+    // Clean up container _leaflet_id if present to avoid "Map container is already initialized" error
+    if (mapContainerRef.current._leaflet_id) {
+      delete mapContainerRef.current._leaflet_id;
+    }
+
     // Centered in Bogotá: Lat 4.7110, Lng -74.0721, zoom 12
     const map = L.map(mapContainerRef.current, {
       center: [4.7110, -74.0721],
@@ -554,6 +559,10 @@ const MapComponent = ({
         routeService.calculateRoute({ origin: originToDraw, destination: destToDraw })
           .then((route) => {
             if (currentGen !== routingGenerationRef.current || !mapInstanceRef.current) return;
+
+            if (!route?.geometry?.coordinates || !Array.isArray(route.geometry.coordinates)) {
+              throw new Error('La geometría de la ruta recibida no es válida.');
+            }
 
             const latLngs = route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
             if (latLngs.length < 2) throw new Error('La geometría recibida no contiene suficientes puntos.');
