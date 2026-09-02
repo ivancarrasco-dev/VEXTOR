@@ -16,7 +16,10 @@ import {
   BarChart3,
   X,
   History,
-  Info
+  Info,
+  AlertCircle,
+  RotateCw,
+  UserCheck
 } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE_URL } from '../../config/api';
@@ -44,7 +47,7 @@ const getActivityMeta = (modulo, tipo_accion) => {
     icon = MapPin;
     color = 'text-purple-500';
     bg = 'bg-purple-500/10';
-  } else if (modulo === 'Mantenimientos') {
+  } else if (modulo === 'Mantenimientos' || modulo === 'Mantenimiento') {
     icon = Wrench;
     color = 'text-amber-500';
     bg = 'bg-amber-500/10';
@@ -62,8 +65,8 @@ const getActivityMeta = (modulo, tipo_accion) => {
     bg = 'bg-emerald-500/10';
   }
 
-  // Override icons slightly based on action
-  if (tipo_accion === 'ELIMINAR') {
+  // Override colors based on action type
+  if (tipo_accion === 'ELIMINAR' || tipo_accion === 'ELIMINACION') {
     color = 'text-red-500';
     bg = 'bg-red-500/10';
   }
@@ -110,18 +113,24 @@ const Dashboard = () => {
     vehicles: { value: 0, trend: 'up', trendValue: null },
     drivers: { value: 0, trend: 'up', trendValue: null },
     routes: { value: 0, trend: 'up', trendValue: null },
-    maintenances: { value: 0, trend: 'up', trendValue: null }
+    maintenances: { value: 0, trend: 'up', trendValue: null },
+    users: { value: 0, trend: 'up', trendValue: null }
   });
 
   // Recent activities list
   const [activities, setActivities] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Drawer modal state for viewing all activities
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const fetchDashboardData = async () => {
     setIsLoading(true);
+    setIsError(false);
+    setErrorMessage('');
+
     try {
       const [statsRes, activitiesRes] = await Promise.all([
         axios.get(`${API_BASE_URL}/api/dashboard/stats`),
@@ -136,6 +145,10 @@ const Dashboard = () => {
       }
     } catch (error) {
       console.error('Error fetching dashboard real data:', error);
+      setIsError(true);
+      setErrorMessage(
+        error.response?.data?.detail || 'No se pudo establecer conexión con el servidor. Por favor reintente.'
+      );
     } finally {
       setIsLoading(false);
     }
@@ -184,11 +197,36 @@ const Dashboard = () => {
         </div>
       </section>
 
+      {/* Error state banner */}
+      {isError && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-5 rounded-2xl bg-red-500/10 border border-red-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-left"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-red-500/20 text-red-400 shrink-0">
+              <AlertCircle size={22} />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-red-200">Error al cargar métricas del Dashboard</h4>
+              <p className="text-xs text-red-300/80 mt-0.5">{errorMessage}</p>
+            </div>
+          </div>
+          <button
+            onClick={fetchDashboardData}
+            className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 rounded-xl text-xs font-bold text-red-200 flex items-center gap-2 cursor-pointer transition-colors shrink-0"
+          >
+            <RotateCw size={14} /> Reintentar
+          </button>
+        </motion.div>
+      )}
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
           title={t('dashboard.stats.totalVehicles')}
-          value={isLoading ? '...' : statsData.vehicles.value}
+          value={isLoading ? '...' : isError ? 'Error' : statsData.vehicles.value}
           icon={Truck}
           trend={statsData.vehicles.trend}
           trendValue={statsData.vehicles.trendValue}
@@ -196,7 +234,7 @@ const Dashboard = () => {
         />
         <StatsCard
           title={t('dashboard.stats.activeDrivers')}
-          value={isLoading ? '...' : statsData.drivers.value}
+          value={isLoading ? '...' : isError ? 'Error' : statsData.drivers.value}
           icon={Users}
           trend={statsData.drivers.trend}
           trendValue={statsData.drivers.trendValue}
@@ -204,7 +242,7 @@ const Dashboard = () => {
         />
         <StatsCard
           title={t('dashboard.stats.routesToday')}
-          value={isLoading ? '...' : statsData.routes.value}
+          value={isLoading ? '...' : isError ? 'Error' : statsData.routes.value}
           icon={MapPin}
           trend={statsData.routes.trend}
           trendValue={statsData.routes.trendValue}
@@ -212,7 +250,7 @@ const Dashboard = () => {
         />
         <StatsCard
           title={t('dashboard.stats.activeMaintenance')}
-          value={isLoading ? '...' : statsData.maintenances.value}
+          value={isLoading ? '...' : isError ? 'Error' : statsData.maintenances.value}
           icon={Wrench}
           trend={statsData.maintenances.trend}
           trendValue={statsData.maintenances.trendValue}
@@ -237,6 +275,11 @@ const Dashboard = () => {
               <div className="p-8 text-center text-v-gray">
                 <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
                 Cargando actividad...
+              </div>
+            ) : isError ? (
+              <div className="p-8 text-center text-red-400 flex flex-col items-center gap-2">
+                <AlertCircle size={24} />
+                <span className="text-xs font-semibold">No se pudo cargar la actividad reciente.</span>
               </div>
             ) : activities.length === 0 ? (
               <div className="p-8 text-center text-v-gray flex flex-col items-center gap-2">
@@ -317,7 +360,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* STUNNING PREMIUM LATERAL DRAWER FOR VIEWING ALL ACTIVITIES */}
+      {/* LATERAL DRAWER FOR VIEWING ALL ACTIVITIES */}
       <AnimatePresence>
         {isDrawerOpen && (
           <div className="fixed inset-0 z-50 overflow-hidden">

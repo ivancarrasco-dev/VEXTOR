@@ -5,35 +5,32 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from app.main import app
 from app.database import get_db, Base
 from app.models import Usuario, Rol, Vehiculo, Conductor, Ruta
 from app.core.security import hash_password, create_access_token
 
-# Configurar BD SQLite estática/compartida para tests
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_temp.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-
-def override_get_db():
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-app.dependency_overrides[get_db] = override_get_db
-client = TestClient(app)
-
-
-@pytest.fixture(autouse=True, scope="module")
-def setup_db():
-    Base.metadata.drop_all(bind=engine)
+@pytest.fixture
+def test_db_security():
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool
+    )
     Base.metadata.create_all(bind=engine)
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = TestingSessionLocal()
+
+    def override_get_db():
+        try:
+            yield db
+        finally:
+            pass
+
+    app.dependency_overrides[get_db] = override_get_db
 
     # Crear roles
     admin_role = Rol(nombre_rol="Administrador", descripcion_rol="Admin")
@@ -62,14 +59,17 @@ def setup_db():
     )
     db.add_all([admin_user, driver_user])
     db.commit()
+
+    yield db
+
     db.close()
-
-    yield
     Base.metadata.drop_all(bind=engine)
+    app.dependency_overrides.clear()
 
 
-def test_crud_endpoints_require_auth():
+def test_crud_endpoints_require_auth(test_db_security):
     """Verifica que los endpoints GET sin autenticación sean rechazados con 401"""
+    client = TestClient(app)
     res = client.get("/api/vehicles")
     assert res.status_code == 401
     res = client.get("/api/drivers")
@@ -78,12 +78,11 @@ def test_crud_endpoints_require_auth():
     assert res.status_code == 401
 
 
-def test_rbac_restrictions():
+def test_rbac_restrictions(test_db_security):
     """Verifica que un Conductor no pueda realizar operaciones de edición administrativas"""
-    db = TestingSessionLocal()
-    driver_user = db.query(Usuario).filter(Usuario.correo_usuario == "driver@vextor.com").first()
+    client = TestClient(app)
+    driver_user = test_db_security.query(Usuario).filter(Usuario.correo_usuario == "driver@vextor.com").first()
     token = create_access_token({"sub": driver_user.correo_usuario, "role": "Conductor"})
-    db.close()
 
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -104,8 +103,9 @@ def test_rbac_restrictions():
     assert "Acceso denegado" in res.json()["detail"]
 
 
-def test_rate_limiting_login():
+def test_rate_limiting_login(test_db_security):
     """Verifica que el rate limiter bloquee tras 5 intentos seguidos"""
+    client = TestClient(app)
     for _ in range(5):
         res = client.post("/api/auth/login", json={"email": "wrong@vextor.com", "password": "WrongPassword1!"})
 
