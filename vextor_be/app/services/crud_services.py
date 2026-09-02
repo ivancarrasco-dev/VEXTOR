@@ -14,8 +14,7 @@ from app.utils import validate_colombian_plate
 
 def sync_driver_status(driver_id: UUID, db: Session):
     """
-    Sincroniza el estado del conductor según sus asignaciones a rutas activas.
-    Rutas activas son aquellas con estado_ruta IN ('PROGRAMADA', 'EN_PROCESO').
+    Sincroniza el estado del conductor según sus asignaciones a rutas en proceso.
     """
     driver = db.query(Conductor).filter(Conductor.id_conductor == driver_id).first()
     if not driver:
@@ -26,7 +25,7 @@ def sync_driver_status(driver_id: UUID, db: Session):
         .join(Ruta, AsignacionConductor.id_ruta == Ruta.id_ruta)
         .filter(
             AsignacionConductor.id_conductor == driver_id,
-            Ruta.estado_ruta.in_(["PROGRAMADA", "EN_PROCESO"])
+            Ruta.estado_ruta.in_(["EN_PROCESO", "EN_RUTA"])
         )
         .first()
     )
@@ -37,7 +36,7 @@ def sync_driver_status(driver_id: UUID, db: Session):
             db.commit()
             db.refresh(driver)
     else:
-        if driver.estado_conductor == "EN_RUTA":
+        if driver.estado_conductor in ("EN_RUTA", "NO_DISPONIBLE"):
             driver.estado_conductor = "DISPONIBLE"
             db.commit()
             db.refresh(driver)

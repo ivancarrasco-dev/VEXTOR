@@ -7,6 +7,8 @@ import {
   Clock,
   Truck,
   Play,
+  Pause,
+  Square,
   Navigation,
   CheckCircle2,
   AlertTriangle,
@@ -67,6 +69,48 @@ const MyRoutes = () => {
     } catch (err) {
       const msg = err.response?.data?.detail || 'No se pudo iniciar la ruta.';
       showAlert('Error al iniciar', msg, 'error');
+    }
+  };
+
+  const handlePauseRoute = async (route) => {
+    const confirm = await showConfirm(
+      '¿Deseas pausar esta ruta?',
+      'Al pausar la ruta se suspenderá temporalmente el recorrido hasta que decidas reanudarlo.',
+      'Sí, Pausar Ruta',
+      'Cancelar',
+      true
+    );
+
+    if (!confirm.isConfirmed) return;
+
+    try {
+      await axios.post(`${API_BASE_URL}/api/routes/${route.id_ruta}/pause`);
+      await showAlert('Ruta Pausada', 'La ruta se encuentra en estado suspendido.', 'info');
+      fetchMyRoutes();
+    } catch (err) {
+      const msg = err.response?.data?.detail || 'No se pudo pausar la ruta.';
+      showAlert('Error al pausar', msg, 'error');
+    }
+  };
+
+  const handleFinishRoute = async (route) => {
+    const confirm = await showConfirm(
+      '¿Deseas finalizar esta ruta?',
+      'Al finalizar la ruta se completará el recorrido y tu estado se actualizará a disponible.',
+      'Sí, Finalizar Ruta',
+      'Cancelar',
+      true
+    );
+
+    if (!confirm.isConfirmed) return;
+
+    try {
+      await axios.post(`${API_BASE_URL}/api/routes/${route.id_ruta}/finish`);
+      await showAlert('¡Ruta Finalizada!', 'La ruta ha sido completada con éxito.', 'success');
+      fetchMyRoutes();
+    } catch (err) {
+      const msg = err.response?.data?.detail || 'No se pudo finalizar la ruta.';
+      showAlert('Error al finalizar', msg, 'error');
     }
   };
 
@@ -154,24 +198,24 @@ const MyRoutes = () => {
         </div>
       </div>
 
-      {/* Active Route Section (Hero Alert if present) */}
+      {/* Active Route Hero Banner */}
       {active_route && (
         <div className="space-y-4 animate-in fade-in duration-300">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-v-white flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-blue-500 animate-ping" />
-              Ruta Activa en Curso
+              <span className={`h-3 w-3 rounded-full ${active_route.estado_ruta === 'SUSPENDIDA' ? 'bg-amber-400' : 'bg-blue-500 animate-ping'}`} />
+              {active_route.estado_ruta === 'SUSPENDIDA' ? 'Ruta Pausada / Suspendida' : 'Ruta Activa en Curso'}
             </h2>
-            <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30">
-              EN RUTA
+            <span className={`px-3 py-1 rounded-full text-xs font-bold border ${active_route.estado_ruta === 'SUSPENDIDA' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'}`}>
+              {active_route.estado_ruta === 'SUSPENDIDA' ? 'PAUSADA' : 'EN RUTA'}
             </span>
           </div>
 
-          <div className="p-6 sm:p-8 bg-linear-to-br from-blue-950/40 via-v-dark-soft to-v-dark border-2 border-blue-500/40 shadow-2xl relative overflow-hidden rounded-3xl">
+          <div className={`p-6 sm:p-8 bg-linear-to-br via-v-dark-soft to-v-dark border-2 shadow-2xl relative overflow-hidden rounded-3xl ${active_route.estado_ruta === 'SUSPENDIDA' ? 'from-amber-950/40 border-amber-500/40' : 'from-blue-950/40 border-blue-500/40'}`}>
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <span className="px-3 py-1 rounded-lg bg-blue-500/20 text-blue-400 font-extrabold text-sm border border-blue-500/30">
+                  <span className={`px-3 py-1 rounded-lg font-extrabold text-sm border ${active_route.estado_ruta === 'SUSPENDIDA' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'}`}>
                     {active_route.codigo_ruta}
                   </span>
                   <h3 className="text-xl font-bold text-v-white">{active_route.nombre_ruta}</h3>
@@ -195,14 +239,43 @@ const MyRoutes = () => {
                 </div>
               </div>
 
-              <Button
-                onClick={() => navigate(`/driver/active-route/${active_route.id_ruta}`)}
-                className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg flex items-center justify-center gap-2 shrink-0 cursor-pointer"
-              >
-                <Navigation size={18} />
-                Continuar Navegación GPS
-                <ArrowRight size={18} />
-              </Button>
+              {/* Action Controls for Active Route */}
+              <div className="flex flex-wrap items-center gap-3 shrink-0">
+                <Button
+                  onClick={() => navigate(`/driver/active-route/${active_route.id_ruta}`)}
+                  className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-5 rounded-2xl shadow-lg flex items-center gap-2 cursor-pointer text-xs"
+                >
+                  <Navigation size={16} />
+                  Ver Mapa y Navegación
+                  <ArrowRight size={16} />
+                </Button>
+
+                {active_route.estado_ruta === 'SUSPENDIDA' ? (
+                  <Button
+                    onClick={() => handleStartRoute(active_route)}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-2xl text-xs flex items-center gap-1.5 cursor-pointer shadow-md"
+                  >
+                    <Play size={15} />
+                    Reanudar
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => handlePauseRoute(active_route)}
+                    className="bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 px-4 rounded-2xl text-xs flex items-center gap-1.5 cursor-pointer shadow-md"
+                  >
+                    <Pause size={15} />
+                    Pausar
+                  </Button>
+                )}
+
+                <Button
+                  onClick={() => handleFinishRoute(active_route)}
+                  className="bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-4 rounded-2xl text-xs flex items-center gap-1.5 cursor-pointer shadow-md"
+                >
+                  <Square size={15} fill="white" />
+                  Finalizar
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -270,13 +343,23 @@ const MyRoutes = () => {
                     {route.fecha_programada ? new Date(route.fecha_programada).toLocaleString('es-CO') : 'Pendiente'}
                   </span>
 
-                  <Button
-                    onClick={() => handleStartRoute(route)}
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-md"
-                  >
-                    <Play size={14} />
-                    Iniciar ruta
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={() => navigate(`/driver/active-route/${route.id_ruta}`)}
+                      className="bg-v-dark hover:bg-v-dark-border text-v-white font-semibold py-2 px-3 rounded-xl text-xs flex items-center gap-1 cursor-pointer border border-v-dark-border"
+                    >
+                      <Navigation size={13} />
+                      Ver Detalle
+                    </Button>
+
+                    <Button
+                      onClick={() => handleStartRoute(route)}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-md"
+                    >
+                      <Play size={14} />
+                      Iniciar ruta
+                    </Button>
+                  </div>
                 </div>
               </div>
             ))}

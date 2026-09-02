@@ -172,6 +172,25 @@ const MapComponent = ({
     return [lat, lng];
   };
 
+  const resolveCoordsAsync = async (locationStr) => {
+    const coords = parseCoordinates(locationStr);
+    if (coords) return coords;
+    if (!locationStr || typeof locationStr !== 'string') return null;
+
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationStr)}&countrycodes=co&limit=1`, {
+        headers: { 'User-Agent': 'VextorFleetApp/1.0' }
+      });
+      const data = await res.json();
+      if (data && data.length > 0) {
+        return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+      }
+    } catch (e) {
+      console.warn('Nominatim geocoding error:', e);
+    }
+    return null;
+  };
+
   // Close dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -500,72 +519,76 @@ const MapComponent = ({
     });
 
     // 3. Draw Active Route or Temporary Clicked Points
-    let originToDraw = null;
-    let destToDraw = null;
-    let activeRouteName = 'Nueva Ruta';
+    const renderActiveRoute = async () => {
+      let originToDraw = null;
+      let destToDraw = null;
+      let activeRouteName = 'Nueva Ruta';
 
-    if (activeRoute) {
-      originToDraw = parseCoordinates(activeRoute.origen);
-      destToDraw = parseCoordinates(activeRoute.destino);
-      activeRouteName = activeRoute.nombre_ruta || activeRoute.codigo_ruta || 'Ruta Seleccionada';
-    } else {
-      originToDraw = parseCoordinates(selectedOrigin);
-      destToDraw = parseCoordinates(selectedDestination);
-    }
-
-    if (originToDraw) {
-      const origMarker = L.marker(originToDraw, { icon: createMarkerIcon('origin', 'A') })
-        .bindPopup(`<b>Origen (A)</b><br>${activeRouteName}`)
-        .addTo(map);
-      activeLayersRef.current.push(origMarker);
-    }
-
-    if (destToDraw) {
-      const destMarker = L.marker(destToDraw, { icon: createMarkerIcon('destination', 'B') })
-        .bindPopup(`<b>Destino (B)</b><br>${activeRouteName}`)
-        .addTo(map);
-      activeLayersRef.current.push(destMarker);
-    }
-
-    // 4. Ask VEXTOR's API for the real route, then render its GeoJSON geometry.
-    if (originToDraw && destToDraw) {
-      const thisRequestGen = currentGen;
-
-      routeService.calculateRoute({ origin: originToDraw, destination: destToDraw })
-        .then((route) => {
-          if (thisRequestGen !== routingGenerationRef.current || !mapInstanceRef.current) return;
-
-          const latLngs = route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
-          if (latLngs.length < 2) throw new Error('La geometría recibida no contiene suficientes puntos.');
-
-          const polyline = L.polyline(latLngs, {
-            color: '#10b981',
-            weight: 6,
-            opacity: 0.9
-          }).bindPopup(`<b>${activeRouteName}</b>`).addTo(map);
-          routePolylineRef.current = polyline;
-
-          map.fitBounds(polyline.getBounds(), { padding: [50, 50], maxZoom: 15 });
-          onRouteCalculated?.({
-            distance: (route.distance / 1000).toFixed(2),
-            duration: Math.round(route.duration / 60),
-            instructions: route.instructions || []
-          });
-        })
-        .catch((error) => {
-          if (thisRequestGen !== routingGenerationRef.current || !mapInstanceRef.current) return;
-          console.warn('VEXTOR routing API failed:', error);
-          onRouteCalculated?.(null);
-        });
-
-    } else {
-      onRouteCalculated?.(null);
-      if (originToDraw) {
-        map.setView(originToDraw, 14);
-      } else if (destToDraw) {
-        map.setView(destToDraw, 14);
+      if (activeRoute) {
+        originToDraw = await resolveCoordsAsync(activeRoute.origen);
+        destToDraw = await resolveCoordsAsync(activeRoute.destino);
+        activeRouteName = activeRoute.nombre_ruta || activeRoute.codigo_ruta || 'Ruta Seleccionada';
+      } else {
+        originToDraw = await resolveCoordsAsync(selectedOrigin);
+        destToDraw = await resolveCoordsAsync(selectedDestination);
       }
-    }
+
+      if (currentGen !== routingGenerationRef.current || !mapInstanceRef.current) return;
+
+      if (originToDraw) {
+        const origMarker = L.marker(originToDraw, { icon: createMarkerIcon('origin', 'A') })
+          .bindPopup(`<b>Origen (A)</b><br>${activeRouteName}`)
+          .addTo(map);
+        activeLayersRef.current.push(origMarker);
+      }
+
+      if (destToDraw) {
+        const destMarker = L.marker(destToDraw, { icon: createMarkerIcon('destination', 'B') })
+          .bindPopup(`<b>Destino (B)</b><br>${activeRouteName}`)
+          .addTo(map);
+        activeLayersRef.current.push(destMarker);
+      }
+
+      // 4. Ask VEXTOR's API for the real route, then render its GeoJSON geometry.
+      if (originToDraw && destToDraw) {
+        routeService.calculateRoute({ origin: originToDraw, destination: destToDraw })
+          .then((route) => {
+            if (currentGen !== routingGenerationRef.current || !mapInstanceRef.current) return;
+
+            const latLngs = route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+            if (latLngs.length < 2) throw new Error('La geometría recibida no contiene suficientes puntos.');
+
+            const polyline = L.polyline(latLngs, {
+              color: '#10b981',
+              weight: 6,
+              opacity: 0.9
+            }).bindPopup(`<b>${activeRouteName}</b>`).addTo(map);
+            routePolylineRef.current = polyline;
+
+            map.fitBounds(polyline.getBounds(), { padding: [50, 50], maxZoom: 15 });
+            onRouteCalculated?.({
+              distance: (route.distance / 1000).toFixed(2),
+              duration: Math.round(route.duration / 60),
+              instructions: route.instructions || []
+            });
+          })
+          .catch((error) => {
+            if (currentGen !== routingGenerationRef.current || !mapInstanceRef.current) return;
+            console.warn('VEXTOR routing API failed:', error);
+            onRouteCalculated?.(null);
+          });
+
+      } else {
+        onRouteCalculated?.(null);
+        if (originToDraw) {
+          map.setView(originToDraw, 14);
+        } else if (destToDraw) {
+          map.setView(destToDraw, 14);
+        }
+      }
+    };
+
+    renderActiveRoute();
 
     setTimeout(() => {
       if (mapInstanceRef.current) {
