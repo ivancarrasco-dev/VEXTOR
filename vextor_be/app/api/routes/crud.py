@@ -139,7 +139,45 @@ def create_driver(
     current_user = Depends(require_admin),
 ):
     driver_data = driver.model_dump()
-    driver_data['id_usuario'] = current_user.id_usuario  # Asignar ID del usuario actual
+    id_usuario = driver_data.get('id_usuario')
+
+    # Si no se envió id_usuario, vincular o crear un usuario con rol 'Conductor'
+    if not id_usuario:
+        from app.models import Usuario, Rol
+        import uuid
+        from app.core.security import hash_password
+
+        # Verificar si ya existe un usuario asociado por correo derivado de cédula o cédula
+        email_derived = f"conductor_{driver_data['cedula_conductor']}@vextor.com"
+        existing_user = db.query(Usuario).filter(Usuario.correo_usuario == email_derived).first()
+
+        if existing_user:
+            id_usuario = existing_user.id_usuario
+        else:
+            # Buscar el rol Conductor
+            rol_conductor = db.query(Rol).filter(Rol.nombre_rol == "Conductor").first()
+            if not rol_conductor:
+                # UUID predeterminado de rol Conductor
+                rol_id = uuid.UUID("11111111-2222-3333-4444-555555555552")
+            else:
+                rol_id = rol_conductor.id_rol
+
+            new_user = Usuario(
+                id_usuario=uuid.uuid4(),
+                id_rol=rol_id,
+                nombres_usuario=driver_data['nombre_conductor'],
+                apellidos_usuario=driver_data['apellido_conductor'],
+                correo_usuario=email_derived,
+                contrasenia_usuario=hash_password(driver_data['cedula_conductor']),
+                telefono_usuario=driver_data.get('telefono_conductor'),
+                estado_usuario="ACTIVO"
+            )
+            db.add(new_user)
+            db.commit()
+            db.refresh(new_user)
+            id_usuario = new_user.id_usuario
+
+    driver_data['id_usuario'] = id_usuario
     res = DriverService.create(driver_data, db)
     AuditService.record_activity(
         db, current_user.id_usuario,
@@ -351,6 +389,75 @@ def get_users(
 ):
     limit = min(limit, 100)
     return UserService.get_all(db)[skip : skip + limit]
+
+
+@users_router.post("", response_model=Usuario)
+def create_user(
+    user_data: UsuarioCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_admin),
+):
+    from app.services.auth_service import register_user
+    res = register_user(
+        email=user_data.correo_usuario,
+        password=user_data.contrasenia_usuario,
+        full_name=f"{user_data.nombres_usuario} {user_data.apellidos_usuario}",
+        db=db,
+        role_id=user_data.id_rol
+    )
+    # Si el usuario es de tipo conductor, verificar/sincronizar ficha de conductor
+    from app.models import Rol, Conductor
+    rol = db.query(Rol).filter(Rol.id_rol == res.id_rol).first()
+    if rol and rol.nombre_rol == "Conductor":
+        existing_cond = db.query(Conductor).filter(Conductor.id_usuario == res.id_usuario).first()
+        if not existing_cond:
+            new_cond = Conductor(
+                id_usuario=res.id_usuario,
+                nombre_conductor=res.nombres_usuario,
+                apellido_conductor=res.apellidos_usuario,
+                cedula_conductor=user_data.telefono_usuario or str(res.id_usuario)[:8],
+                telefono_conductor=res.telefono_usuario,
+                licencia="C2",
+                estado_conductor="DISPONIBLE",
+                fecha_ingreso=res.fecha_creacion.date() if hasattr(res.fecha_creacion, 'date') else res.fecha_creacion
+            )
+            db.add(new_cond)
+            db.commit()
+
+    AuditService.record_activity(
+        db, current_user.id_usuario,
+        f"{current_user.nombres_usuario} {current_user.apellidos_usuario}".strip(),
+        "CREACION", "Usuarios", f"Usuario creado: {res.correo_usuario}"
+    )
+    return res
+
+
+@users_router.put("/{id_usuario}", response_model=Usuario)
+def update_user(
+    id_usuario: UUID,
+    user_update: UsuarioUpdate,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_admin),
+):
+    from app.models import Usuario
+    user = db.query(Usuario).filter(Usuario.id_usuario == id_usuario).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    update_dict = user_update.model_dump(exclude_unset=True)
+    for k, v in update_dict.items():
+        if v is not None:
+            setattr(user, k, v)
+
+    db.commit()
+    db.refresh(user)
+
+    AuditService.record_activity(
+        db, current_user.id_usuario,
+        f"{current_user.nombres_usuario} {current_user.apellidos_usuario}".strip(),
+        "ACTUALIZACION", "Usuarios", f"Usuario actualizado ID: {id_usuario}"
+    )
+    return user
 
 
 @users_router.delete("/{id_usuario}")
