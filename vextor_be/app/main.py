@@ -10,7 +10,7 @@ from app.core.config import settings
 from app.database import engine, Base
 
 # Importar routers
-from app.api.routes import auth, crud, routing, audit
+from app.api.routes import auth, crud, routing, audit, dashboard
 from app.websocket import websocket_tracking_endpoint
 
 # Crear app
@@ -66,6 +66,9 @@ def root():
 
 # Authentication
 app.include_router(auth.router)
+
+# Executive Dashboard & Metrics
+app.include_router(dashboard.router)
 
 # CRUD Operations
 app.include_router(crud.vehicles_router)
