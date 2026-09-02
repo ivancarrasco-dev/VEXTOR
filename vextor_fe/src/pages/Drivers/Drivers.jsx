@@ -333,7 +333,7 @@ const Drivers = () => {
         <div className="bg-v-dark-soft border border-v-dark-border rounded-2xl overflow-hidden shadow-xl">
           {/* Responsive Table Wrapper */}
           <div className="overflow-x-auto w-full custom-scrollbar">
-            <table className="w-full text-left border-collapse min-w-[650px]">
+            <table className="w-full text-left border-collapse min-w-162.5">
               <thead>
                 <tr className="border-b border-v-dark-border bg-v-dark/40">
                   <th className="p-4 text-xs font-bold uppercase text-v-gray tracking-wider">Cédula</th>
@@ -543,7 +543,7 @@ const Drivers = () => {
                       <input
                         type="text"
                         name="telefono_conductor"
-                        placeholder="Ej. +593 98 765 4321"
+                        placeholder="Ej. +57 98 765 4321"
                         value={formData.telefono_conductor}
                         onChange={handleInputChange}
                         className={cn(

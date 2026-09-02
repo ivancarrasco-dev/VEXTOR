@@ -5,6 +5,7 @@ from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+import sys
 
 from app.database import get_db
 from app.schemas import (
@@ -21,6 +22,7 @@ from app.services import (
     AuditService,
 )
 from app.api.routes.auth import get_current_user
+from app.models import Rol
 
 # Routers
 vehicles_router = APIRouter(prefix="/api/vehicles", tags=["Vehicles"])
@@ -33,13 +35,21 @@ company_router = APIRouter(prefix="/api/company", tags=["Company"])
 
 # Dependencia para requerir rol de Administrador
 def require_admin(current_user = Depends(get_current_user), db: Session = Depends(get_db)):
-    from app.models import Rol
+    print(f"[DEBUG] require_admin called for user: {current_user.id_usuario}", file=sys.stderr)
+    print(f"[DEBUG] user id_rol: {current_user.id_rol}", file=sys.stderr)
+    
     rol = db.query(Rol).filter(Rol.id_rol == current_user.id_rol).first()
+    print(f"[DEBUG] Rol found: {rol}", file=sys.stderr)
+    if rol:
+        print(f"[DEBUG] Rol name: {rol.nombre_rol}", file=sys.stderr)
+    
     if not rol or rol.nombre_rol != "Administrador":
+        print(f"[DEBUG] Access denied - not admin", file=sys.stderr)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Acceso denegado: Se requiere rol de Administrador"
         )
+    print(f"[DEBUG] Access granted - is admin", file=sys.stderr)
     return current_user
 
 
@@ -67,6 +77,13 @@ def create_vehicle(
         db, current_user.id_usuario,
         f"{current_user.nombres_usuario} {current_user.apellidos_usuario}".strip(),
         "CREACION", "Vehículos", f"Vehículo registrado con placa: {res.placa}"
+    )
+    AuditService.create_notification(
+        db,
+        titulo="Nuevo Vehículo",
+        descripcion=f"Vehículo registrado: {res.placa}",
+        tipo="vehiculo",
+        id_usuario=current_user.id_usuario
     )
     return res
 
@@ -121,11 +138,21 @@ def create_driver(
     db: Session = Depends(get_db),
     current_user = Depends(require_admin),
 ):
-    res = DriverService.create(driver.model_dump(), db)
+    driver_data = driver.model_dump()
+    driver_data['id_usuario'] = current_user.id_usuario  # Asignar ID del usuario actual
+    res = DriverService.create(driver_data, db)
     AuditService.record_activity(
         db, current_user.id_usuario,
         f"{current_user.nombres_usuario} {current_user.apellidos_usuario}".strip(),
         "CREACION", "Conductores", f"Conductor creado: {res.nombre_conductor} {res.apellido_conductor}"
+    )
+    # Crear notificación
+    AuditService.create_notification(
+        db,
+        titulo="Nuevo Conductor",
+        descripcion=f"Se registró el conductor {res.nombre_conductor} {res.apellido_conductor}",
+        tipo="conductor",
+        id_usuario=current_user.id_usuario
     )
     return res
 
@@ -186,6 +213,13 @@ def create_route(
         f"{current_user.nombres_usuario} {current_user.apellidos_usuario}".strip(),
         "CREACION", "Rutas", f"Ruta creada con código: {res.codigo_ruta}"
     )
+    AuditService.create_notification(
+        db,
+        titulo="Nueva Ruta",
+        descripcion=f"Ruta creada: {res.codigo_ruta}",
+        tipo="ruta",
+        id_usuario=current_user.id_usuario
+    )
     return res
 
 
@@ -196,7 +230,7 @@ def update_route(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
 ):
-    from app.models import Rol, Conductor, AsignacionConductor
+    from app.models import Conductor, AsignacionConductor
     rol = db.query(Rol).filter(Rol.id_rol == current_user.id_rol).first()
     is_admin = rol and rol.nombre_rol == "Administrador"
 
@@ -260,6 +294,13 @@ def create_maintenance(
         db, current_user.id_usuario,
         f"{current_user.nombres_usuario} {current_user.apellidos_usuario}".strip(),
         "CREACION", "Mantenimiento", f"Mantenimiento creado ID: {res.id_mantenimiento}"
+    )
+    AuditService.create_notification(
+        db,
+        titulo="Nuevo Mantenimiento",
+        descripcion=f"Mantenimiento registrado",
+        tipo="mantenimiento",
+        id_usuario=current_user.id_usuario
     )
     return res
 
