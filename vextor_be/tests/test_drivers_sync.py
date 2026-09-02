@@ -20,10 +20,16 @@ def db_session():
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = TestingSessionLocal()
 
-    admin_rol = Rol(nombre_rol="Administrador", descripcion_rol="Admin")
-    cond_rol = Rol(nombre_rol="Conductor", descripcion_rol="Conductor")
-    db.add(admin_rol)
-    db.add(cond_rol)
+    admin_rol = db.query(Rol).filter(Rol.nombre_rol == "Administrador").first()
+    if not admin_rol:
+        admin_rol = Rol(id_rol=uuid.UUID("11111111-2222-3333-4444-555555555551"), nombre_rol="Administrador", descripcion_rol="Admin")
+        db.add(admin_rol)
+
+    cond_rol = db.query(Rol).filter(Rol.nombre_rol == "Conductor").first()
+    if not cond_rol:
+        cond_rol = Rol(id_rol=uuid.UUID("11111111-2222-3333-4444-555555555552"), nombre_rol="Conductor", descripcion_rol="Conductor")
+        db.add(cond_rol)
+
     db.commit()
 
     admin_user = Usuario(

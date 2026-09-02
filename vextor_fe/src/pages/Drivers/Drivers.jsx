@@ -16,11 +16,17 @@ import {
   User,
   Phone,
   FileText,
-  CalendarCheck
+  CalendarCheck,
+  Navigation,
+  MapPin,
+  Truck,
+  Radio
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Select } from '../../components/ui/Select';
 import { driverService } from './services/driverService';
+import { routeService } from '../Routes/services/routeService';
+import MapComponent from '../Routes/components/MapComponent';
 import { cn } from '../../utils/cn';
 import { useTranslation } from 'react-i18next';
 
@@ -49,8 +55,12 @@ const Drivers = () => {
   // Modals state
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isTrackingOpen, setIsTrackingOpen] = useState(false);
   const [currentDriver, setCurrentDriver] = useState(null);
   const [driverToDelete, setDriverToDelete] = useState(null);
+  const [trackingDriver, setTrackingDriver] = useState(null);
+  const [trackingData, setTrackingData] = useState(null);
+  const [isTrackingLoading, setIsTrackingLoading] = useState(false);
 
   // Form state - ACTUALIZADO CON correo_conductor
   const [formData, setFormData] = useState({
@@ -214,6 +224,30 @@ const Drivers = () => {
       setApiError(err.message || 'Ocurrió un error al procesar el conductor.');
     } finally {
       setIsSubmitLoading(false);
+    }
+  };
+
+  // Open Driver Tracking modal
+  const handleOpenTracking = async (driver) => {
+    setTrackingDriver(driver);
+    setTrackingData(null);
+    setIsTrackingLoading(true);
+    setIsTrackingOpen(true);
+
+    try {
+      const activeTrackings = await routeService.getActiveTracking();
+      if (Array.isArray(activeTrackings)) {
+        const found = activeTrackings.find(
+          tr => tr.conductor?.id_conductor === driver.id_conductor || tr.conductor?.cedula === driver.cedula_conductor
+        );
+        if (found) {
+          setTrackingData(found);
+        }
+      }
+    } catch (err) {
+      console.warn('Error loading driver tracking data:', err);
+    } finally {
+      setIsTrackingLoading(false);
     }
   };
 
@@ -387,15 +421,22 @@ const Drivers = () => {
                       <td className="p-4 text-right">
                         <div className="flex justify-end gap-2">
                           <button
+                            onClick={() => handleOpenTracking(driver)}
+                            className="p-1.5 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/20 rounded-lg text-v-gray hover:text-emerald-400 transition-all duration-200 cursor-pointer"
+                            title="Ver seguimiento de conductor"
+                          >
+                            <Navigation size={16} className="rotate-45" />
+                          </button>
+                          <button
                             onClick={() => handleOpenEdit(driver)}
-                            className="p-1.5 hover:bg-v-dark border border-transparent hover:border-v-dark-border rounded-lg text-v-gray hover:text-v-white transition-all duration-200"
+                            className="p-1.5 hover:bg-v-dark border border-transparent hover:border-v-dark-border rounded-lg text-v-gray hover:text-v-white transition-all duration-200 cursor-pointer"
                             title="Editar Conductor"
                           >
                             <Edit2 size={16} />
                           </button>
                           <button
                             onClick={() => handleOpenDelete(driver)}
-                            className="p-1.5 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 rounded-lg text-v-gray hover:text-red-400 transition-all duration-200"
+                            className="p-1.5 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 rounded-lg text-v-gray hover:text-red-400 transition-all duration-200 cursor-pointer"
                             title="Eliminar Conductor"
                           >
                             <Trash2 size={16} />
@@ -651,6 +692,154 @@ const Drivers = () => {
                   </Button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* DRIVER TRACKING MODAL */}
+      <AnimatePresence>
+        {isTrackingOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsTrackingOpen(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-3xl bg-v-dark-soft border border-v-dark-border rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col z-10 text-left"
+            >
+              {/* Header */}
+              <div className="flex justify-between items-center px-4 sm:px-6 py-4 border-b border-v-dark-border bg-v-dark/20">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                    <Navigation size={20} className="rotate-45" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-v-white">
+                      Seguimiento de Conductor: {trackingDriver?.nombre_conductor} {trackingDriver?.apellido_conductor}
+                    </h3>
+                    <p className="text-xs text-v-gray mt-0.5">
+                      Cédula: <span className="font-mono text-v-white">{trackingDriver?.cedula_conductor}</span> — Licencia: <span className="text-v-white">{trackingDriver?.licencia}</span>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsTrackingOpen(false)}
+                  className="p-2 text-v-gray hover:text-v-white hover:bg-v-dark-border/40 rounded-lg transition-colors cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Body Content */}
+              <div className="p-4 sm:p-6 space-y-4 overflow-y-auto custom-scrollbar flex-1">
+                {isTrackingLoading ? (
+                  <div className="flex flex-col items-center justify-center py-16">
+                    <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin mb-3" />
+                    <p className="text-v-gray text-xs font-medium">Consultando estado GPS y ruta activa...</p>
+                  </div>
+                ) : trackingData ? (
+                  <div className="space-y-4">
+                    {/* Status Badge HUD */}
+                    <div className="p-4 bg-v-dark border border-v-dark-border rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="relative flex items-center justify-center">
+                          <span className="animate-ping absolute inline-flex h-4 w-4 rounded-full bg-emerald-400 opacity-75"></span>
+                          <Radio size={18} className="text-emerald-400 relative z-10" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-emerald-400 flex items-center gap-2">
+                            Ruta en Ejecución: {trackingData.codigo_ruta} — {trackingData.nombre_ruta}
+                          </div>
+                          <p className="text-[11px] text-v-gray mt-0.5">
+                            Vehículo: <strong className="text-v-white font-mono">{trackingData.vehiculo?.placa}</strong> ({trackingData.vehiculo?.marca} {trackingData.vehiculo?.modelo})
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="text-[10px] text-v-gray block uppercase font-bold">Velocidad Actual</span>
+                        <span className="text-xl font-black text-emerald-400 font-mono">
+                          {trackingData.velocidad || 0} <span className="text-xs font-sans text-v-gray font-normal">km/h</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Interactive Map */}
+                    <div className="h-80 sm:h-96 relative rounded-2xl overflow-hidden border border-v-dark-border shadow-xl">
+                      <MapComponent
+                        routes={[]}
+                        activeRoute={{
+                          origen: trackingData.origen,
+                          destino: trackingData.destino,
+                          nombre_ruta: trackingData.nombre_ruta,
+                          codigo_ruta: trackingData.codigo_ruta
+                        }}
+                        driverPosition={{
+                          lat: trackingData.latitud,
+                          lng: trackingData.longitud,
+                          speed: trackingData.velocidad,
+                          heading: trackingData.heading
+                        }}
+                        isNavigationMode={true}
+                      />
+                    </div>
+
+                    {/* Route addresses footer */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div className="p-3 bg-v-dark border border-v-dark-border rounded-xl space-y-1">
+                        <span className="text-v-gray font-bold uppercase text-[10px] tracking-wider block flex items-center gap-1">
+                          <MapPin size={12} className="text-emerald-400" /> Origen Programado
+                        </span>
+                        <p className="text-v-white font-medium truncate">{trackingData.origen}</p>
+                      </div>
+                      <div className="p-3 bg-v-dark border border-v-dark-border rounded-xl space-y-1">
+                        <span className="text-v-gray font-bold uppercase text-[10px] tracking-wider block flex items-center gap-1">
+                          <MapPin size={12} className="text-red-400" /> Destino Programado
+                        </span>
+                        <p className="text-v-white font-medium truncate">{trackingData.destino}</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Friendly fallback state when driver is not on route */
+                  <div className="py-12 px-4 text-center space-y-4 bg-v-dark/40 border border-v-dark-border rounded-2xl">
+                    <div className="h-16 w-16 bg-v-dark rounded-2xl border border-v-dark-border text-v-gray flex items-center justify-center mx-auto shadow-inner">
+                      <Truck size={32} className="opacity-40" />
+                    </div>
+                    <div className="space-y-1 max-w-md mx-auto">
+                      <h4 className="text-base font-bold text-v-white">
+                        Sin Ruta o Ubicación Activa
+                      </h4>
+                      <p className="text-xs text-v-gray leading-relaxed">
+                        Actualmente el conductor <strong className="text-v-white">{trackingDriver?.nombre_conductor} {trackingDriver?.apellido_conductor}</strong> no se encuentra ejecutando una ruta ni emitiendo señal GPS en vivo.
+                      </p>
+                    </div>
+                    <div className="pt-2">
+                      <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-v-dark border border-v-dark-border text-v-gray inline-block">
+                        Estado laboral: {trackingDriver?.estado_conductor || 'DISPONIBLE'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 border-t border-v-dark-border bg-v-dark/20 flex justify-end">
+                <Button
+                  variant="ghost"
+                  onClick={() => setIsTrackingOpen(false)}
+                  className="cursor-pointer"
+                >
+                  Cerrar
+                </Button>
+              </div>
             </motion.div>
           </div>
         )}
