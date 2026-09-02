@@ -121,7 +121,7 @@ class ConductorBase(BaseModel):
 
 
 class ConductorCreate(ConductorBase):
-    pass
+    id_usuario: Optional[UUID] = None
 
 
 class ConductorUpdate(BaseModel):
