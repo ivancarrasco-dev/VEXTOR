@@ -131,9 +131,10 @@ const Routes = () => {
   const fetchActiveTrackings = async () => {
     try {
       const res = await routeService.getActiveTracking();
-      setActiveTrackings(res || []);
+      setActiveTrackings(Array.isArray(res) ? res : []);
     } catch (err) {
       console.warn('Error fetching active trackings:', err);
+      setActiveTrackings([]);
     }
   };
 
@@ -559,7 +560,7 @@ const Routes = () => {
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <h4 className="font-bold text-v-white text-sm">{tr.conductor.nombre}</h4>
+                          <h4 className="font-bold text-v-white text-sm">{tr.conductor?.nombre || 'Conductor en Ruta'}</h4>
                           <span className="text-xs text-primary font-mono font-semibold">{tr.codigo_ruta} — {tr.nombre_ruta}</span>
                         </div>
                         {tr.is_stale ? (
@@ -576,11 +577,11 @@ const Routes = () => {
                       <div className="grid grid-cols-2 gap-2 text-xs text-v-gray pt-2 border-t border-v-dark-border/60">
                         <div>
                           <span className="block text-[10px]">Vehículo:</span>
-                          <strong className="text-v-white font-mono">{tr.vehiculo.placa}</strong>
+                          <strong className="text-v-white font-mono">{tr.vehiculo?.placa || 'N/A'}</strong>
                         </div>
                         <div>
                           <span className="block text-[10px]">Velocidad:</span>
-                          <strong className="text-emerald-400 font-mono">{tr.velocidad} km/h</strong>
+                          <strong className="text-emerald-400 font-mono">{tr.velocidad || 0} km/h</strong>
                         </div>
                       </div>
 
