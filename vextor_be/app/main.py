@@ -40,14 +40,15 @@ def startup_event():
     except Exception as e:
         print("Table creation note:", e)
 
-    # Actualizar constraints de Conductor
+    # Migraciones ligeras y de constraints
     try:
         with engine.connect() as conn:
             conn.execute(text("ALTER TABLE conductor DROP CONSTRAINT IF EXISTS chk_estado_conductor;"))
             conn.execute(text("ALTER TABLE conductor ADD CONSTRAINT chk_estado_conductor CHECK (estado_conductor IN ('DISPONIBLE', 'EN_RUTA', 'NO_DISPONIBLE', 'ACTIVO', 'INACTIVO', 'SUSPENDIDO'));"))
+            conn.execute(text("ALTER TABLE usuario ADD COLUMN IF NOT EXISTS requiere_cambio_clave BOOLEAN DEFAULT FALSE;"))
             conn.commit()
     except Exception as e:
-        print("Constraint migration note:", e)
+        print("Migration note:", e)
 
 
 # ========== ROOT ENDPOINT ==========
