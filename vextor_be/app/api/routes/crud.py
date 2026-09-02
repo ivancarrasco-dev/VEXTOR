@@ -387,29 +387,6 @@ def delete_route(
     return {"message": "Ruta eliminada correctamente"}
 
 
-@routes_router.get("/driver/my-routes", response_model=List[Ruta])
-def get_driver_routes(
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user),
-):
-    """
-    Obtiene las rutas asignadas al conductor logueado
-    """
-    from app.models import Conductor as ConductorModel, AsignacionConductor
-    
-    # Buscar el conductor del usuario actual
-    driver = db.query(ConductorModel).filter(ConductorModel.id_usuario == current_user.id_usuario).first()
-    if not driver:
-        return []  # Si no es conductor, retornar lista vacía
-    
-    # Obtener rutas asignadas a este conductor
-    asignaciones = db.query(AsignacionConductor).filter(
-        AsignacionConductor.id_conductor == driver.id_conductor
-    ).all()
-    
-    # Retornar las rutas
-    rutas = [asig.ruta for asig in asignaciones if asig.ruta]
-    return rutas
 
 
 # ========== MAINTENANCE ==========
