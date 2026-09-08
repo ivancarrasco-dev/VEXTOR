@@ -2,56 +2,75 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --v-bg: #f8fafc; /* slate-50 */
-  --v-bg-soft: #ffffff; /* pure white cards */
-  --v-border: #e2e8f0; /* slate-200 */
-  --v-text: #0f172a; /* slate-900 */
-  --v-gray: #64748b; /* slate-500 */
-  --v-gray-dark: #e2e8f0; /* slate-200 */
+  /* VEXTOR Official Brand Palette - Light Mode */
+  --v-bg: #F5F7F5;              /* Light background */
+  --v-bg-soft: #FFFFFF;         /* White card/surface background */
+  --v-border: #E2E8E4;         /* Soft green-tinted border */
+  --v-text: #1E2822;           /* Primary dark text */
+  --v-gray: #647067;           /* Muted secondary text */
+  --v-gray-dark: #DDEBD5;      /* Light green accent border/fill */
 
-  /* Default theme color: emerald */
-  --primary-color: #10b981;
-  --primary-color-dark: #059669;
-  --primary-color-hover: #059669;
-  --primary-color-shadow: rgba(16, 185, 129, 0.3);
+  /* VEXTOR Official Brand Accent Colors */
+  --primary-color: #124A2F;      /* Primary Dark Green */
+  --primary-color-dark: #0B3522; /* Deep Green */
+  --primary-color-hover: #0B3522;
+  --primary-color-shadow: rgba(18, 74, 47, 0.2);
+  --accent-color: #A6C98F;       /* Light Accent Green */
+  --soft-green: #DDEBD5;         /* Soft Green */
 }
 
 .dark {
-  --v-bg: #0f172a; /* slate-900 */
-  --v-bg-soft: #1e293b; /* slate-800 */
-  --v-border: #334155; /* slate-700 */
-  --v-text: #ffffff;
-  --v-gray: #94a3b8; /* slate-400 */
-  --v-gray-dark: #334155; /* slate-700 */
+  /* VEXTOR Official Brand Palette - Dark Mode */
+  --v-bg: #0B3522;              /* Deep Green background */
+  --v-bg-soft: #124A2F;         /* Dark Green card/surface background */
+  --v-border: #1E5C3C;         /* Subtle green border */
+  --v-text: #FFFFFF;           /* White text */
+  --v-gray: #A6C98F;           /* Light accent text */
+  --v-gray-dark: #1A5235;      /* Dark green container background */
+
+  /* Dark mode accent contrast */
+  --primary-color: #A6C98F;
+  --primary-color-dark: #8DBB72;
+  --primary-color-hover: #B8D8A3;
+  --primary-color-shadow: rgba(166, 201, 143, 0.25);
+  --accent-color: #A6C98F;
+  --soft-green: #1A5235;
 }
 
-/* Dynamic theme classes for custom emphasis colors */
-.theme-emerald {
-  --primary-color: #10b981;
-  --primary-color-dark: #059669;
-  --primary-color-hover: #059669;
-  --primary-color-shadow: rgba(16, 185, 129, 0.3);
+/* Theme accent classes */
+.theme-emerald, .theme-vextor {
+  --primary-color: #124A2F;
+  --primary-color-dark: #0B3522;
+  --primary-color-hover: #0B3522;
+  --primary-color-shadow: rgba(18, 74, 47, 0.25);
+}
+
+.dark .theme-emerald, .dark .theme-vextor {
+  --primary-color: #A6C98F;
+  --primary-color-dark: #8DBB72;
+  --primary-color-hover: #B8D8A3;
+  --primary-color-shadow: rgba(166, 201, 143, 0.3);
 }
 
 .theme-blue {
-  --primary-color: #3b82f6;
-  --primary-color-dark: #2563eb;
-  --primary-color-hover: #2563eb;
-  --primary-color-shadow: rgba(59, 130, 246, 0.3);
+  --primary-color: #2563eb;
+  --primary-color-dark: #1d4ed8;
+  --primary-color-hover: #1d4ed8;
+  --primary-color-shadow: rgba(37, 99, 235, 0.25);
 }
 
 .theme-purple {
-  --primary-color: #a855f7;
-  --primary-color-dark: #9333ea;
-  --primary-color-hover: #9333ea;
-  --primary-color-shadow: rgba(168, 85, 247, 0.3);
+  --primary-color: #9333ea;
+  --primary-color-dark: #7e22ce;
+  --primary-color-hover: #7e22ce;
+  --primary-color-shadow: rgba(147, 51, 234, 0.25);
 }
 
 .theme-amber {
-  --primary-color: #f59e0b;
-  --primary-color-dark: #d97706;
-  --primary-color-hover: #d97706;
-  --primary-color-shadow: rgba(245, 158, 11, 0.3);
+  --primary-color: #d97706;
+  --primary-color-dark: #b45309;
+  --primary-color-hover: #b45309;
+  --primary-color-shadow: rgba(217, 119, 6, 0.25);
 }
 
 @theme {
@@ -59,10 +78,15 @@
   --color-primary-dark: var(--primary-color-dark);
   --color-primary-hover: var(--primary-color-hover);
 
+  --color-vextor-green: #124A2F;
+  --color-vextor-deep: #0B3522;
+  --color-vextor-light: #A6C98F;
+  --color-vextor-soft: #DDEBD5;
+
   --color-v-dark: var(--v-bg);
   --color-v-dark-soft: var(--v-bg-soft);
   --color-v-dark-border: var(--v-border);
-  --color-v-dark-constant: #0f172a;
+  --color-v-dark-constant: #124A2F;
 
   --color-v-light: var(--v-bg);
   --color-v-light-soft: var(--v-bg-soft);
@@ -80,7 +104,7 @@
   }
 }
 
-/* Custom scrollbar */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -91,5 +115,5 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-v-dark-border rounded-full hover:bg-v-gray/50 transition-colors duration-300;
+  @apply bg-v-dark-border rounded-full hover:bg-v-gray/40 transition-colors duration-200;
 }

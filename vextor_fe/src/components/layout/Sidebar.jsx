@@ -15,17 +15,13 @@ import {
   LogOut
 } from 'lucide-react';
 import { Logo } from '../ui/Logo';
-import { Badge } from '../ui/Badge';
 import { cn } from '../../utils/cn';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { showConfirm } from '../../utils/sweetalert';
 
 /**
- * Sidebar Component
- *
- * Navegación lateral sobria, estructurada y funcional para la plataforma VEXTOR.
- * Muestra la marca VEXTOR, agrupación clara de navegación y pie de usuario.
+ * Sidebar Component - VEXTOR UI System
  */
 const adminMenuGroups = [
   {
@@ -116,7 +112,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
         variants={sidebarVariants}
         transition={{ type: 'tween', duration: 0.2, ease: 'easeInOut' }}
         className={cn(
-          "fixed top-0 left-0 z-50 h-screen bg-v-dark-soft border-r border-v-dark-border max-w-[85vw] lg:max-w-none flex flex-col justify-between select-none",
+          "fixed top-0 left-0 z-50 h-screen bg-v-dark-soft border-r border-v-dark-border max-w-[85vw] lg:max-w-none flex flex-col justify-between select-none shadow-lg",
           isMobile ? "w-72" : (isCollapsed ? "w-20" : "w-65")
         )}
       >
@@ -124,7 +120,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
           {/* Header & Branding */}
           <div className="h-20 flex flex-col justify-center px-4 border-b border-v-dark-border shrink-0 bg-v-dark/20">
             <div className="flex items-center justify-between">
-              <div className={cn("flex items-center gap-2 overflow-hidden transition-all duration-200", isCollapsed && !isMobile ? "w-10" : "w-auto")}>
+              <div className={cn("flex items-center gap-2 overflow-hidden transition-all duration-200", isCollapsed && !isMobile ? "w-10 justify-center" : "w-auto")}>
                 <Logo
                   variant={isCollapsed && !isMobile ? "iso" : "full"}
                   size={isCollapsed && !isMobile ? "sm" : "md"}
@@ -142,9 +138,9 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
           </div>
 
           {/* Navigation Items Grouped */}
-          <nav className="flex-1 py-5 px-3 space-y-6 overflow-y-auto custom-scrollbar">
+          <nav className="flex-1 py-5 px-3 space-y-6 overflow-y-auto custom-scrollbar text-left">
             {menuGroups.map((group, gIdx) => (
-              <div key={gIdx} className="space-y-1">
+              <div key={gIdx} className="space-y-1.5">
                 {(!isCollapsed || isMobile) && (
                   <motion.p
                     initial={{ opacity: 0 }}
@@ -165,10 +161,10 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
                       to={item.path}
                       onClick={() => isMobile && setIsMobileOpen(false)}
                       className={({ isActive: linkActive }) => cn(
-                        "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 group relative text-sm font-semibold",
+                        "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 group relative text-xs sm:text-sm font-semibold",
                         linkActive
-                          ? "bg-primary/10 text-primary border border-primary/20"
-                          : "text-v-gray hover:text-v-white hover:bg-v-dark-border/40 border border-transparent",
+                          ? "bg-primary/10 text-primary border border-primary/25 shadow-sm"
+                          : "text-v-gray hover:text-v-white hover:bg-v-dark-border/50 border border-transparent",
                         isCollapsed && !isMobile ? "justify-center px-0" : ""
                       )}
                       title={isCollapsed && !isMobile ? label : undefined}
@@ -204,12 +200,12 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
           {/* User & Session Footer */}
           <div className="p-3 border-t border-v-dark-border bg-v-dark/30 shrink-0">
             {(!isCollapsed || isMobile) ? (
-              <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-v-dark-soft border border-v-dark-border">
+              <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-v-dark-soft border border-v-dark-border shadow-sm">
                 <div className="flex items-center gap-2.5 min-w-0">
                   {user?.photo ? (
                     <img src={user.photo} alt={user.name} className="h-8 w-8 rounded-lg object-cover border border-v-dark-border shrink-0" />
                   ) : (
-                    <div className="h-8 w-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-xs shrink-0">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 border border-primary/25 flex items-center justify-center text-primary font-extrabold text-xs shrink-0">
                       {user?.avatar || 'AD'}
                     </div>
                   )}

@@ -4,10 +4,7 @@ import { cn } from '../../../utils/cn';
 import { Badge } from '../../../components/ui/Badge';
 
 /**
- * StatsCard Component
- *
- * Muestra indicadores clave de rendimiento (KPIs) sobrios y fundamentados
- * en la plataforma B2B VEXTOR.
+ * StatsCard Component - VEXTOR Fleet Dashboard
  */
 const StatsCard = ({
   title,
@@ -20,11 +17,11 @@ const StatsCard = ({
   delay = 0
 }) => {
   const iconGlows = {
-    primary: 'bg-primary/10 text-primary border-primary/20',
-    blue: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-    emerald: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-    amber: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-    purple: 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+    primary: 'bg-primary/10 text-primary border-primary/25',
+    blue: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
+    emerald: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+    amber: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+    purple: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20'
   };
 
   return (
@@ -32,7 +29,7 @@ const StatsCard = ({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.25 }}
-      className="bg-v-dark-soft border border-v-dark-border p-5 rounded-2xl hover:border-v-dark-border/80 transition-all duration-200 group text-left relative overflow-hidden"
+      className="bg-v-dark-soft border border-v-dark-border p-5 rounded-2xl hover:border-v-dark-border/80 transition-all duration-200 group text-left relative overflow-hidden shadow-sm"
     >
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className={cn(
