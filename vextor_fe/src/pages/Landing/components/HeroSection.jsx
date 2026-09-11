@@ -65,12 +65,12 @@ const HeroSection = () => {
         <img
           src={mapBgImage}
           alt="Mapa urbano VEXTOR"
-          className="w-full h-full object-cover object-center transition-opacity duration-700 opacity-80 dark:opacity-50"
+          className="w-full h-full object-cover object-center transition-opacity duration-700 opacity-80 dark:opacity-80"
         />
 
         {/* Overlay sutil de degradados de legibilidad corporativa */}
-        <div className="absolute inset-0 bg-gradient-to-r from-v-dark via-v-dark/95 to-v-dark/40 dark:from-v-dark dark:via-v-dark/95 dark:to-v-dark/50" />
-        <div className="absolute inset-0 bg-gradient-to-b from-v-dark/80 via-transparent to-v-dark" />
+        <div className="absolute inset-0 bg-gradient-to-r from-v-dark via-v-dark/90 to-v-dark/30 dark:from-v-dark dark:via-v-dark/70 dark:to-v-dark/20" />
+        <div className="absolute inset-0 bg-gradient-to-b from-v-dark/70 via-transparent to-v-dark/90" />
 
         {/* Puntos y líneas sutiles de conexión inspirados en el isotipo de VEXTOR */}
         <div className="absolute inset-0 overflow-hidden opacity-35 dark:opacity-45">
@@ -90,19 +90,21 @@ const HeroSection = () => {
       </div>
 
       {/* VEHÍCULOS SUPERPUESTOS (DESKTOP / TABLET) */}
-      <div className="hidden sm:flex absolute inset-y-0 right-0 z-[5] w-7/12 lg:w-1/2 items-center justify-end pointer-events-none overflow-hidden pr-4 lg:pr-12">
-        <motion.div
-          initial={{ opacity: 0, x: 35, scale: 0.98 }}
-          animate={{ opacity: 1, x: 0, scale: 1 }}
-          transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          className="relative max-w-[440px] md:max-w-[520px] lg:max-w-[640px] xl:max-w-[700px]"
-        >
-          <img
-            src="/Cars/vehiculos-hero.png"
-            alt="Flota de vehículos VEXTOR"
-            className="w-full h-auto object-contain drop-shadow-[0_16px_32px_rgba(18,74,47,0.2)] dark:drop-shadow-[0_20px_40px_rgba(0,0,0,0.75)] hover:scale-[1.01] transition-transform duration-500"
-          />
-        </motion.div>
+      <div className="hidden sm:flex absolute inset-0 z-[5] pointer-events-none items-center justify-end container mx-auto px-4 sm:px-6">
+        <div className="w-1/2 lg:w-7/12 flex justify-end">
+          <motion.div
+            initial={{ opacity: 0, x: 35, scale: 0.98 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="relative w-full max-w-[440px] md:max-w-[520px] lg:max-w-[640px] xl:max-w-[700px]"
+          >
+            <img
+              src="/Cars/vehiculos-hero.png"
+              alt="Flota de vehículos VEXTOR"
+              className="w-full h-auto object-contain drop-shadow-[0_16px_32px_rgba(18,74,47,0.2)] dark:drop-shadow-[0_20px_40px_rgba(0,0,0,0.75)] hover:scale-[1.01] transition-transform duration-500"
+            />
+          </motion.div>
+        </div>
       </div>
 
       {/* CONTENIDO DEL HERO EN PRIMER PLANO */}
