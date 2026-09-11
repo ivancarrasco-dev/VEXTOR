@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Truck,
@@ -440,12 +441,12 @@ const ProductPreviewSection = () => {
               <span className="text-xs sm:text-sm text-v-gray text-center sm:text-left font-medium">
                 ¿Desea ver cómo funcionaría VEXTOR adaptado a la cantidad de vehículos de su empresa?
               </span>
-              <a href="#contacto" className="shrink-0 w-full sm:w-auto">
+              <Link to="/contacto" className="shrink-0 w-full sm:w-auto">
                 <button className="w-full sm:w-auto bg-[#124A2F] text-white font-semibold text-xs sm:text-sm px-5 py-2.5 rounded-lg hover:bg-[#0B3522] transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-xs hover:shadow-md">
                   <span>Solicitar demostración</span>
                   <ChevronRight size={16} />
                 </button>
-              </a>
+              </Link>
             </div>
           </div>
         </motion.div>

@@ -5,7 +5,6 @@ import FeaturesSection from './components/FeaturesSection';
 import ProductPreviewSection from './components/ProductPreviewSection';
 import ProblemSection from './components/ProblemSection';
 import WhyVextorSection from './components/WhyVextorSection';
-import ContactSection from './components/ContactSection';
 import IntermediateCTA from './components/IntermediateCTA';
 import LandingFooter from './components/LandingFooter';
 
@@ -22,9 +21,8 @@ import LandingFooter from './components/LandingFooter';
  * 4. Funciones (FeaturesSection)
  * 5. Información/demo de plataforma (ProductPreviewSection)
  * 6. Por qué VEXTOR / Desafíos (WhyVextorSection & ProblemSection)
- * 7. Contacto (ContactSection)
- * 8. CTA final (IntermediateCTA)
- * 9. Footer (LandingFooter)
+ * 7. CTA final (IntermediateCTA)
+ * 8. Footer (LandingFooter)
  */
 const Landing = () => {
   return (
@@ -38,7 +36,6 @@ const Landing = () => {
         <ProductPreviewSection />
         <ProblemSection />
         <WhyVextorSection />
-        <ContactSection />
         <IntermediateCTA />
       </main>
 

@@ -32,24 +32,24 @@ const LandingFooter = () => {
             <h4 className="text-v-white font-bold text-xs uppercase tracking-wider mb-4">Navegación</h4>
             <ul className="space-y-2.5 text-xs sm:text-sm">
               <li>
-                <a href="#inicio" className="text-v-gray hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors font-medium">
+                <a href="/#inicio" className="text-v-gray hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors font-medium">
                   Inicio
                 </a>
               </li>
               <li>
-                <a href="#funciones" className="text-v-gray hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors font-medium">
+                <a href="/#funciones" className="text-v-gray hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors font-medium">
                   Funciones
                 </a>
               </li>
               <li>
-                <a href="#beneficios" className="text-v-gray hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors font-medium">
+                <a href="/#beneficios" className="text-v-gray hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors font-medium">
                   Beneficios
                 </a>
               </li>
               <li>
-                <a href="#contacto" className="text-v-gray hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors font-medium">
+                <Link to="/contacto" className="text-v-gray hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors font-medium">
                   Contacto
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
@@ -69,7 +69,7 @@ const LandingFooter = () => {
                 </Link>
               </li>
               <li>
-                <a href="#producto" className="text-v-gray hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors font-medium">
+                <a href="/#producto" className="text-v-gray hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors font-medium">
                   Demostración de Módulos
                 </a>
               </li>
