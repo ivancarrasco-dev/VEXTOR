@@ -10,10 +10,10 @@ import {
   BarChart3,
   CheckCircle2,
   Clock,
-  ShieldCheck,
   ChevronRight,
   MapPin,
-  AlertTriangle
+  AlertTriangle,
+  Monitor
 } from 'lucide-react';
 
 import {
@@ -29,8 +29,11 @@ import {
  * ProductPreviewSection Component
  *
  * Responsabilidad:
+ * Responder a la pregunta: "¿Cómo se ve VEXTOR?"
+ *
  * Sección de demostración visual e interactiva del producto VEXTOR.
- * Permite al cliente B2B visualizar el aspecto y flujo de trabajo real de su operación.
+ * Permite al cliente B2B visualizar el aspecto de la interfaz, dashboard, módulos,
+ * vehículos, rutas e información operativa del sistema.
  *
  * ⚠️ AISLAMIENTO DE DATOS:
  * Utiliza única y exclusivamente datos ficticios (mock data) importados desde `mockData.js`.
@@ -63,7 +66,7 @@ const ProductPreviewSection = () => {
             viewport={{ once: true }}
             className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#124A2F]/10 dark:bg-[#A6C98F]/10 border border-[#124A2F]/20 dark:border-[#A6C98F]/20 text-[#124A2F] dark:text-[#A6C98F] text-xs font-bold uppercase tracking-wider mb-4"
           >
-            <ShieldCheck size={16} />
+            <Monitor size={16} />
             Demostración de Plataforma
           </motion.div>
 
@@ -73,8 +76,8 @@ const ProductPreviewSection = () => {
             viewport={{ once: true }}
             className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-v-white mb-5 tracking-tight leading-[1.18]"
           >
-            Todo el control de su operación, <br className="hidden sm:inline" />
-            en <span className="text-[#124A2F] dark:text-[#A6C98F]">una sola plataforma.</span>
+            Así se ve la plataforma <br className="hidden sm:inline" />
+            que <span className="text-[#124A2F] dark:text-[#A6C98F]">su empresa utilizará</span>
           </motion.h2>
 
           <motion.p
@@ -84,7 +87,7 @@ const ProductPreviewSection = () => {
             transition={{ delay: 0.1 }}
             className="text-base sm:text-lg text-v-gray leading-relaxed max-w-2xl mx-auto font-normal"
           >
-            Visualice cómo VEXTOR integra sus módulos operativos en una interfaz intuitiva diseñada para agilizar la toma de decisiones.
+            Explore la interfaz, paneles interactivos, estados de flota y módulos operativos con datos de prueba diseñados para la gestión real.
           </motion.p>
         </div>
 
