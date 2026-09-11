@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, X, Truck, Users, Route, Wrench, Bell, BarChart3, CheckCircle2, Sparkles } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { ChevronRight, CheckCircle2 } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { useTheme } from '../../../context/ThemeContext';
 
@@ -10,53 +10,28 @@ import { useTheme } from '../../../context/ThemeContext';
  * Responsabilidad:
  * Sección Hero comercial de la Landing Page pública de VEXTOR.
  *
- * Requisitos estrictos de marca:
+ * Requisitos de marca:
  * * Titular exacto: "Gestione toda su flota desde una sola plataforma." con énfasis en verde VEXTOR en "una sola plataforma."
  * * Vehículos obligatorios: Bus (dominante) y Camión (detrás superpuesto), junto al Mapa de fondo.
- * * Botón Principal CTA: "Comenzar Gratis" -> /register (Verde Oscuro VEXTOR, text white, radius 8-10px).
- * * Botón Secundario CTA: "Ver Demo" -> Modal interactivo de demo (Fondo contrastado, borde sutil, texto verde oscuro VEXTOR).
- * * Integración con el mapa y vehículos sin alterar la estructura.
+ * * Botón Principal CTA: "Comenzar gratis" -> /register.
+ * * Botón Secundario CTA: "Ver demo" -> Scroll suave hacia la sección #demo.
  */
 const HeroSection = () => {
-  const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
   const { theme } = useTheme();
 
   const mapBgImage = theme === 'dark'
     ? '/HeroMap/bogot_ciudad_dark.png'
     : '/HeroMap/bogot_ciudad_light.png';
 
-  const demoModules = [
-    {
-      title: "Gestión de Vehículos",
-      desc: "Control técnico, SOAT, tecno-mecánica, seguros y hoja de vida de cada unidad.",
-      icon: Truck
-    },
-    {
-      title: "Gestión de Conductores",
-      desc: "Expedientes digitales, vigencia de licencias y asignación eficiente a vehículos.",
-      icon: Users
-    },
-    {
-      title: "Programación de Rutas",
-      desc: "Monitoreo en mapa, seguimiento de estados y cumplimiento de itinerarios en tiempo real.",
-      icon: Route
-    },
-    {
-      title: "Mantenimiento Preventivo",
-      desc: "Programación automatizada por kilometraje o fecha para evitar varadas en carretera.",
-      icon: Wrench
-    },
-    {
-      title: "Sistema de Alertas",
-      desc: "Notificaciones inmediatas sobre vencimientos de documentos y desviaciones en ruta.",
-      icon: Bell
-    },
-    {
-      title: "Reportes Operativos",
-      desc: "Indicadores clave de rendimiento (KPIs), costos operativos y utilización de flota.",
-      icon: BarChart3
+  const scrollToDemo = (e) => {
+    e.preventDefault();
+    const demoElement = document.getElementById('demo');
+    if (demoElement) {
+      demoElement.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      window.location.hash = '#demo';
     }
-  ];
+  };
 
   return (
     <section id="inicio" className="relative pt-24 pb-16 sm:pt-28 sm:pb-20 md:pt-32 md:pb-24 lg:pt-36 lg:pb-28 overflow-hidden bg-v-dark transition-colors duration-300 min-h-[580px] sm:min-h-[640px] flex items-center">
@@ -152,22 +127,22 @@ const HeroSection = () => {
             transition={{ duration: 0.5, delay: 0.4 }}
             className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5"
           >
-            <a href="/register" className="w-full sm:w-auto">
+            <Link to="/register" className="w-full sm:w-auto">
               <Button size="lg" variant="primary" className="w-full sm:w-auto text-sm sm:text-base font-semibold h-12 px-7 rounded-lg group shadow-sm hover:shadow-md">
-                Comenzar Gratis
+                Comenzar gratis
                 <ChevronRight className="ml-1.5 w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Button>
-            </a>
+            </Link>
 
-            <button onClick={() => setIsDemoModalOpen(true)} className="w-full sm:w-auto">
+            <a href="#demo" onClick={scrollToDemo} className="w-full sm:w-auto">
               <Button
                 variant="secondary"
                 size="lg"
                 className="w-full sm:w-auto text-sm sm:text-base font-semibold h-12 px-7 rounded-lg"
               >
-                Ver Demo
+                Ver demo
               </Button>
-            </button>
+            </a>
           </motion.div>
 
           {/* VEHÍCULOS SUPERPUESTOS EN MOBILE */}
@@ -208,94 +183,6 @@ const HeroSection = () => {
         </div>
       </div>
 
-      {/* MODAL DE DEMO VEXTOR */}
-      <AnimatePresence>
-        {isDemoModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsDemoModalOpen(false)}
-              className="fixed inset-0 bg-black/65 backdrop-blur-xs transition-opacity"
-            />
-
-            {/* Modal Box */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 15 }}
-              transition={{ duration: 0.25 }}
-              className="relative w-full max-w-3xl bg-v-dark-soft border border-v-dark-border rounded-2xl p-6 sm:p-8 shadow-2xl z-10 max-h-[90vh] overflow-y-auto"
-            >
-              {/* Close Button */}
-              <button
-                aria-label="Cerrar modal"
-                onClick={() => setIsDemoModalOpen(false)}
-                className="absolute top-4 right-4 text-v-gray hover:text-v-white p-2 rounded-lg hover:bg-v-dark transition-colors cursor-pointer"
-              >
-                <X size={20} />
-              </button>
-
-              <div className="mb-6">
-                <span className="inline-flex items-center gap-1.5 text-[#124A2F] dark:text-[#A6C98F] font-bold text-xs uppercase tracking-wider bg-[#124A2F]/10 dark:bg-[#A6C98F]/10 px-2.5 py-1 rounded-md border border-[#124A2F]/20 dark:border-[#A6C98F]/20">
-                  <Sparkles size={13} /> Demostración Interactiva
-                </span>
-                <h3 className="text-2xl sm:text-3xl font-extrabold text-v-white mt-3">
-                  Plataforma Corporativa VEXTOR
-                </h3>
-                <p className="text-v-gray text-xs sm:text-sm mt-1.5">
-                  Conozca los módulos principales que estructuran y profesionalizan la gestión de flotas.
-                </p>
-              </div>
-
-              {/* Grid de Módulos */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 my-6">
-                {demoModules.map((module, idx) => (
-                  <div
-                    key={idx}
-                    className="p-4 rounded-xl bg-v-dark border border-v-dark-border flex items-start gap-3 hover:border-[#124A2F]/40 dark:hover:border-[#A6C98F]/40 transition-all duration-200 shadow-xs"
-                  >
-                    <div className="p-2.5 rounded-lg bg-[#124A2F]/10 dark:bg-[#A6C98F]/10 text-[#124A2F] dark:text-[#A6C98F] shrink-0 border border-[#124A2F]/20 dark:border-[#A6C98F]/20">
-                      <module.icon size={20} />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-v-white flex items-center gap-1.5">
-                        {module.title}
-                        <CheckCircle2 size={14} className="text-[#124A2F] dark:text-[#A6C98F] shrink-0" />
-                      </h4>
-                      <p className="text-xs text-v-gray mt-1 leading-relaxed">
-                        {module.desc}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Action Buttons in Modal */}
-              <div className="pt-5 border-t border-v-dark-border flex flex-col sm:flex-row items-center justify-between gap-4">
-                <span className="text-xs text-v-gray font-medium">
-                  ¿Desea probar la plataforma con su equipo?
-                </span>
-                <div className="flex items-center gap-3 w-full sm:w-auto">
-                  <button
-                    onClick={() => setIsDemoModalOpen(false)}
-                    className="px-4 py-2 text-xs font-semibold text-v-gray hover:text-v-white transition-colors cursor-pointer"
-                  >
-                    Cerrar
-                  </button>
-                  <a href="/register" className="w-full sm:w-auto">
-                    <Button variant="primary" size="sm" className="w-full font-semibold px-5 py-2">
-                      Comenzar Gratis
-                    </Button>
-                  </a>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </section>
   );
 };
