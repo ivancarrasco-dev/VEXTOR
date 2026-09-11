@@ -49,7 +49,7 @@ const ProductPreviewSection = () => {
   ];
 
   return (
-    <section id="producto" className="py-20 lg:py-28 bg-v-dark border-y border-v-dark-border relative overflow-hidden transition-colors duration-300">
+    <section id="demo" className="py-16 sm:py-20 lg:py-24 bg-v-dark border-b border-v-dark-border relative overflow-hidden transition-colors duration-300">
       {/* Background glow effect sutil */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[640px] h-[640px] bg-[#124A2F]/8 dark:bg-[#A6C98F]/8 blur-3xl rounded-full pointer-events-none -z-0" />
 

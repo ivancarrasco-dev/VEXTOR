@@ -25,9 +25,11 @@ const LandingNavbar = () => {
   }, []);
 
   const navLinks = [
-    { name: 'Inicio', href: '/#inicio', isRoute: false },
-    { name: 'Funciones', href: '/#funciones', isRoute: false },
-    { name: 'Beneficios', href: '/#beneficios', isRoute: false },
+    { name: 'Inicio', href: '#inicio', isRoute: false },
+    { name: '¿Qué es?', href: '#que-es', isRoute: false },
+    { name: 'Soluciones', href: '#soluciones', isRoute: false },
+    { name: 'Demo', href: '#demo', isRoute: false },
+    { name: 'Cómo funciona', href: '#como-funciona', isRoute: false },
     { name: 'Contacto', href: '/contacto', isRoute: true },
   ];
 
