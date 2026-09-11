@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, CheckCircle2, ShieldCheck, Zap } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
@@ -41,17 +42,17 @@ const IntermediateCTA = () => {
               </p>
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5">
-                <a href="#contacto" className="w-full sm:w-auto">
+                <Link to="/contacto" className="w-full sm:w-auto">
                   <Button size="lg" variant="primary" className="w-full sm:w-auto text-sm sm:text-base font-semibold h-12 px-7 rounded-lg group shadow-sm hover:shadow-md">
                     Solicitar demostración
                     <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </Button>
-                </a>
-                <a href="/register" className="w-full sm:w-auto">
+                </Link>
+                <Link to="/register" className="w-full sm:w-auto">
                   <Button size="lg" variant="secondary" className="w-full sm:w-auto text-sm sm:text-base font-semibold h-12 px-6 rounded-lg">
                     Comenzar Gratis
                   </Button>
-                </a>
+                </Link>
               </div>
 
               <div className="mt-8 pt-6 border-t border-v-dark-border flex flex-wrap items-center justify-center gap-6 text-xs sm:text-sm text-v-gray font-medium">

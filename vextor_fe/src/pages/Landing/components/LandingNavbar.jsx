@@ -25,10 +25,10 @@ const LandingNavbar = () => {
   }, []);
 
   const navLinks = [
-    { name: 'Inicio', href: '#inicio' },
-    { name: 'Funciones', href: '#funciones' },
-    { name: 'Beneficios', href: '#beneficios' },
-    { name: 'Contacto', href: '#contacto' },
+    { name: 'Inicio', href: '/#inicio', isRoute: false },
+    { name: 'Funciones', href: '/#funciones', isRoute: false },
+    { name: 'Beneficios', href: '/#beneficios', isRoute: false },
+    { name: 'Contacto', href: '/contacto', isRoute: true },
   ];
 
   return (
@@ -48,13 +48,23 @@ const LandingNavbar = () => {
         {/* CENTRO: Links de navegación */}
         <nav className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => (
-            <a
-              key={link.name}
-              href={link.href}
-              className="text-sm font-medium text-v-white/85 hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors duration-200"
-            >
-              {link.name}
-            </a>
+            link.isRoute ? (
+              <Link
+                key={link.name}
+                to={link.href}
+                className="text-sm font-medium text-v-white/85 hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors duration-200"
+              >
+                {link.name}
+              </Link>
+            ) : (
+              <a
+                key={link.name}
+                href={link.href}
+                className="text-sm font-medium text-v-white/85 hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors duration-200"
+              >
+                {link.name}
+              </a>
+            )
           ))}
         </nav>
 
@@ -97,14 +107,25 @@ const LandingNavbar = () => {
           >
             <div className="flex flex-col p-5 gap-3.5">
               {navLinks.map((link) => (
-                <a
-                  key={link.name}
-                  href={link.href}
-                  className="text-sm font-semibold text-v-white hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors py-1"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  {link.name}
-                </a>
+                link.isRoute ? (
+                  <Link
+                    key={link.name}
+                    to={link.href}
+                    className="text-sm font-semibold text-v-white hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors py-1"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    {link.name}
+                  </Link>
+                ) : (
+                  <a
+                    key={link.name}
+                    href={link.href}
+                    className="text-sm font-semibold text-v-white hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors py-1"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    {link.name}
+                  </a>
+                )
               ))}
               <hr className="border-v-dark-border my-1" />
               <div className="flex flex-col gap-2.5">
