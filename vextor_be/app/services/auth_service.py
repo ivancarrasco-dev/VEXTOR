@@ -8,6 +8,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Tuple, Optional
 from uuid import UUID, uuid4
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from fastapi import HTTPException, status, Request
 
 from app.core.config import settings
@@ -61,13 +62,17 @@ class AuthService:
                 detail="El correo electrónico ya está registrado.",
             )
 
-        # Obtener o crear rol Administrador
-        rol = db.query(Rol).filter(Rol.nombre_rol == "Administrador").first()
+        # Obtener rol para nuevo usuario (Usuario por defecto, o Administrador, o cualquier rol existente)
+        rol = db.query(Rol).filter(func.lower(Rol.nombre_rol) == "usuario").first()
+        if not rol:
+            rol = db.query(Rol).filter(func.lower(Rol.nombre_rol) == "administrador").first()
+        if not rol:
+            rol = db.query(Rol).first()
         if not rol:
             rol = Rol(
-                id_rol=uuid4(),
-                nombre_rol="Administrador",
-                descripcion_rol="Administrador de la flota",
+                id_rol=UUID("11111111-2222-3333-4444-555555555555"),
+                nombre_rol="Usuario",
+                descripcion_rol="Usuario estándar de la flota",
             )
             db.add(rol)
             db.commit()
