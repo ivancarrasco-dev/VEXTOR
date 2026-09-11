@@ -131,10 +131,7 @@ const ActiveRoutePage = () => {
 
     // 1. Establish WebSocket Connection
     try {
-      const storedToken = localStorage.getItem('vextor_auth_token');
-      const wsUrl = storedToken
-        ? `${WS_BASE_URL}/ws/tracking?token=${encodeURIComponent(storedToken)}`
-        : `${WS_BASE_URL}/ws/tracking`;
+      const wsUrl = `${WS_BASE_URL}/ws/tracking`;
       const ws = new WebSocket(wsUrl);
       ws.onopen = () => {
         console.log('Tracking WebSocket connected');
