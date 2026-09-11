@@ -24,21 +24,32 @@ class AuditService:
         ip_origen: str = None,
         resultado: str = "EXITOSO",
     ) -> Actividad:
-        """Registra una actividad en la auditoría"""
-        activity = Actividad(
-            id_usuario=id_usuario,
-            nombres_usuario=nombres_usuario,
-            tipo_accion=tipo_accion,
-            modulo=modulo,
-            descripcion=descripcion,
-            id_registro_afectado=id_registro_afectado,
-            ip_origen=ip_origen,
-            resultado=resultado,
-        )
-        db.add(activity)
-        db.commit()
-        db.refresh(activity)
-        return activity
+        """Registra una actividad en la auditoría de forma defensiva sin interrumpir la transacción principal"""
+        try:
+            if isinstance(id_usuario, str):
+                try:
+                    id_usuario = UUID(id_usuario)
+                except ValueError:
+                    id_usuario = None
+
+            activity = Actividad(
+                id_usuario=id_usuario,
+                nombres_usuario=nombres_usuario,
+                tipo_accion=tipo_accion,
+                modulo=modulo,
+                descripcion=descripcion,
+                id_registro_afectado=id_registro_afectado,
+                ip_origen=ip_origen,
+                resultado=resultado,
+            )
+            db.add(activity)
+            db.commit()
+            db.refresh(activity)
+            return activity
+        except Exception as e:
+            db.rollback()
+            print(f"Advertencia: No se pudo registrar la actividad de auditoría: {e}")
+            return None
 
     @staticmethod
     def create_notification(

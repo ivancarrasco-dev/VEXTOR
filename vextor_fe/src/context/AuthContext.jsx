@@ -24,16 +24,10 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Verificación real de sesión al cargar mediante endpoint /me
+  // Verificación real de sesión al cargar mediante cookie HttpOnly y endpoint /me
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // Fallback or explicit authorization header if token is stored in localStorage
-        const storedToken = localStorage.getItem('vextor_auth_token');
-        if (storedToken) {
-          axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-        }
-
         const response = await axios.get(`${API_BASE_URL}/api/auth/me`);
         if (response.data) {
           setUser(response.data);
@@ -41,9 +35,6 @@ export const AuthProvider = ({ children }) => {
         }
       } catch (error) {
         console.warn('Sesión no activa o expirada:', error.response?.data?.detail || error.message);
-        // Clear authorization if invalid
-        delete axios.defaults.headers.common['Authorization'];
-        localStorage.removeItem('vextor_auth_token');
         setUser(null);
         setIsAuthenticated(false);
       } finally {
@@ -62,12 +53,6 @@ export const AuthProvider = ({ children }) => {
         password
       });
       const data = response.data;
-
-      // Store token in localStorage as fallback, and also set authorization headers
-      if (data.token) {
-        localStorage.setItem('vextor_auth_token', data.token);
-        axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
-      }
 
       setUser(data.user);
       setIsAuthenticated(true);
@@ -106,8 +91,6 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Error logging out on backend:', error);
     } finally {
-      delete axios.defaults.headers.common['Authorization'];
-      localStorage.removeItem('vextor_auth_token');
       setUser(null);
       setIsAuthenticated(false);
     }
