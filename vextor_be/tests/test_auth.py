@@ -91,3 +91,40 @@ def test_login_invalid_credentials(test_db):
     res = client.post("/api/auth/login", json={"email": "nonexistent@vextor.com", "password": "Password123!"})
     assert res.status_code == 400
     assert "Credenciales incorrectas" in res.json()["detail"]
+
+
+def test_admin_seed_and_get_me(test_db):
+    """Verifica que el usuario admin semilla existe o se pueda autenticar y consultar /api/auth/me"""
+    client = TestClient(app)
+    from app.models import Rol, Usuario
+    from app.core.security import hash_password
+    from uuid import uuid4
+
+    # Crear rol y admin
+    admin_rol = Rol(id_rol=uuid4(), nombre_rol="Administrador", descripcion_rol="Admin")
+    test_db.add(admin_rol)
+    test_db.commit()
+
+    admin_user = Usuario(
+        id_usuario=uuid4(),
+        id_rol=admin_rol.id_rol,
+        nombres_usuario="Administrador",
+        apellidos_usuario="Sistema",
+        correo_usuario="admin@vextor.com",
+        contrasenia_usuario=hash_password("Admin123!"),
+        estado_usuario="ACTIVO"
+    )
+    test_db.add(admin_user)
+    test_db.commit()
+
+    # Login con admin
+    res_login = client.post("/api/auth/login", json={"email": "admin@vextor.com", "password": "Admin123!"})
+    assert res_login.status_code == 200
+    token = res_login.json()["token"]
+
+    # Consulta /api/auth/me
+    res_me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert res_me.status_code == 200
+    me_data = res_me.json()
+    assert me_data["email"] == "admin@vextor.com"
+    assert me_data["role"] == "Administrador"

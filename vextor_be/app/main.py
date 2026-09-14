@@ -33,6 +33,52 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print("Constraint migration note:", e)
 
+    # Sembrar roles base y usuario admin por defecto si no existen
+    try:
+        from app.database import SessionLocal
+        from app.models import Rol, Usuario
+        from app.core.security import hash_password
+        from uuid import uuid4
+
+        db = SessionLocal()
+        try:
+            roles_data = [
+                ("Administrador", "Control total del sistema y gestión corporativa"),
+                ("Conductor", "Operación de vehículos y consulta de rutas asignadas"),
+                ("Usuario", "Usuario estándar del sistema"),
+            ]
+            roles_dict = {}
+            for role_name, desc in roles_data:
+                rol = db.query(Rol).filter(Rol.nombre_rol == role_name).first()
+                if not rol:
+                    rol = Rol(id_rol=uuid4(), nombre_rol=role_name, descripcion_rol=desc)
+                    db.add(rol)
+                    db.commit()
+                    db.refresh(rol)
+                roles_dict[role_name] = rol
+
+            # Sembrar admin por defecto
+            admin_email = "admin@vextor.com"
+            admin_user = db.query(Usuario).filter(Usuario.correo_usuario == admin_email).first()
+            if not admin_user:
+                admin_user = Usuario(
+                    id_usuario=uuid4(),
+                    id_rol=roles_dict["Administrador"].id_rol,
+                    nombres_usuario="Administrador",
+                    apellidos_usuario="Sistema",
+                    correo_usuario=admin_email,
+                    contrasenia_usuario=hash_password("Admin123!"),
+                    telefono_usuario="3000000000",
+                    estado_usuario="ACTIVO",
+                )
+                db.add(admin_user)
+                db.commit()
+                print(f"Usuario semilla admin creado: {admin_email}")
+        finally:
+            db.close()
+    except Exception as e:
+        print("Seed data note:", e)
+
     yield
 
     # Limpieza en shutdown if required
