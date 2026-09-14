@@ -162,6 +162,7 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
         if token:
             try:
                 from app.core.security import decode_token
+                from app.models import Usuario
                 payload = decode_token(token)
                 sid = payload.get("sid")
                 if sid:
@@ -169,22 +170,21 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
                     
                     # Auditoría
                     email = payload.get("sub")
-                    user = db.query(db.query(__import__('app.models', fromlist=['Usuario']).Usuario)).filter(
-                        __import__('app.models', fromlist=['Usuario']).Usuario.correo_usuario == email
-                    ).first()
-                    if user:
-                        AuditService.record_activity(
-                            db,
-                            id_usuario=user.id_usuario,
-                            nombres_usuario=f"{user.nombres_usuario} {user.apellidos_usuario}".strip(),
-                            tipo_accion="LOGOUT",
-                            modulo="Autenticación",
-                            descripcion="Cierre de sesión",
-                            ip_origen=get_client_ip(request),
-                            resultado="EXITOSO",
-                        )
-            except:
-                pass
+                    if email:
+                        user = db.query(Usuario).filter(Usuario.correo_usuario == email).first()
+                        if user:
+                            AuditService.record_activity(
+                                db,
+                                id_usuario=user.id_usuario,
+                                nombres_usuario=f"{user.nombres_usuario} {user.apellidos_usuario}".strip(),
+                                tipo_accion="LOGOUT",
+                                modulo="Autenticación",
+                                descripcion="Cierre de sesión",
+                                ip_origen=get_client_ip(request),
+                                resultado="EXITOSO",
+                            )
+            except Exception as e:
+                print(f"Error en logout audit: {e}")
 
         response.delete_cookie(key="vextor_auth_token")
         return {"message": "Sesión cerrada correctamente"}

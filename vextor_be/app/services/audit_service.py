@@ -37,20 +37,38 @@ class AuditService:
     ) -> Actividad:
         """Registra una actividad en la auditoría"""
         user_uuid = AuditService._coerce_uuid(id_usuario)
-        activity = Actividad(
-            id_usuario=user_uuid,
-            nombres_usuario=nombres_usuario,
-            tipo_accion=tipo_accion,
-            modulo=modulo,
-            descripcion=descripcion,
-            id_registro_afectado=id_registro_afectado,
-            ip_origen=ip_origen,
-            resultado=resultado,
-        )
-        db.add(activity)
-        db.commit()
-        db.refresh(activity)
-        return activity
+        if nombres_usuario:
+            nombres_usuario = str(nombres_usuario)[:150]
+        if tipo_accion:
+            tipo_accion = str(tipo_accion)[:50]
+        if modulo:
+            modulo = str(modulo)[:50]
+        if id_registro_afectado:
+            id_registro_afectado = str(id_registro_afectado)[:100]
+        if ip_origen:
+            ip_origen = str(ip_origen)[:45]
+        if resultado:
+            resultado = str(resultado)[:20]
+
+        try:
+            activity = Actividad(
+                id_usuario=user_uuid,
+                nombres_usuario=nombres_usuario,
+                tipo_accion=tipo_accion,
+                modulo=modulo,
+                descripcion=descripcion or "",
+                id_registro_afectado=id_registro_afectado,
+                ip_origen=ip_origen,
+                resultado=resultado,
+            )
+            db.add(activity)
+            db.commit()
+            db.refresh(activity)
+            return activity
+        except Exception as e:
+            db.rollback()
+            print(f"Error grabando auditoría: {e}")
+            return None
 
     @staticmethod
     def create_notification(
