@@ -34,7 +34,9 @@ export const AuthProvider = ({ children }) => {
           setIsAuthenticated(true);
         }
       } catch (error) {
-        console.warn('Sesión no activa o expirada:', error.response?.data?.detail || error.message);
+        if (error.response?.status !== 401) {
+          console.warn('Error verificando sesión:', error.response?.data?.detail || error.message);
+        }
         setUser(null);
         setIsAuthenticated(false);
       } finally {
