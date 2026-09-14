@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.models import Usuario
 from app.schemas import LoginRequest, RegisterRequest, ForgotPasswordRequest, VerifyResetTokenRequest, ResetPasswordRequest
 from app.services.auth_service import AuthService
 from app.services.audit_service import AuditService
@@ -175,8 +176,8 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
                     
                     # Auditoría
                     email = payload.get("sub")
-                    user = db.query(db.query(__import__('app.models', fromlist=['Usuario']).Usuario)).filter(
-                        __import__('app.models', fromlist=['Usuario']).Usuario.correo_usuario == email
+                    user = db.query(Usuario).filter(
+                        Usuario.correo_usuario == email
                     ).first()
                     if user:
                         AuditService.record_activity(
