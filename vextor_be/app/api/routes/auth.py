@@ -84,10 +84,11 @@ def login(req: LoginRequest, request: Request, response: Response, db: Session =
             max_age=1440 * 60,  # 24 horas
         )
         
+        from uuid import UUID
         # Auditoría
         AuditService.record_activity(
             db,
-            id_usuario=user_info["id"],
+            id_usuario=UUID(user_info["id"]) if isinstance(user_info["id"], str) else user_info["id"],
             nombres_usuario=user_info["name"],
             tipo_accion="LOGIN",
             modulo="Autenticación",
