@@ -1,30 +1,27 @@
 import LandingNavbar from './components/LandingNavbar';
 import HeroSection from './components/HeroSection';
-import BenefitsSection from './components/BenefitsSection';
-import FeaturesSection from './components/FeaturesSection';
+import AboutSection from './components/AboutSection';
+import SolutionsSection from './components/SolutionsSection';
 import ProductPreviewSection from './components/ProductPreviewSection';
-import ProblemSection from './components/ProblemSection';
-import WhyVextorSection from './components/WhyVextorSection';
-import ContactSection from './components/ContactSection';
-import IntermediateCTA from './components/IntermediateCTA';
+import HowItWorksSection from './components/HowItWorksSection';
+import FinalCTASection from './components/FinalCTASection';
 import LandingFooter from './components/LandingFooter';
 
 /**
  * Landing Page
  *
  * Responsabilidad:
- * Página comercial (pública) B2B para la conversión de empresas de transporte de flotas.
+ * Página comercial (pública) B2B compacta, clara e intuitiva para la conversión de empresas de transporte.
  *
- * Jerarquía visual oficial VEXTOR:
+ * Estructura optimizada VEXTOR:
  * 1. Navbar (LandingNavbar)
  * 2. Hero (HeroSection)
- * 3. Beneficios (BenefitsSection)
- * 4. Funciones (FeaturesSection)
- * 5. Información/demo de plataforma (ProductPreviewSection)
- * 6. Por qué VEXTOR / Desafíos (WhyVextorSection & ProblemSection)
- * 7. Contacto (ContactSection)
- * 8. CTA final (IntermediateCTA)
- * 9. Footer (LandingFooter)
+ * 3. ¿Qué es VEXTOR? (AboutSection)
+ * 4. Soluciones / Funcionalidades en 4 cards (SolutionsSection)
+ * 5. Demostración de Plataforma (#demo) (ProductPreviewSection)
+ * 6. ¿Cómo funciona? (HowItWorksSection)
+ * 7. CTA final (FinalCTASection)
+ * 8. Footer (LandingFooter)
  */
 const Landing = () => {
   return (
@@ -33,13 +30,11 @@ const Landing = () => {
 
       <main>
         <HeroSection />
-        <BenefitsSection />
-        <FeaturesSection />
+        <AboutSection />
+        <SolutionsSection />
         <ProductPreviewSection />
-        <ProblemSection />
-        <WhyVextorSection />
-        <ContactSection />
-        <IntermediateCTA />
+        <HowItWorksSection />
+        <FinalCTASection />
       </main>
 
       <LandingFooter />

@@ -61,13 +61,15 @@ class AuthService:
                 detail="El correo electrónico ya está registrado.",
             )
 
-        # Obtener o crear rol Administrador
-        rol = db.query(Rol).filter(Rol.nombre_rol == "Administrador").first()
+        # Obtener rol predeterminado 'Usuario' o fallback a 'Administrador'
+        rol = db.query(Rol).filter(Rol.nombre_rol == "Usuario").first()
+        if not rol:
+            rol = db.query(Rol).filter(Rol.nombre_rol == "Administrador").first()
         if not rol:
             rol = Rol(
                 id_rol=uuid4(),
-                nombre_rol="Administrador",
-                descripcion_rol="Administrador de la flota",
+                nombre_rol="Usuario",
+                descripcion_rol="Rol predeterminado asignado en el registro público.",
             )
             db.add(rol)
             db.commit()
@@ -88,11 +90,14 @@ class AuthService:
             telefono_usuario="",
             estado_usuario="ACTIVO",
         )
-        db.add(new_user)
-        db.commit()
-        db.refresh(new_user)
-
-        return new_user
+        try:
+            db.add(new_user)
+            db.commit()
+            db.refresh(new_user)
+            return new_user
+        except Exception:
+            db.rollback()
+            raise
 
     @staticmethod
     def login_user(

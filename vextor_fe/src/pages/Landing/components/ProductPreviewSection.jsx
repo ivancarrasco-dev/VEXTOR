@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Truck,
@@ -9,10 +10,10 @@ import {
   BarChart3,
   CheckCircle2,
   Clock,
-  ShieldCheck,
   ChevronRight,
   MapPin,
-  AlertTriangle
+  AlertTriangle,
+  Monitor
 } from 'lucide-react';
 
 import {
@@ -28,8 +29,11 @@ import {
  * ProductPreviewSection Component
  *
  * Responsabilidad:
+ * Responder a la pregunta: "¿Cómo se ve VEXTOR?"
+ *
  * Sección de demostración visual e interactiva del producto VEXTOR.
- * Permite al cliente B2B visualizar el aspecto y flujo de trabajo real de su operación.
+ * Permite al cliente B2B visualizar el aspecto de la interfaz, dashboard, módulos,
+ * vehículos, rutas e información operativa del sistema.
  *
  * ⚠️ AISLAMIENTO DE DATOS:
  * Utiliza única y exclusivamente datos ficticios (mock data) importados desde `mockData.js`.
@@ -48,7 +52,7 @@ const ProductPreviewSection = () => {
   ];
 
   return (
-    <section id="producto" className="py-20 lg:py-28 bg-v-dark border-y border-v-dark-border relative overflow-hidden transition-colors duration-300">
+    <section id="demo" className="py-16 sm:py-20 lg:py-24 bg-v-dark border-b border-v-dark-border relative overflow-hidden transition-colors duration-300">
       {/* Background glow effect sutil */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[640px] h-[640px] bg-[#124A2F]/8 dark:bg-[#A6C98F]/8 blur-3xl rounded-full pointer-events-none -z-0" />
 
@@ -62,7 +66,7 @@ const ProductPreviewSection = () => {
             viewport={{ once: true }}
             className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#124A2F]/10 dark:bg-[#A6C98F]/10 border border-[#124A2F]/20 dark:border-[#A6C98F]/20 text-[#124A2F] dark:text-[#A6C98F] text-xs font-bold uppercase tracking-wider mb-4"
           >
-            <ShieldCheck size={16} />
+            <Monitor size={16} />
             Demostración de Plataforma
           </motion.div>
 
@@ -72,8 +76,8 @@ const ProductPreviewSection = () => {
             viewport={{ once: true }}
             className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-v-white mb-5 tracking-tight leading-[1.18]"
           >
-            Todo el control de su operación, <br className="hidden sm:inline" />
-            en <span className="text-[#124A2F] dark:text-[#A6C98F]">una sola plataforma.</span>
+            Así se ve la plataforma <br className="hidden sm:inline" />
+            que <span className="text-[#124A2F] dark:text-[#A6C98F]">su empresa utilizará</span>
           </motion.h2>
 
           <motion.p
@@ -83,7 +87,7 @@ const ProductPreviewSection = () => {
             transition={{ delay: 0.1 }}
             className="text-base sm:text-lg text-v-gray leading-relaxed max-w-2xl mx-auto font-normal"
           >
-            Visualice cómo VEXTOR integra sus módulos operativos en una interfaz intuitiva diseñada para agilizar la toma de decisiones.
+            Explore la interfaz, paneles interactivos, estados de flota y módulos operativos con datos de prueba diseñados para la gestión real.
           </motion.p>
         </div>
 
@@ -440,12 +444,12 @@ const ProductPreviewSection = () => {
               <span className="text-xs sm:text-sm text-v-gray text-center sm:text-left font-medium">
                 ¿Desea ver cómo funcionaría VEXTOR adaptado a la cantidad de vehículos de su empresa?
               </span>
-              <a href="#contacto" className="shrink-0 w-full sm:w-auto">
+              <Link to="/contacto" className="shrink-0 w-full sm:w-auto">
                 <button className="w-full sm:w-auto bg-[#124A2F] text-white font-semibold text-xs sm:text-sm px-5 py-2.5 rounded-lg hover:bg-[#0B3522] transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-xs hover:shadow-md">
                   <span>Solicitar demostración</span>
                   <ChevronRight size={16} />
                 </button>
-              </a>
+              </Link>
             </div>
           </div>
         </motion.div>

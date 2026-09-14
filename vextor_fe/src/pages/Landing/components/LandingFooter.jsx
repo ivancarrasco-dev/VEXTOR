@@ -37,19 +37,24 @@ const LandingFooter = () => {
                 </a>
               </li>
               <li>
-                <a href="#funciones" className="text-v-gray hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors font-medium">
-                  Funciones
+                <a href="#que-es" className="text-v-gray hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors font-medium">
+                  ¿Qué es VEXTOR?
                 </a>
               </li>
               <li>
-                <a href="#beneficios" className="text-v-gray hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors font-medium">
-                  Beneficios
+                <a href="#soluciones" className="text-v-gray hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors font-medium">
+                  Soluciones
                 </a>
               </li>
               <li>
-                <a href="#contacto" className="text-v-gray hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors font-medium">
+                <a href="#como-funciona" className="text-v-gray hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors font-medium">
+                  Cómo funciona
+                </a>
+              </li>
+              <li>
+                <Link to="/contacto" className="text-v-gray hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors font-medium">
                   Contacto
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
@@ -69,8 +74,8 @@ const LandingFooter = () => {
                 </Link>
               </li>
               <li>
-                <a href="#producto" className="text-v-gray hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors font-medium">
-                  Demostración de Módulos
+                <a href="#demo" className="text-v-gray hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors font-medium">
+                  Demostración en Vivo
                 </a>
               </li>
             </ul>
