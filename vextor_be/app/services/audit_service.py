@@ -13,9 +13,20 @@ class AuditService:
     """Servicio para auditoría y notificaciones"""
 
     @staticmethod
+    def _coerce_uuid(val):
+        if val is None:
+            return None
+        if isinstance(val, UUID):
+            return val
+        try:
+            return UUID(str(val))
+        except (ValueError, AttributeError):
+            return None
+
+    @staticmethod
     def record_activity(
         db: Session,
-        id_usuario: UUID = None,
+        id_usuario = None,
         nombres_usuario: str = None,
         tipo_accion: str = None,
         modulo: str = None,
@@ -25,8 +36,9 @@ class AuditService:
         resultado: str = "EXITOSO",
     ) -> Actividad:
         """Registra una actividad en la auditoría"""
+        user_uuid = AuditService._coerce_uuid(id_usuario)
         activity = Actividad(
-            id_usuario=id_usuario,
+            id_usuario=user_uuid,
             nombres_usuario=nombres_usuario,
             tipo_accion=tipo_accion,
             modulo=modulo,
@@ -46,11 +58,12 @@ class AuditService:
         titulo: str,
         descripcion: str,
         tipo: str,
-        id_usuario: UUID = None,
+        id_usuario = None,
     ) -> Notificacion:
         """Crea una notificación"""
+        user_uuid = AuditService._coerce_uuid(id_usuario)
         notification = Notificacion(
-            id_usuario=id_usuario,
+            id_usuario=user_uuid,
             titulo=titulo,
             descripcion=descripcion,
             tipo=tipo,
