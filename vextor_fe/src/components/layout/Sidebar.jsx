@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   Truck,
   Users,
+  UserCheck,
   MapPin,
   Wrench,
   BarChart3,
@@ -12,7 +13,12 @@ import {
   ChevronLeft,
   Menu,
   X,
-  LogOut
+  LogOut,
+  Bell,
+  Calendar,
+  History,
+  User,
+  Activity
 } from 'lucide-react';
 import { Logo } from '../ui/Logo';
 import { Badge } from '../ui/Badge';
@@ -34,14 +40,16 @@ const adminMenuGroups = [
     items: [
       { path: '/dashboard', labelKey: 'sidebar.dashboard', labelDefault: 'Dashboard', icon: LayoutDashboard },
       { path: '/routes', labelKey: 'sidebar.routes', labelDefault: 'Rutas y Rastreo', icon: MapPin },
+      { path: '/recorridos', labelText: 'Gestión de Recorridos', icon: Activity },
     ]
   },
   {
     titleKey: 'sidebar.groupFleet',
-    titleDefault: 'GESTIÓN DE FLOTA',
+    titleDefault: 'GESTIÓN DE FLOTA Y PERSONAL',
     items: [
-      { path: '/vehicles', labelKey: 'sidebar.vehicles', labelDefault: 'Vehículos', icon: Truck },
+      { path: '/users', labelText: 'Gestión de Usuarios', icon: UserCheck },
       { path: '/drivers', labelKey: 'sidebar.drivers', labelDefault: 'Conductores', icon: Users },
+      { path: '/vehicles', labelKey: 'sidebar.vehicles', labelDefault: 'Buses y Vehículos', icon: Truck },
       { path: '/maintenance', labelKey: 'sidebar.maintenance', labelDefault: 'Mantenimiento', icon: Wrench },
     ]
   },
@@ -60,8 +68,34 @@ const driverMenuGroups = [
     titleKey: 'sidebar.groupOperation',
     titleDefault: 'OPERACIÓN CONDUCTOR',
     items: [
-      { path: '/driver/my-routes', labelText: 'Mis Rutas Asignadas', icon: MapPin },
-      { path: '/settings', labelText: 'Configuración de Cuenta', icon: Settings },
+      { path: '/driver/my-routes', labelText: 'Inicio / Mis Rutas', icon: MapPin },
+      { path: '/driver/my-bus', labelText: 'Mi Bus Asignado', icon: Truck },
+      { path: '/driver/notifications', labelText: 'Notificaciones', icon: Bell },
+      { path: '/user/profile', labelText: 'Mi Perfil', icon: User },
+      { path: '/settings', labelText: 'Configuración', icon: Settings },
+    ]
+  }
+];
+
+const userMenuGroups = [
+  {
+    titleKey: 'sidebar.groupUserMain',
+    titleDefault: 'SERVICIOS Y CONSULTAS',
+    items: [
+      { path: '/user/home', labelText: 'Inicio', icon: LayoutDashboard },
+      { path: '/user/buses', labelText: 'Consulta de Buses', icon: Truck },
+      { path: '/user/routes', labelText: 'Consulta de Rutas', icon: MapPin },
+      { path: '/user/schedules', labelText: 'Horarios', icon: Calendar },
+    ]
+  },
+  {
+    titleKey: 'sidebar.groupUserActivity',
+    titleDefault: 'ACTIVIDAD Y MI CUENTA',
+    items: [
+      { path: '/user/history', labelText: 'Historial / Recorridos', icon: History },
+      { path: '/user/notifications', labelText: 'Notificaciones', icon: Bell },
+      { path: '/user/profile', labelText: 'Mi Perfil', icon: User },
+      { path: '/settings', labelText: 'Configuración', icon: Settings },
     ]
   }
 ];
@@ -69,7 +103,14 @@ const driverMenuGroups = [
 const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen }) => {
   const { user, logout } = useAuth();
   const isConductor = user?.role === 'rol-conductor' || user?.role === 'Conductor';
-  const menuGroups = isConductor ? driverMenuGroups : adminMenuGroups;
+  const isUsuario = user?.role === 'usuario' || user?.role === 'rol-usuario' || user?.role === 'Usuario' || user?.role === 'User';
+
+  let menuGroups = adminMenuGroups;
+  if (isConductor) {
+    menuGroups = driverMenuGroups;
+  } else if (isUsuario) {
+    menuGroups = userMenuGroups;
+  }
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();
