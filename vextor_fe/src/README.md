@@ -29,3 +29,4 @@ Esta carpeta contiene la implementación completa de la interfaz de usuario de V
 5. **Registrar la ruta:** En `src/routes/AppRouter.jsx`.
 6. **Agregar enlace de navegación:** En `src/components/layout/Sidebar.jsx`.
 7. **Documentar el módulo:** Crear un `README.md` explicativo dentro de `src/pages/NuevoModulo/`.
+x
