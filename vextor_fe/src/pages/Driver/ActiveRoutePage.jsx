@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL, WS_BASE_URL } from '../../config/api';
@@ -23,6 +23,8 @@ import {
 import { Button } from '../../components/ui/Button';
 import MapComponent from '../Routes/components/MapComponent';
 import { showConfirm, showAlert } from '../../utils/sweetalert';
+
+const EMPTY_ROUTES = [];
 
 const ActiveRoutePage = () => {
   const { idRuta } = useParams();
@@ -303,7 +305,7 @@ const ActiveRoutePage = () => {
     }
   };
 
-  const handleRouteCalculated = (metrics) => {
+  const handleRouteCalculated = useCallback((metrics) => {
     if (!metrics) {
       setRouteMetrics({ distance: '--', duration: '--', instructions: [] });
       return;
@@ -313,7 +315,7 @@ const ActiveRoutePage = () => {
       duration: metrics.duration || '--',
       instructions: metrics.instructions || []
     });
-  };
+  }, []);
 
   const getRouteStatusBadge = (status) => {
     switch (status) {
@@ -540,7 +542,7 @@ const ActiveRoutePage = () => {
         {/* Map Container (Takes 2 Columns) */}
         <div className="lg:col-span-2 h-[380px] sm:h-[500px] lg:h-[650px] relative rounded-3xl overflow-hidden border border-v-dark-border shadow-2xl">
           <MapComponent
-            routes={[]}
+            routes={EMPTY_ROUTES}
             activeRoute={activeRoute}
             driverPosition={currentPosition}
             isNavigationMode={true}

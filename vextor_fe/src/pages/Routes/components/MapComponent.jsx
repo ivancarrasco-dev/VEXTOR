@@ -157,19 +157,33 @@ const MapComponent = ({
   const routingGenerationRef = useRef(0);
   const routePolylineRef = useRef(null);
   const myLocationMarkerRef = useRef(null);
+  const lastRouteKeyRef = useRef(null);
 
   // Click outside to close dropdown ref
   const dropdownRef = useRef(null);
 
-  // Helper to safely parse coordinate string "lat, lng" into [lat, lng] array
+  // Helper to safely parse coordinate string "lat, lng" or "lng, lat" into normalized [lat, lng] array
   const parseCoordinates = (coordString) => {
-    if (!coordString) return null;
+    if (!coordString || typeof coordString !== 'string') return null;
     const parts = coordString.split(',');
     if (parts.length !== 2) return null;
-    const lat = parseFloat(parts[0]);
-    const lng = parseFloat(parts[1]);
-    if (isNaN(lat) || isNaN(lng)) return null;
-    return [lat, lng];
+    let val1 = parseFloat(parts[0].trim());
+    let val2 = parseFloat(parts[1].trim());
+    if (isNaN(val1) || isNaN(val2)) return null;
+
+    // Detect if coordinates are in [lng, lat] format instead of [lat, lng].
+    // In Colombia / Western Hemisphere: Latitude is ~4.7 (between -90 and 90),
+    // and Longitude is ~-74.0 (between -180 and 180).
+    // If val1 magnitude > 30 (or val1 < -10) and val2 magnitude <= 30, val1 is longitude.
+    if (Math.abs(val1) > 30 && Math.abs(val2) <= 30) {
+      return [val2, val1];
+    }
+
+    if (Math.abs(val1) <= 90 && Math.abs(val2) <= 180) {
+      return [val1, val2];
+    }
+
+    return null;
   };
 
   const resolveCoordsAsync = async (locationStr) => {
@@ -315,6 +329,7 @@ const MapComponent = ({
           map.removeLayer(routePolylineRef.current);
         }
         routePolylineRef.current = null;
+        lastRouteKeyRef.current = null;
 
         if (trafficLayerRef.current && map.hasLayer(trafficLayerRef.current)) {
           map.removeLayer(trafficLayerRef.current);
@@ -471,6 +486,25 @@ const MapComponent = ({
     const map = mapInstanceRef.current;
     if (!map) return;
 
+    // Generate unique key representing the target route state
+    const currentRouteKey = activeRoute
+      ? `${activeRoute.id_ruta || ''}|${activeRoute.origen || ''}|${activeRoute.destino || ''}`
+      : `${selectedOrigin || ''}|${selectedDestination || ''}`;
+
+    // If route identity/endpoints haven't changed and we already have a polyline, skip re-calculating
+    if (lastRouteKeyRef.current === currentRouteKey && routePolylineRef.current && map.hasLayer(routePolylineRef.current)) {
+      return;
+    }
+
+    lastRouteKeyRef.current = currentRouteKey;
+
+    // Reset vehicle trajectory history when switching/resetting routes
+    pathHistoryRef.current = [];
+    if (completedPolylineRef.current && map.hasLayer(completedPolylineRef.current)) {
+      map.removeLayer(completedPolylineRef.current);
+      completedPolylineRef.current = null;
+    }
+
     // Increment generation token to invalidate any pending async callbacks
     routingGenerationRef.current += 1;
     const currentGen = routingGenerationRef.current;
@@ -567,6 +601,10 @@ const MapComponent = ({
             const latLngs = route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
             if (latLngs.length < 2) throw new Error('La geometría recibida no contiene suficientes puntos.');
 
+            if (routePolylineRef.current && map.hasLayer(routePolylineRef.current)) {
+              map.removeLayer(routePolylineRef.current);
+            }
+
             const polyline = L.polyline(latLngs, {
               color: '#10b981',
               weight: 6,
@@ -610,13 +648,29 @@ const MapComponent = ({
   // Update vehicle position marker and center view when autoFollow is active
   useEffect(() => {
     const map = mapInstanceRef.current;
-    if (!map || !driverPosition || !driverPosition.lat || !driverPosition.lng) return;
+    if (!map) return;
+
+    if (!driverPosition || !driverPosition.lat || !driverPosition.lng) {
+      if (vehicleMarkerRef.current && map.hasLayer(vehicleMarkerRef.current)) {
+        map.removeLayer(vehicleMarkerRef.current);
+        vehicleMarkerRef.current = null;
+      }
+      return;
+    }
 
     const { lat, lng, heading } = driverPosition;
     const vehicleLatLng = [lat, lng];
 
-    // Update path history array
-    pathHistoryRef.current.push(vehicleLatLng);
+    // Basic coordinate bounds sanity check
+    if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return;
+
+    // Append to path history only if position actually changed
+    const lastPos = pathHistoryRef.current[pathHistoryRef.current.length - 1];
+    const hasMoved = !lastPos || Math.abs(lastPos[0] - lat) > 0.00005 || Math.abs(lastPos[1] - lng) > 0.00005;
+
+    if (hasMoved) {
+      pathHistoryRef.current.push(vehicleLatLng);
+    }
 
     if (!vehicleMarkerRef.current) {
       vehicleMarkerRef.current = L.marker(vehicleLatLng, { icon: createVehicleIcon(heading || 0) })
