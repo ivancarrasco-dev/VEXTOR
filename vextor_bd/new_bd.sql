@@ -493,3 +493,6 @@ CREATE POLICY rls_auditoria_bitacora_tenant ON auditoria_bitacora FOR SELECT
     USING (id_empresa = auth.get_user_empresa_id());
 
 COMMIT;
+
+
+NO RECOMENDABLE
