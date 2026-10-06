@@ -40,8 +40,15 @@ const ProtectedRoute = ({ adminOnly = false }) => {
   }
 
   const isConductor = user?.role === 'rol-conductor' || user?.role === 'Conductor';
-  if (adminOnly && isConductor) {
-    return <Navigate to="/driver/my-routes" replace />;
+  const isUsuario = user?.role === 'usuario' || user?.role === 'rol-usuario' || user?.role === 'Usuario' || user?.role === 'User';
+
+  if (adminOnly) {
+    if (isConductor) {
+      return <Navigate to="/driver/my-routes" replace />;
+    }
+    if (isUsuario) {
+      return <Navigate to="/user/home" replace />;
+    }
   }
 
   return <Outlet />;
