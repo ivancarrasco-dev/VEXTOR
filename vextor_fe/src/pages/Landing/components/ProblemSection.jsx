@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   FileText,
@@ -149,12 +150,12 @@ const ProblemSection = () => {
               </p>
             </div>
 
-            <a href="#contacto" className="mt-6">
+            <Link to="/contacto" className="mt-6">
               <Button variant="secondary" className="w-full justify-center font-semibold text-xs sm:text-sm h-11">
                 Solicitar Demostración
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
-            </a>
+            </Link>
           </motion.div>
 
         </div>

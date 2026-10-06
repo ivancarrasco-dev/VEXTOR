@@ -170,23 +170,20 @@ const Routes = () => {
 
     // Setup WebSocket for live updates
     let ws = null;
-    const storedToken = localStorage.getItem('vextor_auth_token');
-    if (storedToken) {
-      try {
-        ws = new WebSocket(`${WS_BASE_URL}/ws/tracking?token=${encodeURIComponent(storedToken)}`);
-        ws.onmessage = (event) => {
-          try {
-            const payload = JSON.parse(event.data);
-            if (payload.type === 'location_broadcast') {
-              fetchActiveTrackings();
-            }
-          } catch (e) {
-            console.warn('WS message parse error:', e);
+    try {
+      ws = new WebSocket(`${WS_BASE_URL}/ws/tracking`);
+      ws.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.type === 'location_broadcast') {
+            fetchActiveTrackings();
           }
-        };
-      } catch (err) {
-        console.warn('WS error on admin routes:', err);
-      }
+        } catch (e) {
+          console.warn('WS message parse error:', e);
+        }
+      };
+    } catch (err) {
+      console.warn('WS error on admin routes:', err);
     }
 
     return () => {

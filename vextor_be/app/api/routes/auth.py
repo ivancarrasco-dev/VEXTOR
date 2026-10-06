@@ -47,21 +47,25 @@ def register(req: RegisterRequest, request: Request, db: Session = Depends(get_d
     try:
         user = AuthService.register_user(req.email, req.password, req.fullName, db)
         
-        # Auditoría
-        AuditService.record_activity(
-            db,
-            id_usuario=user.id_usuario,
-            nombres_usuario=f"{user.nombres_usuario} {user.apellidos_usuario}".strip(),
-            tipo_accion="REGISTRO",
-            modulo="Autenticación",
-            descripcion=f"Nuevo usuario registrado: {user.correo_usuario}",
-            resultado="EXITOSO",
-        )
+        # Auditoría defensiva
+        try:
+            AuditService.record_activity(
+                db,
+                id_usuario=user.id_usuario,
+                nombres_usuario=f"{user.nombres_usuario} {user.apellidos_usuario}".strip(),
+                tipo_accion="REGISTRO",
+                modulo="Autenticación",
+                descripcion=f"Nuevo usuario registrado: {user.correo_usuario}",
+                resultado="EXITOSO",
+            )
+        except Exception as audit_err:
+            print(f"Advertencia: No se pudo registrar la auditoría de registro: {audit_err}")
         
         return {"message": "Usuario creado correctamente"}
     except HTTPException:
         raise
     except Exception as e:
+        db.rollback()
         print(f"Error en registro: {e}")
         raise HTTPException(status_code=500, detail="Ocurrió un error interno procesando la solicitud.")
 
@@ -86,16 +90,19 @@ def login(req: LoginRequest, request: Request, response: Response, db: Session =
         
         from uuid import UUID
         # Auditoría
-        AuditService.record_activity(
-            db,
-            id_usuario=UUID(user_info["id"]) if isinstance(user_info["id"], str) else user_info["id"],
-            nombres_usuario=user_info["name"],
-            tipo_accion="LOGIN",
-            modulo="Autenticación",
-            descripcion=f"Inicio de sesión exitoso",
-            ip_origen=get_client_ip(request),
-            resultado="EXITOSO",
-        )
+        try:
+            AuditService.record_activity(
+                db,
+                id_usuario=user_info["id"],
+                nombres_usuario=user_info["name"],
+                tipo_accion="LOGIN",
+                modulo="Autenticación",
+                descripcion="Inicio de sesión exitoso",
+                ip_origen=get_client_ip(request),
+                resultado="EXITOSO",
+            )
+        except Exception as audit_err:
+            print(f"Error registrando auditoría de login: {audit_err}")
         
         return {
             "token": token,
