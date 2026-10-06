@@ -72,8 +72,11 @@ const Login = () => {
 
     try {
       const user = await login(formData.email, formData.password);
-      if (user?.role === 'rol-conductor' || user?.role === 'Conductor') {
+      const userRole = (user?.role || '').toLowerCase();
+      if (userRole.includes('conductor') || userRole.includes('driver')) {
         navigate('/driver/my-routes');
+      } else if (userRole.includes('user') || userRole.includes('usuario') || userRole.includes('cliente')) {
+        navigate('/user/home');
       } else {
         navigate('/dashboard');
       }

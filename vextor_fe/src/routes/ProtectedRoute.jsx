@@ -39,9 +39,17 @@ const ProtectedRoute = ({ adminOnly = false }) => {
     return <Navigate to="/login" replace />;
   }
 
-  const isConductor = user?.role === 'rol-conductor' || user?.role === 'Conductor';
-  if (adminOnly && isConductor) {
-    return <Navigate to="/driver/my-routes" replace />;
+  const userRole = (user?.role || '').toLowerCase();
+  const isConductor = userRole.includes('conductor') || userRole.includes('driver');
+  const isUsuario = userRole.includes('usuario') || userRole.includes('user') || userRole.includes('cliente');
+
+  if (adminOnly) {
+    if (isConductor) {
+      return <Navigate to="/driver/my-routes" replace />;
+    }
+    if (isUsuario) {
+      return <Navigate to="/user/home" replace />;
+    }
   }
 
   return <Outlet />;
