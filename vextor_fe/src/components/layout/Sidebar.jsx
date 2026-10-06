@@ -66,13 +66,13 @@ const adminMenuGroups = [
 const driverMenuGroups = [
   {
     titleKey: 'sidebar.groupOperation',
-    titleDefault: 'OPERACIÓN CONDUCTOR',
+    titleDefault: 'PANEL DE CONDUCTOR',
     items: [
-      { path: '/driver/my-routes', labelText: 'Inicio / Mis Rutas', icon: MapPin },
-      { path: '/driver/my-bus', labelText: 'Mi Bus Asignado', icon: Truck },
-      { path: '/driver/notifications', labelText: 'Notificaciones', icon: Bell },
+      { path: '/driver/my-routes', labelText: 'Dashboard', icon: LayoutDashboard },
+      { path: '/driver/active-route', labelText: 'Mi Ruta', icon: MapPin },
+      { path: '/driver/my-bus', labelText: 'Mi Bus', icon: Truck },
+      { path: '/driver/notifications', labelText: 'Novedades / Notificaciones', icon: Bell },
       { path: '/user/profile', labelText: 'Mi Perfil', icon: User },
-      { path: '/settings', labelText: 'Configuración', icon: Settings },
     ]
   }
 ];
@@ -80,22 +80,14 @@ const driverMenuGroups = [
 const userMenuGroups = [
   {
     titleKey: 'sidebar.groupUserMain',
-    titleDefault: 'SERVICIOS Y CONSULTAS',
+    titleDefault: 'SERVICIOS VEXTOR',
     items: [
       { path: '/user/home', labelText: 'Inicio', icon: LayoutDashboard },
-      { path: '/user/buses', labelText: 'Consulta de Buses', icon: Truck },
-      { path: '/user/routes', labelText: 'Consulta de Rutas', icon: MapPin },
-      { path: '/user/schedules', labelText: 'Horarios', icon: Calendar },
-    ]
-  },
-  {
-    titleKey: 'sidebar.groupUserActivity',
-    titleDefault: 'ACTIVIDAD Y MI CUENTA',
-    items: [
-      { path: '/user/history', labelText: 'Historial / Recorridos', icon: History },
+      { path: '/user/buses', labelText: 'Buses', icon: Truck },
+      { path: '/user/routes', labelText: 'Rutas y Horarios', icon: MapPin },
+      { path: '/user/history', labelText: 'Historial', icon: History },
       { path: '/user/notifications', labelText: 'Notificaciones', icon: Bell },
-      { path: '/user/profile', labelText: 'Mi Perfil', icon: User },
-      { path: '/settings', labelText: 'Configuración', icon: Settings },
+      { path: '/user/profile', labelText: 'Perfil y Configuración', icon: User },
     ]
   }
 ];

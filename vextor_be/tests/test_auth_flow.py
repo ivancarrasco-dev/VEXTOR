@@ -134,6 +134,9 @@ def test_login_success_and_me_and_logout_flow(test_db_auth):
 
 def test_revoked_session_denies_access(test_db_auth):
     """Verifica que si una sesión se marca como REVOCADA en BD, /api/auth/me devuelve 401"""
+    from app.core.rate_limiter import auth_rate_limiter
+    auth_rate_limiter.requests.clear()
+
     client = TestClient(app)
 
     login_res = client.post(
