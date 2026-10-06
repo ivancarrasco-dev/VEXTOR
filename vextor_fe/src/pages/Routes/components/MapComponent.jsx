@@ -157,6 +157,7 @@ const MapComponent = ({
   const routingGenerationRef = useRef(0);
   const routePolylineRef = useRef(null);
   const myLocationMarkerRef = useRef(null);
+  const lastRouteKeyRef = useRef(null);
 
   // Click outside to close dropdown ref
   const dropdownRef = useRef(null);
@@ -315,6 +316,7 @@ const MapComponent = ({
           map.removeLayer(routePolylineRef.current);
         }
         routePolylineRef.current = null;
+        lastRouteKeyRef.current = null;
 
         if (trafficLayerRef.current && map.hasLayer(trafficLayerRef.current)) {
           map.removeLayer(trafficLayerRef.current);
@@ -470,6 +472,18 @@ const MapComponent = ({
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
+
+    // Generate unique key representing the target route state
+    const currentRouteKey = activeRoute
+      ? `${activeRoute.id_ruta || ''}|${activeRoute.origen || ''}|${activeRoute.destino || ''}`
+      : `${selectedOrigin || ''}|${selectedDestination || ''}`;
+
+    // If route identity/endpoints haven't changed and we already have a polyline, skip re-calculating
+    if (lastRouteKeyRef.current === currentRouteKey && routePolylineRef.current && map.hasLayer(routePolylineRef.current)) {
+      return;
+    }
+
+    lastRouteKeyRef.current = currentRouteKey;
 
     // Increment generation token to invalidate any pending async callbacks
     routingGenerationRef.current += 1;
