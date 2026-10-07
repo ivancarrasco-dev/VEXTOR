@@ -30,18 +30,22 @@ import { showConfirm, showAlert } from '../../utils/sweetalert';
 import { useAuth } from '../../context/AuthContext';
 import IncidentReportModal from '../../components/modals/IncidentReportModal';
 import PassengerListModal from '../../components/modals/PassengerListModal';
+import { batchReverseGeocode } from '../../utils/geocoding';
 
 const MyRoutes = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
   const [loading, setLoading] = useState(true);
+  const [addressMap, setAddressMap] = useState({});
   const [data, setData] = useState({
     conductor: null,
     active_route: null,
     assigned_routes: [],
     history_routes: []
   });
+
+  const getAddress = (locationStr) => addressMap[locationStr] || locationStr;
 
   // Driver Duty Status State
   const [dutyStatus, setDutyStatus] = useState('DISPONIBLE');
@@ -56,10 +60,24 @@ const MyRoutes = () => {
     try {
       setLoading(true);
       const res = await axios.get(`${API_BASE_URL}/api/routes/driver/my-routes`);
-      setData(res.data);
-      if (res.data?.conductor?.estado_conductor) {
-        setDutyStatus(res.data.conductor.estado_conductor);
+      const routeData = res.data;
+      setData(routeData);
+
+      if (routeData?.conductor?.estado_conductor) {
+        setDutyStatus(routeData.conductor.estado_conductor);
       }
+
+      // Collect all location coordinate strings for reverse geocoding
+      const locations = [];
+      if (routeData?.active_route) {
+        locations.push(routeData.active_route.origen, routeData.active_route.destino);
+      }
+      (routeData?.assigned_routes || []).forEach(r => locations.push(r.origen, r.destino));
+      (routeData?.history_routes || []).forEach(r => locations.push(r.origen, r.destino));
+
+      batchReverseGeocode(locations).then(resolvedMap => {
+        setAddressMap(prev => ({ ...prev, ...resolvedMap }));
+      });
     } catch (err) {
       console.error('Error fetching driver routes:', err);
     } finally {
@@ -363,11 +381,11 @@ const MyRoutes = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-v-gray">
                   <div className="flex items-center gap-2">
                     <MapPin size={16} className="text-emerald-500 shrink-0" />
-                    <span>Origen: <strong className="text-v-white">{active_route.origen}</strong></span>
+                    <span>Origen: <strong className="text-v-white">{getAddress(active_route.origen)}</strong></span>
                   </div>
                   <div className="flex items-center gap-2">
                     <MapPin size={16} className="text-red-500 shrink-0" />
-                    <span>Destino: <strong className="text-v-white">{active_route.destino}</strong></span>
+                    <span>Destino: <strong className="text-v-white">{getAddress(active_route.destino)}</strong></span>
                   </div>
                   {active_route.vehiculo && (
                     <div className="flex items-center gap-2 sm:col-span-2">
@@ -461,11 +479,11 @@ const MyRoutes = () => {
                   <div className="space-y-2 text-xs text-v-gray">
                     <div className="flex items-start gap-2">
                       <MapPin size={14} className="text-emerald-500 mt-0.5 shrink-0" />
-                      <span>Origen: <strong className="text-v-white">{route.origen}</strong></span>
+                      <span>Origen: <strong className="text-v-white">{getAddress(route.origen)}</strong></span>
                     </div>
                     <div className="flex items-start gap-2">
                       <MapPin size={14} className="text-red-500 mt-0.5 shrink-0" />
-                      <span>Destino: <strong className="text-v-white">{route.destino}</strong></span>
+                      <span>Destino: <strong className="text-v-white">{getAddress(route.destino)}</strong></span>
                     </div>
                     {route.vehiculo && (
                       <div className="flex items-center gap-2 pt-1 border-t border-v-dark-border">
@@ -538,8 +556,8 @@ const MyRoutes = () => {
                         <div className="text-[10px] text-primary">{hr.codigo_ruta}</div>
                       </td>
                       <td className="p-4 text-v-gray">
-                        <div><strong className="text-emerald-500">A:</strong> {hr.origen}</div>
-                        <div><strong className="text-red-500">B:</strong> {hr.destino}</div>
+                        <div><strong className="text-emerald-500">A:</strong> {getAddress(hr.origen)}</div>
+                        <div><strong className="text-red-500">B:</strong> {getAddress(hr.destino)}</div>
                       </td>
                       <td className="p-4">
                         {hr.vehiculo ? (

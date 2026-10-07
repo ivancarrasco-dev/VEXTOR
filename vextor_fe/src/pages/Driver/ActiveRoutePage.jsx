@@ -27,6 +27,7 @@ import MapComponent from '../Routes/components/MapComponent';
 import { showConfirm, showAlert } from '../../utils/sweetalert';
 import IncidentReportModal from '../../components/modals/IncidentReportModal';
 import PassengerListModal from '../../components/modals/PassengerListModal';
+import { reverseGeocodeAddress } from '../../utils/geocoding';
 
 const EMPTY_ROUTES = [];
 
@@ -96,34 +97,20 @@ const ActiveRoutePage = () => {
     }
   };
 
-  const resolveFriendlyAddresses = (orig, dest) => {
+  const resolveFriendlyAddresses = async (orig, dest) => {
     if (!orig || !dest) return;
-
     setOriginAddress(orig);
     setDestAddress(dest);
 
-    if (orig.includes(',')) {
-      const parts = orig.split(',');
-      if (parts.length === 2 && !isNaN(parseFloat(parts[0]))) {
-        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${parts[0].trim()}&lon=${parts[1].trim()}&accept-language=es`)
-          .then(r => r.json())
-          .then(data => {
-            if (data?.display_name) setOriginAddress(data.display_name);
-          })
-          .catch(e => console.warn('Origin reverse geocode error:', e));
-      }
-    }
-
-    if (dest.includes(',')) {
-      const parts = dest.split(',');
-      if (parts.length === 2 && !isNaN(parseFloat(parts[0]))) {
-        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${parts[0].trim()}&lon=${parts[1].trim()}&accept-language=es`)
-          .then(r => r.json())
-          .then(data => {
-            if (data?.display_name) setDestAddress(data.display_name);
-          })
-          .catch(e => console.warn('Dest reverse geocode error:', e));
-      }
+    try {
+      const [resolvedOrig, resolvedDest] = await Promise.all([
+        reverseGeocodeAddress(orig),
+        reverseGeocodeAddress(dest)
+      ]);
+      setOriginAddress(resolvedOrig);
+      setDestAddress(resolvedDest);
+    } catch (err) {
+      console.warn('Error resolving active route addresses:', err);
     }
   };
 
@@ -596,10 +583,7 @@ const ActiveRoutePage = () => {
                 <MapPin size={18} className="text-emerald-500 mt-0.5 shrink-0" />
                 <div className="text-xs space-y-0.5">
                   <span className="text-v-gray block font-semibold uppercase text-[10px] tracking-wider">Punto A - Origen:</span>
-                  <strong className="text-v-white text-sm block">{originAddress || activeRoute.origen}</strong>
-                  {originAddress !== activeRoute.origen && (
-                    <span className="text-[10px] text-v-gray font-mono block">Coords: {activeRoute.origen}</span>
-                  )}
+                  <strong className="text-v-white text-sm block leading-snug">{originAddress || activeRoute.origen}</strong>
                 </div>
               </div>
 
@@ -607,10 +591,7 @@ const ActiveRoutePage = () => {
                 <MapPin size={18} className="text-red-500 mt-0.5 shrink-0" />
                 <div className="text-xs space-y-0.5">
                   <span className="text-v-gray block font-semibold uppercase text-[10px] tracking-wider">Punto B - Destino:</span>
-                  <strong className="text-v-white text-sm block">{destAddress || activeRoute.destino}</strong>
-                  {destAddress !== activeRoute.destino && (
-                    <span className="text-[10px] text-v-gray font-mono block">Coords: {activeRoute.destino}</span>
-                  )}
+                  <strong className="text-v-white text-sm block leading-snug">{destAddress || activeRoute.destino}</strong>
                 </div>
               </div>
 
@@ -643,10 +624,17 @@ const ActiveRoutePage = () => {
                   <div className="max-h-60 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                     {routeMetrics.instructions.map((inst, idx) => (
                       <div key={idx} className="p-3 rounded-xl bg-v-dark border border-v-dark-border text-xs space-y-1">
-                        <p className="text-v-white font-medium">{inst.text}</p>
-                        {inst.distance && (
-                          <span className="text-[10px] text-v-gray block">
-                            En {(inst.distance / 1000).toFixed(1)} km
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-v-white font-semibold flex items-center gap-2">
+                            <span className="text-primary font-mono font-bold">{idx + 1}.</span>
+                            {inst.text}
+                          </p>
+                        </div>
+                        {inst.distance > 0 && (
+                          <span className="text-[10px] text-v-gray block font-mono pl-5">
+                            {inst.distance >= 1000
+                              ? `En ${(inst.distance / 1000).toFixed(1)} km`
+                              : `En ${Math.round(inst.distance)} m`}
                           </span>
                         )}
                       </div>
