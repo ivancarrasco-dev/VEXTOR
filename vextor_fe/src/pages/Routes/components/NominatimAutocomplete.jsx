@@ -7,6 +7,7 @@ const NominatimAutocomplete = ({
   value = '',
   onChange,
   onSelect,
+  onError,
   className,
   error,
 }) => {
@@ -17,11 +18,62 @@ const NominatimAutocomplete = ({
   const [activeIndex, setActiveIndex] = useState(-1);
   const wrapperRef = useRef(null);
   const searchTimeoutRef = useRef(null);
+  const lastResolvedQueryRef = useRef(value);
 
   // Sync internal query state with external value changes
   useEffect(() => {
     setQuery(value);
+    lastResolvedQueryRef.current = value;
   }, [value]);
+
+  // Geocode manual query string when Enter is pressed or on blur
+  const geocodeManual = async (textToSearch) => {
+    if (!textToSearch || textToSearch.trim().length < 3) return;
+    if (textToSearch === lastResolvedQueryRef.current) return;
+
+    setIsLoading(true);
+    const bogotaViewbox = '-74.25,4.85,-73.95,4.45';
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+      textToSearch
+    )}&countrycodes=co&viewbox=${bogotaViewbox}&bounded=0&addressdetails=1&limit=1`;
+
+    try {
+      const res = await fetch(url, {
+        headers: {
+          'Accept-Language': 'es',
+          'User-Agent': 'VextorFleetApp/1.0 (contact: info@vextor.com)'
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          const item = data[0];
+          const address = item.display_name;
+          const coordString = `${parseFloat(item.lat).toFixed(6)}, ${parseFloat(item.lon).toFixed(6)}`;
+          setQuery(address);
+          lastResolvedQueryRef.current = address;
+          setSuggestions([]);
+          setIsOpen(false);
+          setActiveIndex(-1);
+          onSelect?.({
+            address,
+            coordinates: coordString,
+          });
+          return;
+        }
+      }
+    } catch (err) {
+      console.error('Manual geocoding error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+
+    // Fallback if address could not be found
+    setSuggestions([]);
+    setIsOpen(false);
+    setQuery(value); // Revert to last valid address
+    onError?.(`No se pudo encontrar la dirección "${textToSearch}". Se mantiene la ubicación anterior.`);
+  };
 
   // Handle click outside to close dropdown
   useEffect(() => {
@@ -109,6 +161,7 @@ const NominatimAutocomplete = ({
     const coordString = `${item.lat.toFixed(6)}, ${item.lon.toFixed(6)}`;
 
     setQuery(address);
+    lastResolvedQueryRef.current = address;
     setSuggestions([]);
     setIsOpen(false);
     setActiveIndex(-1);
@@ -129,6 +182,16 @@ const NominatimAutocomplete = ({
   };
 
   const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (isOpen && activeIndex >= 0 && activeIndex < suggestions.length) {
+        handleSelectSuggestion(suggestions[activeIndex]);
+      } else {
+        geocodeManual(query);
+      }
+      return;
+    }
+
     if (!isOpen || suggestions.length === 0) return;
 
     if (e.key === 'ArrowDown') {
@@ -137,11 +200,6 @@ const NominatimAutocomplete = ({
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setActiveIndex((prev) => (prev - 1 + suggestions.length) % suggestions.length);
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      if (activeIndex >= 0 && activeIndex < suggestions.length) {
-        handleSelectSuggestion(suggestions[activeIndex]);
-      }
     } else if (e.key === 'Escape') {
       setIsOpen(false);
     }
@@ -159,6 +217,13 @@ const NominatimAutocomplete = ({
           value={query}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
+          onBlur={() => {
+            setTimeout(() => {
+              if (query && query !== lastResolvedQueryRef.current) {
+                geocodeManual(query);
+              }
+            }, 200);
+          }}
           onFocus={() => {
             if (query.trim().length >= 3) {
               setIsOpen(true);
