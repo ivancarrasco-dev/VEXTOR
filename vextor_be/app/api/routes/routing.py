@@ -14,6 +14,109 @@ router = APIRouter(prefix="/api/routing", tags=["Routing"])
 osrm_service = OsrmService()
 
 
+def _generate_instruction_text(
+    maneuver_type: str,
+    modifier: str,
+    street_name: str,
+    exit_number: int | None = None,
+) -> str:
+    """Genera texto descriptivo en español para una indicación de navegación basada en OSRM."""
+    modifier_map = {
+        "right": "a la derecha",
+        "left": "a la izquierda",
+        "slight right": "levemente a la derecha",
+        "slight left": "levemente a la izquierda",
+        "sharp right": "pronunciadamente a la derecha",
+        "sharp left": "pronunciadamente a la izquierda",
+        "straight": "de frente",
+        "uturn": "en U",
+    }
+    direction = modifier_map.get(modifier, "")
+
+    if maneuver_type == "depart":
+        if street_name:
+            return f"Inicia el recorrido por {street_name}"
+        return "Inicia el recorrido"
+
+    if maneuver_type == "arrive":
+        if street_name:
+            return f"Has llegado a tu destino en {street_name}"
+        return "Has llegado a tu destino"
+
+    if maneuver_type in ("turn", "on ramp", "off ramp", "ramp"):
+        if maneuver_type == "on ramp":
+            action = f"Toma la rampa {direction}" if direction else "Toma la rampa"
+        elif maneuver_type == "off ramp":
+            action = f"Toma la salida {direction}" if direction else "Toma la salida"
+        elif modifier == "uturn":
+            action = "Haz un giro en U"
+        else:
+            action = f"Gira {direction}" if direction else "Gira"
+
+        if street_name:
+            return f"{action} hacia {street_name}" if maneuver_type in ("on ramp", "off ramp") else f"{action} por {street_name}"
+        return action
+
+    if maneuver_type in ("continue", "new name", "notification"):
+        if modifier in ("slight right", "slight left", "right", "left"):
+            action = f"Mantente {direction}"
+        else:
+            action = "Continúa de frente"
+
+        if street_name:
+            return f"{action} por {street_name}"
+        return action
+
+    if maneuver_type == "fork":
+        if modifier in ("left", "slight left", "sharp left"):
+            action = "En la bifurcación, mantente a la izquierda"
+        else:
+            action = "En la bifurcación, mantente a la derecha"
+        if street_name:
+            return f"{action} hacia {street_name}"
+        return action
+
+    if maneuver_type == "merge":
+        if modifier in ("left", "slight left"):
+            action = "Incorpórate a la izquierda"
+        else:
+            action = "Incorpórate a la derecha"
+        if street_name:
+            return f"{action} en {street_name}"
+        return action
+
+    if maneuver_type in ("roundabout", "rotary", "roundabout turn"):
+        if exit_number:
+            action = f"En la rotonda, toma la salida {exit_number}"
+        else:
+            action = "Ingresa a la rotonda"
+        if street_name:
+            return f"{action} hacia {street_name}"
+        return action
+
+    if maneuver_type == "end of road":
+        if modifier in ("left", "slight left", "sharp left"):
+            action = "Al final de la vía, gira a la izquierda"
+        elif modifier in ("right", "slight right", "sharp right"):
+            action = "Al final de la vía, gira a la derecha"
+        else:
+            action = "Al final de la vía, continúa"
+        if street_name:
+            return f"{action} por {street_name}"
+        return action
+
+    if direction:
+        action = f"Gira {direction}"
+        if street_name:
+            return f"{action} por {street_name}"
+        return action
+
+    if street_name:
+        return f"Continúa por {street_name}"
+
+    return "Continúa por la ruta"
+
+
 @router.get("/health", response_model=RoutingHealth)
 def health_check(db: Session = Depends(get_db)):
     """Verifica que OSRM esté disponible"""
@@ -49,13 +152,26 @@ def calculate_route(req: RoutingRouteRequest, db: Session = Depends(get_db)):
         if "legs" in route:
             for leg in route["legs"]:
                 for step in leg.get("steps", []):
-                    for instruction in step.get("intersections", []):
-                        instructions.append({
-                            "text": step.get("maneuver", {}).get("instruction", ""),
-                            "distance": step.get("distance", 0),
-                            "duration": step.get("duration", 0),
-                            "type": step.get("maneuver", {}).get("type", ""),
-                        })
+                    maneuver = step.get("maneuver", {})
+                    m_type = maneuver.get("type", "")
+                    m_modifier = maneuver.get("modifier", "")
+                    m_exit = maneuver.get("exit")
+                    street_name = step.get("name", "").strip()
+                    distance = step.get("distance", 0)
+                    duration = step.get("duration", 0)
+
+                    existing_text = maneuver.get("instruction") or ""
+                    if existing_text.strip():
+                        text = existing_text.strip()
+                    else:
+                        text = _generate_instruction_text(m_type, m_modifier, street_name, m_exit)
+
+                    instructions.append({
+                        "text": text,
+                        "distance": distance,
+                        "duration": duration,
+                        "type": m_type,
+                    })
         
         return {
             "distance": route.get("distance", 0),
