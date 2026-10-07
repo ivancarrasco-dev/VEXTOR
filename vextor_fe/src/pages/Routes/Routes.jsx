@@ -255,25 +255,33 @@ const Routes = () => {
   // Click on Map coordinates callback
   const handleSelectPointsOnMap = ({ coordinates, address }) => {
     setFormData(prev => {
-      let updated = { ...prev };
-
       if (!prev.origen) {
-        updated.origen = coordinates;
         setOrigenSearch(address);
         if (formErrors.origen) setFormErrors(errs => ({ ...errs, origen: '' }));
-      } else if (prev.origen && !prev.destino) {
-        updated.destino = coordinates;
+        return { ...prev, origen: coordinates };
+      } else if (!prev.destino) {
         setDestinoSearch(address);
         if (formErrors.destino) setFormErrors(errs => ({ ...errs, destino: '' }));
-      } else {
-        // Reset both and start fresh with clicked point as Origin
-        updated.origen = coordinates;
-        updated.destino = '';
-        setOrigenSearch(address);
-        setDestinoSearch('');
-        setRouteInfo(null);
+        return { ...prev, destino: coordinates };
       }
-      return updated;
+      // If both origin and destination exist, a 3rd map click does NOT erase or overwrite either point.
+      return prev;
+    });
+  };
+
+  // Drag marker callback (independently updates origin or destination)
+  const handleMarkerDragEnd = ({ type, coordinates, address }) => {
+    setFormData(prev => {
+      if (type === 'origin') {
+        setOrigenSearch(address);
+        if (formErrors.origen) setFormErrors(errs => ({ ...errs, origen: '' }));
+        return { ...prev, origen: coordinates };
+      } else if (type === 'destination') {
+        setDestinoSearch(address);
+        if (formErrors.destino) setFormErrors(errs => ({ ...errs, destino: '' }));
+        return { ...prev, destino: coordinates };
+      }
+      return prev;
     });
   };
 
@@ -634,6 +642,7 @@ const Routes = () => {
               selectedOrigin={formData.origen}
               selectedDestination={formData.destino}
               onSelectPoints={handleSelectPointsOnMap}
+              onMarkerDragEnd={handleMarkerDragEnd}
               onRouteCalculated={(info) => setRouteInfo(info)}
             />
           </div>
@@ -826,13 +835,9 @@ const Routes = () => {
                     setFormData(prev => ({ ...prev, origen: coordinates }));
                     if (formErrors.origen) setFormErrors(errs => ({ ...errs, origen: '' }));
                   }}
+                  onError={(msg) => showFeedback('error', msg)}
                   error={formErrors.origen}
                 />
-                {formData.origen && (
-                  <span className="text-[10px] font-mono text-v-gray mt-1 block px-2 py-0.5 bg-v-dark/40 rounded max-w-max">
-                    Coords: {formData.origen}
-                  </span>
-                )}
                 {formErrors.origen && <p className="text-[11px] text-red-500 mt-0.5 font-medium">{formErrors.origen}</p>}
               </div>
 
@@ -850,13 +855,9 @@ const Routes = () => {
                     setFormData(prev => ({ ...prev, destino: coordinates }));
                     if (formErrors.destino) setFormErrors(errs => ({ ...errs, destino: '' }));
                   }}
+                  onError={(msg) => showFeedback('error', msg)}
                   error={formErrors.destino}
                 />
-                {formData.destino && (
-                  <span className="text-[10px] font-mono text-v-gray mt-1 block px-2 py-0.5 bg-v-dark/40 rounded max-w-max">
-                    Coords: {formData.destino}
-                  </span>
-                )}
                 {formErrors.destino && <p className="text-[11px] text-red-500 mt-0.5 font-medium">{formErrors.destino}</p>}
               </div>
 

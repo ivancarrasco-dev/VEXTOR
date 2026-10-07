@@ -131,6 +131,7 @@ const MapComponent = ({
   driverPosition = null,
   isNavigationMode = false,
   onSelectPoints,
+  onMarkerDragEnd,
   onRouteCalculated,
 }) => {
   const { theme } = useTheme();
@@ -575,16 +576,60 @@ const MapComponent = ({
       if (currentGen !== routingGenerationRef.current || !mapInstanceRef.current) return;
 
       if (originToDraw) {
-        const origMarker = L.marker(originToDraw, { icon: createMarkerIcon('origin', 'A') })
+        const origMarker = L.marker(originToDraw, {
+          icon: createMarkerIcon('origin', 'A'),
+          draggable: true
+        })
           .bindPopup(`<b>Origen (A)</b><br>${activeRouteName}`)
           .addTo(map);
+
+        origMarker.on('dragend', (e) => {
+          const { lat, lng } = e.target.getLatLng();
+          const newCoordString = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
+          fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=es`, {
+            headers: { 'User-Agent': 'VextorFleetApp/1.0 (contact: info@vextor.com)' }
+          })
+            .then(res => res.json())
+            .then(data => {
+              const address = data?.display_name || `Ubicación en ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+              onMarkerDragEnd?.({ type: 'origin', coordinates: newCoordString, address });
+            })
+            .catch(err => {
+              console.warn('Reverse geocoding error on origin drag:', err);
+              onMarkerDragEnd?.({ type: 'origin', coordinates: newCoordString, address: newCoordString });
+            });
+        });
+
         activeLayersRef.current.push(origMarker);
       }
 
       if (destToDraw) {
-        const destMarker = L.marker(destToDraw, { icon: createMarkerIcon('destination', 'B') })
+        const destMarker = L.marker(destToDraw, {
+          icon: createMarkerIcon('destination', 'B'),
+          draggable: true
+        })
           .bindPopup(`<b>Destino (B)</b><br>${activeRouteName}`)
           .addTo(map);
+
+        destMarker.on('dragend', (e) => {
+          const { lat, lng } = e.target.getLatLng();
+          const newCoordString = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
+          fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=es`, {
+            headers: { 'User-Agent': 'VextorFleetApp/1.0 (contact: info@vextor.com)' }
+          })
+            .then(res => res.json())
+            .then(data => {
+              const address = data?.display_name || `Ubicación en ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+              onMarkerDragEnd?.({ type: 'destination', coordinates: newCoordString, address });
+            })
+            .catch(err => {
+              console.warn('Reverse geocoding error on destination drag:', err);
+              onMarkerDragEnd?.({ type: 'destination', coordinates: newCoordString, address: newCoordString });
+            });
+        });
+
         activeLayersRef.current.push(destMarker);
       }
 
