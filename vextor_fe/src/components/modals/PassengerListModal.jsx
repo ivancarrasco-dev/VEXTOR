@@ -36,7 +36,7 @@ export const PassengerListModal = ({ isOpen, onClose, routeName, passengersList 
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -46,7 +46,7 @@ export const PassengerListModal = ({ isOpen, onClose, routeName, passengersList 
           {/* Header */}
           <div className="p-6 border-b border-v-dark-border bg-v-dark/40 flex items-center justify-between">
             <div className="flex items-center gap-3.5 text-left">
-              <div className="h-12 w-12 rounded-2xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 shrink-0">
+              <div className="h-12 w-12 rounded-2xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-600 dark:text-teal-400 shrink-0">
                 <Users size={24} />
               </div>
               <div>
@@ -67,7 +67,7 @@ export const PassengerListModal = ({ isOpen, onClose, routeName, passengersList 
           <div className="p-4 bg-v-dark/20 border-b border-v-dark-border space-y-3 text-left">
             <div className="flex items-center justify-between text-xs">
               <span className="text-v-gray font-mono font-bold uppercase">
-                Abordados: <strong className="text-emerald-400">{boardedCount}</strong> / {passengers.length}
+                Abordados: <strong className="text-emerald-600 dark:text-emerald-400">{boardedCount}</strong> / {passengers.length}
               </span>
               <Badge variant="primary" size="xs">Control de Abordaje</Badge>
             </div>
@@ -90,7 +90,7 @@ export const PassengerListModal = ({ isOpen, onClose, routeName, passengersList 
               filteredPassengers.map((pas) => (
                 <div
                   key={pas.id}
-                  className="p-3 bg-v-dark/50 border border-v-dark-border rounded-2xl flex items-center justify-between gap-3 hover:border-primary/40 transition-colors"
+                  className="p-3 bg-v-dark/50 border border-v-dark-border rounded-2xl flex items-center justify-between gap-3 hover:border-primary/50 transition-colors"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <span className="h-9 w-9 rounded-xl bg-v-dark border border-v-dark-border font-mono font-bold text-xs text-primary flex items-center justify-center shrink-0">
@@ -110,7 +110,7 @@ export const PassengerListModal = ({ isOpen, onClose, routeName, passengersList 
                     onClick={() => toggleBoarded(pas.id)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 border ${
                       pas.boarded
-                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                        ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/40'
                         : 'bg-v-dark border-v-dark-border text-v-gray hover:text-v-white'
                     }`}
                   >

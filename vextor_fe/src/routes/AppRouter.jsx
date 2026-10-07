@@ -77,6 +77,8 @@ const AppRouter = () => {
 
           {/* Common / Driver Routes */}
           <Route path="/settings" element={<Settings />} />
+          <Route path="/driver" element={<Navigate to="/driver/my-routes" replace />} />
+          <Route path="/driver/dashboard" element={<Navigate to="/driver/my-routes" replace />} />
           <Route path="/driver/my-routes" element={<MyRoutes />} />
           <Route path="/driver/my-bus" element={<DriverBusInfo />} />
           <Route path="/driver/active-route/:idRuta?" element={<ActiveRoutePage />} />
