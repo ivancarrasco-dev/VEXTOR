@@ -18,11 +18,15 @@ import {
   Play,
   Pause,
   ShieldCheck,
-  ListOrdered
+  ListOrdered,
+  AlertTriangle,
+  Users
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import MapComponent from '../Routes/components/MapComponent';
 import { showConfirm, showAlert } from '../../utils/sweetalert';
+import IncidentReportModal from '../../components/modals/IncidentReportModal';
+import PassengerListModal from '../../components/modals/PassengerListModal';
 
 const EMPTY_ROUTES = [];
 
@@ -48,6 +52,10 @@ const ActiveRoutePage = () => {
   const [gpsError, setGpsError] = useState(null);
   const [isGpsActive, setIsGpsActive] = useState(false);
   const [lastGpsUpdate, setLastGpsUpdate] = useState(null);
+
+  // Modal States
+  const [isIncidentModalOpen, setIsIncidentModalOpen] = useState(false);
+  const [isPassengerModalOpen, setIsPassengerModalOpen] = useState(false);
 
   // WebSocket & Watcher Refs
   const wsRef = useRef(null);
@@ -79,7 +87,6 @@ const ActiveRoutePage = () => {
       setActiveRoute(targetRoute);
 
       if (targetRoute) {
-        // Resolve friendly address names if origin/destino are raw coords
         resolveFriendlyAddresses(targetRoute.origen, targetRoute.destino);
       }
     } catch (err) {
@@ -95,11 +102,10 @@ const ActiveRoutePage = () => {
     setOriginAddress(orig);
     setDestAddress(dest);
 
-    // If orig looks like lat,lng, perform reverse geocode
     if (orig.includes(',')) {
       const parts = orig.split(',');
       if (parts.length === 2 && !isNaN(parseFloat(parts[0]))) {
-        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${parts[0].strip ? parts[0].strip() : parts[0].trim()}&lon=${parts[1].strip ? parts[1].strip() : parts[1].trim()}&accept-language=es`)
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${parts[0].trim()}&lon=${parts[1].trim()}&accept-language=es`)
           .then(r => r.json())
           .then(data => {
             if (data?.display_name) setOriginAddress(data.display_name);
@@ -111,7 +117,7 @@ const ActiveRoutePage = () => {
     if (dest.includes(',')) {
       const parts = dest.split(',');
       if (parts.length === 2 && !isNaN(parseFloat(parts[0]))) {
-        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${parts[0].strip ? parts[0].strip() : parts[0].trim()}&lon=${parts[1].strip ? parts[1].strip() : parts[1].trim()}&accept-language=es`)
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${parts[0].trim()}&lon=${parts[1].trim()}&accept-language=es`)
           .then(r => r.json())
           .then(data => {
             if (data?.display_name) setDestAddress(data.display_name);
@@ -131,7 +137,6 @@ const ActiveRoutePage = () => {
       return;
     }
 
-    // 1. Establish WebSocket Connection
     try {
       const wsUrl = `${WS_BASE_URL}/ws/tracking`;
       const ws = new WebSocket(wsUrl);
@@ -146,7 +151,6 @@ const ActiveRoutePage = () => {
       console.warn('Failed to establish WebSocket connection:', err);
     }
 
-    // 2. Start HTML5 Geolocation Watcher
     if ('geolocation' in navigator) {
       setIsGpsActive(true);
       setGpsError(null);
@@ -160,7 +164,6 @@ const ActiveRoutePage = () => {
         setCurrentPosition(posObj);
         setLastGpsUpdate(new Date());
 
-        // Send via WebSocket if open
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
           wsRef.current.send(JSON.stringify({
             type: 'location_update',
@@ -171,7 +174,6 @@ const ActiveRoutePage = () => {
             heading: heading || 0.0
           }));
         } else {
-          // Fallback via HTTP POST
           axios.post(`${API_BASE_URL}/api/routes/${activeRoute.id_ruta}/location`, {
             id_ruta: activeRoute.id_ruta,
             latitud: lat,
@@ -322,20 +324,20 @@ const ActiveRoutePage = () => {
       case 'EN_PROCESO':
       case 'EN_RUTA':
         return (
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-blue-400 animate-ping" />
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/30 flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-blue-500 animate-ping" />
             EN RUTA
           </span>
         );
       case 'SUSPENDIDA':
         return (
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30">
             PAUSADA
           </span>
         );
       case 'PROGRAMADA':
         return (
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
             PROGRAMADA
           </span>
         );
@@ -363,7 +365,7 @@ const ActiveRoutePage = () => {
     return (
       <div className="max-w-xl mx-auto py-12 text-center space-y-6">
         <div className="p-8 bg-v-dark-soft border border-v-dark-border rounded-3xl space-y-4 shadow-xl">
-          <AlertCircle size={48} className="mx-auto text-amber-400" />
+          <AlertCircle size={48} className="mx-auto text-amber-500" />
           <h2 className="text-xl font-bold text-v-white">No se encontró la ruta solicitada</h2>
           <p className="text-v-gray text-sm">
             No tienes rutas activas o asignadas con este identificador.
@@ -383,9 +385,9 @@ const ActiveRoutePage = () => {
   const isRouteActive = activeRoute.estado_ruta === 'EN_PROCESO' || activeRoute.estado_ruta === 'EN_RUTA';
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12 text-left">
       {/* Top Banner Navigation & Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-v-dark-soft border border-v-dark-border p-4 sm:p-6 rounded-3xl shadow-2xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-v-dark-soft border border-v-dark-border p-4 sm:p-6 rounded-3xl shadow-xl">
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/driver/my-routes')}
@@ -395,7 +397,7 @@ const ActiveRoutePage = () => {
             <ArrowLeft size={20} />
           </button>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="px-2.5 py-0.5 rounded-md bg-primary/20 text-primary font-extrabold text-xs border border-primary/30">
                 {activeRoute.codigo_ruta}
               </span>
@@ -409,11 +411,29 @@ const ActiveRoutePage = () => {
         </div>
 
         {/* Dynamic Action Buttons */}
-        <div className="flex items-center gap-3 self-end sm:self-auto">
+        <div className="flex flex-wrap items-center gap-2.5 self-end sm:self-auto">
+          <Button
+            variant="ghost"
+            onClick={() => setIsPassengerModalOpen(true)}
+            className="bg-v-dark hover:bg-v-dark-border text-v-white text-xs font-bold py-2.5 px-3.5 rounded-2xl border border-v-dark-border flex items-center gap-1.5 cursor-pointer"
+          >
+            <Users size={15} className="text-teal-500" />
+            Pasajeros
+          </Button>
+
+          <Button
+            variant="ghost"
+            onClick={() => setIsIncidentModalOpen(true)}
+            className="bg-amber-600/10 hover:bg-amber-600/20 text-amber-600 dark:text-amber-400 text-xs font-bold py-2.5 px-3.5 rounded-2xl border border-amber-500/30 flex items-center gap-1.5 cursor-pointer"
+          >
+            <AlertTriangle size={15} />
+            Novedad
+          </Button>
+
           {activeRoute.estado_ruta === 'PROGRAMADA' && (
             <Button
               onClick={handleStartRoute}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-6 rounded-2xl text-xs flex items-center gap-2 shadow-lg cursor-pointer transition-all"
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-5 rounded-2xl text-xs flex items-center gap-2 shadow-md cursor-pointer border-none"
             >
               <Play size={16} />
               Iniciar Ruta
@@ -424,17 +444,17 @@ const ActiveRoutePage = () => {
             <>
               <Button
                 onClick={handlePauseRoute}
-                className="bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 px-5 rounded-2xl text-xs flex items-center gap-2 shadow-lg cursor-pointer transition-all"
+                className="bg-amber-600 hover:bg-amber-500 text-white font-bold py-2.5 px-4 rounded-2xl text-xs flex items-center gap-1.5 shadow-md cursor-pointer border-none"
               >
                 <Pause size={16} />
-                Pausar Ruta
+                Pausar
               </Button>
               <Button
                 onClick={handleFinishRoute}
-                className="bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-5 rounded-2xl text-xs flex items-center gap-2 shadow-lg cursor-pointer transition-all"
+                className="bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 px-4 rounded-2xl text-xs flex items-center gap-1.5 shadow-md cursor-pointer border-none"
               >
                 <Square size={16} fill="white" />
-                Finalizar Ruta
+                Finalizar
               </Button>
             </>
           )}
@@ -443,33 +463,33 @@ const ActiveRoutePage = () => {
             <>
               <Button
                 onClick={handleStartRoute}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-5 rounded-2xl text-xs flex items-center gap-2 shadow-lg cursor-pointer transition-all"
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-2xl text-xs flex items-center gap-1.5 shadow-md cursor-pointer border-none"
               >
                 <Play size={16} />
-                Reanudar Ruta
+                Reanudar
               </Button>
               <Button
                 onClick={handleFinishRoute}
-                className="bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-5 rounded-2xl text-xs flex items-center gap-2 shadow-lg cursor-pointer transition-all"
+                className="bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 px-4 rounded-2xl text-xs flex items-center gap-1.5 shadow-md cursor-pointer border-none"
               >
                 <Square size={16} fill="white" />
-                Finalizar Ruta
+                Finalizar
               </Button>
             </>
           )}
         </div>
       </div>
 
-      {/* GPS Status Indicator Bar (When Active) */}
+      {/* GPS Status Indicator Bar */}
       {isRouteActive ? (
-        <div className="p-4 bg-v-dark-soft/90 border border-v-dark-border rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+        <div className="p-4 bg-v-dark-soft border border-v-dark-border rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
           <div className="flex items-center gap-3">
             <div className="relative flex items-center justify-center">
               <span className="animate-ping absolute inline-flex h-4 w-4 rounded-full bg-emerald-400 opacity-75"></span>
-              <Radio size={18} className="text-emerald-400 relative z-10" />
+              <Radio size={18} className="text-emerald-500 relative z-10" />
             </div>
             <div>
-              <div className="text-xs font-bold text-emerald-400 flex items-center gap-2">
+              <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
                 Seguimiento GPS en Tiempo Real Activo
               </div>
               <p className="text-[11px] text-v-gray">
@@ -485,7 +505,7 @@ const ActiveRoutePage = () => {
           )}
         </div>
       ) : activeRoute.estado_ruta === 'PROGRAMADA' ? (
-        <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center justify-between gap-3 text-emerald-400 text-xs shadow-md">
+        <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center justify-between gap-3 text-emerald-600 dark:text-emerald-400 text-xs shadow-md">
           <div className="flex items-center gap-2.5">
             <Clock size={18} className="shrink-0" />
             <span>
@@ -494,7 +514,7 @@ const ActiveRoutePage = () => {
           </div>
         </div>
       ) : (
-        <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center justify-between gap-3 text-amber-400 text-xs shadow-md">
+        <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center justify-between gap-3 text-amber-600 dark:text-amber-400 text-xs shadow-md">
           <div className="flex items-center gap-2.5">
             <AlertCircle size={18} className="shrink-0" />
             <span>
@@ -506,7 +526,7 @@ const ActiveRoutePage = () => {
 
       {/* GPS Error Warning Notice */}
       {gpsError && isRouteActive && (
-        <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start gap-3 text-amber-400 text-xs shadow-md">
+        <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start gap-3 text-amber-600 dark:text-amber-400 text-xs shadow-md">
           <AlertCircle size={18} className="shrink-0 mt-0.5" />
           <div>
             <strong className="font-bold">Advertencia de Geolocalización:</strong> {gpsError}
@@ -516,13 +536,13 @@ const ActiveRoutePage = () => {
 
       {/* HUD Navigation Banner */}
       {routeMetrics.instructions.length > 0 && (
-        <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center justify-between gap-4 shadow-xl">
+        <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center justify-between gap-4 shadow-lg">
           <div className="flex items-center gap-3.5">
-            <div className="p-3 bg-emerald-500/20 text-emerald-400 rounded-2xl border border-emerald-500/30">
+            <div className="p-3 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-2xl border border-emerald-500/30">
               <Navigation size={22} className="-rotate-45" />
             </div>
             <div>
-              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest block">Próxima Indicación</span>
+              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest block">Próxima Indicación</span>
               <p className="text-sm sm:text-base font-extrabold text-v-white">
                 {routeMetrics.instructions[0]?.text || 'Sigue la ruta marcada en el mapa'}
               </p>
@@ -530,7 +550,7 @@ const ActiveRoutePage = () => {
           </div>
           <div className="text-right shrink-0">
             <span className="text-[10px] text-v-gray block uppercase font-bold">Velocidad</span>
-            <span className="text-xl font-extrabold text-emerald-400">
+            <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">
               {((currentPosition?.speed || 0) * 3.6).toFixed(0)} <span className="text-xs font-normal text-v-gray">km/h</span>
             </span>
           </div>
@@ -566,14 +586,14 @@ const ActiveRoutePage = () => {
               </div>
               <div className="p-4 rounded-2xl bg-v-dark border border-v-dark-border space-y-1">
                 <span className="text-[11px] text-v-gray">Tiempo Est.</span>
-                <div className="text-2xl font-extrabold text-emerald-400">{routeMetrics.duration} min</div>
+                <div className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">{routeMetrics.duration} min</div>
               </div>
             </div>
 
             {/* Route Points / Stops Details */}
             <div className="space-y-4 pt-2">
               <div className="flex items-start gap-3">
-                <MapPin size={18} className="text-emerald-400 mt-0.5 shrink-0" />
+                <MapPin size={18} className="text-emerald-500 mt-0.5 shrink-0" />
                 <div className="text-xs space-y-0.5">
                   <span className="text-v-gray block font-semibold uppercase text-[10px] tracking-wider">Punto A - Origen:</span>
                   <strong className="text-v-white text-sm block">{originAddress || activeRoute.origen}</strong>
@@ -584,7 +604,7 @@ const ActiveRoutePage = () => {
               </div>
 
               <div className="flex items-start gap-3">
-                <MapPin size={18} className="text-red-400 mt-0.5 shrink-0" />
+                <MapPin size={18} className="text-red-500 mt-0.5 shrink-0" />
                 <div className="text-xs space-y-0.5">
                   <span className="text-v-gray block font-semibold uppercase text-[10px] tracking-wider">Punto B - Destino:</span>
                   <strong className="text-v-white text-sm block">{destAddress || activeRoute.destino}</strong>
@@ -614,15 +634,15 @@ const ActiveRoutePage = () => {
                 >
                   <span className="flex items-center gap-2">
                     <ListOrdered size={15} className="text-primary" />
-                    Lista de Indicaciones y Paradas ({routeMetrics.instructions.length})
+                    Lista de Indicaciones ({routeMetrics.instructions.length})
                   </span>
                   {showInstructions ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </button>
 
                 {showInstructions && (
-                  <div className="max-h-60 overflow-y-auto space-y-2 pr-1 custom-scrollbar animate-in fade-in duration-200">
+                  <div className="max-h-60 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                     {routeMetrics.instructions.map((inst, idx) => (
-                      <div key={idx} className="p-3 rounded-xl bg-v-dark/60 border border-v-dark-border text-xs space-y-1">
+                      <div key={idx} className="p-3 rounded-xl bg-v-dark border border-v-dark-border text-xs space-y-1">
                         <p className="text-v-white font-medium">{inst.text}</p>
                         {inst.distance && (
                           <span className="text-[10px] text-v-gray block">
@@ -638,6 +658,21 @@ const ActiveRoutePage = () => {
           </div>
         </div>
       </div>
+
+      {/* Incident Modal */}
+      <IncidentReportModal
+        isOpen={isIncidentModalOpen}
+        onClose={() => setIsIncidentModalOpen(false)}
+        busPlaca={activeRoute.vehiculo?.placa || 'VXT-801'}
+        rutaCodigo={activeRoute.codigo_ruta}
+      />
+
+      {/* Passenger Manifest Modal */}
+      <PassengerListModal
+        isOpen={isPassengerModalOpen}
+        onClose={() => setIsPassengerModalOpen(false)}
+        routeName={activeRoute.nombre_ruta}
+      />
     </div>
   );
 };

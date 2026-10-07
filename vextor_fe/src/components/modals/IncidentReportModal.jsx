@@ -31,7 +31,7 @@ export const IncidentReportModal = ({ isOpen, onClose, busPlaca, rutaCodigo }) =
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -41,7 +41,7 @@ export const IncidentReportModal = ({ isOpen, onClose, busPlaca, rutaCodigo }) =
           {/* Header */}
           <div className="p-6 border-b border-v-dark-border bg-v-dark/40 flex items-center justify-between">
             <div className="flex items-center gap-3.5 text-left">
-              <div className="h-12 w-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+              <div className="h-12 w-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
                 <AlertTriangle size={24} />
               </div>
               <div>
@@ -114,7 +114,7 @@ export const IncidentReportModal = ({ isOpen, onClose, busPlaca, rutaCodigo }) =
                 type="submit"
                 variant="primary"
                 isLoading={isSubmitting}
-                className="flex items-center gap-2 cursor-pointer"
+                className="flex items-center gap-2 cursor-pointer shadow-md"
               >
                 <Send size={16} /> Enviar Inmediato
               </Button>
