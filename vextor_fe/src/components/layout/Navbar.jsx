@@ -22,8 +22,24 @@ const Navbar = ({ onMenuClick }) => {
 
   const getPageTitle = () => {
     const path = location.pathname;
+
+    if (path.startsWith('/driver/my-routes')) return 'Inicio / Mis Rutas';
+    if (path.startsWith('/driver/my-bus')) return 'Mi Bus Asignado';
+    if (path.startsWith('/driver/active-route')) return 'Monitoreo de Ruta Activa';
+    if (path.startsWith('/driver/notifications')) return 'Notificaciones Conductor';
+
+    if (path.startsWith('/user/home')) return 'Inicio / Portal Usuario';
+    if (path.startsWith('/user/buses')) return 'Consulta de Buses';
+    if (path.startsWith('/user/routes')) return 'Consulta de Rutas';
+    if (path.startsWith('/user/schedules')) return 'Horarios y Frecuencias';
+    if (path.startsWith('/user/history')) return 'Historial / Recorridos';
+    if (path.startsWith('/user/notifications')) return 'Notificaciones de Usuario';
+    if (path.startsWith('/user/profile')) return 'Mi Perfil';
+
     switch(path) {
       case '/dashboard': return t('sidebar.dashboard', 'Centro de Control');
+      case '/users': return 'Gestión de Usuarios';
+      case '/recorridos': return 'Gestión de Recorridos';
       case '/vehicles': return t('sidebar.vehicles', 'Gestión de Vehículos');
       case '/drivers': return t('sidebar.drivers', 'Gestión de Conductores');
       case '/routes': return t('sidebar.routes', 'Monitoreo de Rutas');

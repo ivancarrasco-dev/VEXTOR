@@ -102,8 +102,9 @@ const userMenuGroups = [
 
 const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen }) => {
   const { user, logout } = useAuth();
-  const isConductor = user?.role === 'rol-conductor' || user?.role === 'Conductor';
-  const isUsuario = user?.role === 'usuario' || user?.role === 'rol-usuario' || user?.role === 'Usuario' || user?.role === 'User';
+  const roleLower = (user?.role || '').toLowerCase();
+  const isConductor = roleLower.includes('conductor');
+  const isUsuario = roleLower.includes('usuario') || roleLower.includes('cliente') || roleLower.includes('user') || roleLower.includes('invitado');
 
   let menuGroups = adminMenuGroups;
   if (isConductor) {

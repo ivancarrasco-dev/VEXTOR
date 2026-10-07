@@ -58,7 +58,8 @@ export const ReportPreviewTable = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const isAdmin = user?.role === 'Administrador' || user?.rol?.nombre_rol === 'Administrador' || user?.nombre_rol === 'Administrador';
+  const roleLower = (user?.role || user?.rol?.nombre_rol || user?.nombre_rol || '').toLowerCase();
+  const isAdmin = !roleLower.includes('conductor') && !roleLower.includes('usuario') && !roleLower.includes('invitado');
 
   const handleExportClick = (format) => {
     setIsExportMenuOpen(false);

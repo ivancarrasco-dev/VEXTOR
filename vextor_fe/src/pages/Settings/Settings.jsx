@@ -64,10 +64,13 @@ const Settings = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const isConductor = user?.role === 'rol-conductor' || user?.role === 'Conductor';
-  const driverCategories = ['profile', 'notifications', 'appearance', 'security'];
-  const visibleCategories = isConductor
-    ? categories.filter(cat => driverCategories.includes(cat.id))
+  const roleLower = (user?.role || '').toLowerCase();
+  const isConductor = roleLower.includes('conductor');
+  const isUsuario = roleLower.includes('usuario') || roleLower.includes('cliente') || roleLower.includes('user') || roleLower.includes('invitado');
+
+  const limitedCategories = ['profile', 'notifications', 'appearance', 'security'];
+  const visibleCategories = (isConductor || isUsuario)
+    ? categories.filter(cat => limitedCategories.includes(cat.id))
     : categories;
 
   const [activeCategory, setActiveCategory] = useState(() => {
@@ -83,10 +86,10 @@ const Settings = () => {
   });
 
   useEffect(() => {
-    if (isConductor && !driverCategories.includes(activeCategory)) {
+    if ((isConductor || isUsuario) && !limitedCategories.includes(activeCategory)) {
       setActiveCategory('profile');
     }
-  }, [isConductor, activeCategory]);
+  }, [isConductor, isUsuario, activeCategory]);
 
   useEffect(() => {
     if (location.state?.section && categories.some(cat => cat.id === location.state.section)) {
