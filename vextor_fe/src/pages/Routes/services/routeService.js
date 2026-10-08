@@ -17,11 +17,16 @@ export const routeService = {
 
   async createRoute(routeData) {
     try {
+      const paradasVal = typeof routeData.paradas === 'object'
+        ? JSON.stringify(routeData.paradas)
+        : (routeData.paradas || null);
+
       const formattedData = {
         codigo_ruta: routeData.codigo_ruta.trim().toUpperCase(),
         nombre_ruta: routeData.nombre_ruta.trim(),
         origen: routeData.origen.trim(),
         destino: routeData.destino.trim(),
+        paradas: paradasVal,
         fecha_programada: routeData.fecha_programada,
         hora_inicio_real: routeData.hora_inicio_real || null,
         hora_fin_real: routeData.hora_fin_real || null,
@@ -41,11 +46,16 @@ export const routeService = {
 
   async updateRoute(id_ruta, routeData) {
     try {
+      const paradasVal = typeof routeData.paradas === 'object'
+        ? JSON.stringify(routeData.paradas)
+        : (routeData.paradas || null);
+
       const formattedData = {
         codigo_ruta: routeData.codigo_ruta.trim().toUpperCase(),
         nombre_ruta: routeData.nombre_ruta.trim(),
         origen: routeData.origen.trim(),
         destino: routeData.destino.trim(),
+        paradas: paradasVal,
         fecha_programada: routeData.fecha_programada,
         hora_inicio_real: routeData.hora_inicio_real || null,
         hora_fin_real: routeData.hora_fin_real || null,
@@ -82,13 +92,25 @@ export const routeService = {
     }
   },
 
-  async calculateRoute({ origin, destination, profile = 'driving' }) {
+  async calculateRoute({ origin, destination, waypoints, profile = 'driving' }) {
     try {
-      const response = await axios.post(`${ROUTING_API_URL}/route`, {
-        origin: { lat: origin[0], lng: origin[1] },
-        destination: { lat: destination[0], lng: destination[1] },
-        profile
-      });
+      let payload = { profile };
+
+      if (waypoints && Array.isArray(waypoints) && waypoints.length >= 2) {
+        payload.waypoints = waypoints.map(pt => {
+          if (Array.isArray(pt)) {
+            return { lat: pt[0], lng: pt[1] };
+          }
+          return pt;
+        });
+      } else if (origin && destination) {
+        payload.origin = { lat: origin[0], lng: origin[1] };
+        payload.destination = { lat: destination[0], lng: destination[1] };
+      } else {
+        throw new Error('Se requieren al menos 2 puntos para calcular la ruta.');
+      }
+
+      const response = await axios.post(`${ROUTING_API_URL}/route`, payload);
       return response.data;
     } catch (error) {
       const message = error.response?.data?.detail || 'No fue posible calcular la ruta.';

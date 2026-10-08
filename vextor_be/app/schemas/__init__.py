@@ -182,6 +182,7 @@ class RutaBase(BaseModel):
     nombre_ruta: str = Field(..., max_length=100)
     origen: str = Field(..., max_length=150)
     destino: str = Field(..., max_length=150)
+    paradas: Optional[str] = None
     fecha_programada: datetime
     hora_inicio_real: Optional[datetime] = None
     hora_fin_real: Optional[datetime] = None
@@ -199,6 +200,7 @@ class RutaUpdate(BaseModel):
     nombre_ruta: Optional[str] = Field(None, max_length=100)
     origen: Optional[str] = Field(None, max_length=150)
     destino: Optional[str] = Field(None, max_length=150)
+    paradas: Optional[str] = None
     fecha_programada: Optional[datetime] = None
     hora_inicio_real: Optional[datetime] = None
     hora_fin_real: Optional[datetime] = None
@@ -359,8 +361,9 @@ class RoutingPoint(BaseModel):
 
 
 class RoutingRouteRequest(BaseModel):
-    origin: RoutingPoint
-    destination: RoutingPoint
+    origin: Optional[RoutingPoint] = None
+    destination: Optional[RoutingPoint] = None
+    waypoints: Optional[List[RoutingPoint]] = None
     profile: Literal["driving", "cycling", "walking"] = "driving"
 
 

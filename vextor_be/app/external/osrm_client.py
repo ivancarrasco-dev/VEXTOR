@@ -51,14 +51,20 @@ class OsrmClient:
 
     def route(
         self,
-        origin_lat: float,
-        origin_lng: float,
-        destination_lat: float,
-        destination_lng: float,
+        origin_lat: float | None = None,
+        origin_lng: float | None = None,
+        destination_lat: float | None = None,
+        destination_lng: float | None = None,
+        waypoints: list[tuple[float, float]] | None = None,
         profile: str = "driving",
     ) -> dict[str, Any]:
-        """Calcula una ruta entre dos puntos"""
-        coordinates = f"{origin_lng},{origin_lat};{destination_lng},{destination_lat}"
+        """Calcula una ruta entre dos o más puntos (waypoints: lista de (lat, lng))."""
+        if waypoints and len(waypoints) >= 2:
+            coordinates = ";".join(f"{lng},{lat}" for lat, lng in waypoints)
+        elif origin_lat is not None and origin_lng is not None and destination_lat is not None and destination_lng is not None:
+            coordinates = f"{origin_lng},{origin_lat};{destination_lng},{destination_lat}"
+        else:
+            raise OsrmRouteError("Puntos insuficientes para calcular la ruta.")
         query = urlencode(
             {
                 "overview": "full",

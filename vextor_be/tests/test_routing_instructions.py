@@ -56,3 +56,54 @@ def test_calculate_route_endpoint_formats_instructions(mock_calculate):
     assert len(data["instructions"]) == 2
     assert data["instructions"][0]["text"] == "Inicia el recorrido por Calle 26"
     assert data["instructions"][1]["text"] == "Gira a la derecha por Avenida Carrera 30"
+
+
+@patch("app.api.routes.routing.osrm_service.calculate_route")
+def test_calculate_route_endpoint_with_waypoints(mock_calculate):
+    mock_calculate.return_value = {
+        "distance": 3000.0,
+        "duration": 360.0,
+        "geometry": {"type": "LineString", "coordinates": [[-74.05, 4.65], [-74.06, 4.66], [-74.07, 4.67]]},
+        "legs": [
+            {
+                "steps": [
+                    {
+                        "name": "Calle 80",
+                        "distance": 1500.0,
+                        "duration": 180.0,
+                        "maneuver": {"type": "depart", "modifier": ""}
+                    }
+                ]
+            },
+            {
+                "steps": [
+                    {
+                        "name": "Calle 100",
+                        "distance": 1500.0,
+                        "duration": 180.0,
+                        "maneuver": {"type": "arrive", "modifier": ""}
+                    }
+                ]
+            }
+        ]
+    }
+
+    res = client.post(
+        "/api/routing/route",
+        json={
+            "waypoints": [
+                {"lat": 4.65, "lng": -74.05},
+                {"lat": 4.66, "lng": -74.06},
+                {"lat": 4.67, "lng": -74.07}
+            ],
+            "profile": "driving"
+        }
+    )
+
+    assert res.status_code == 200
+    data = res.json()
+    assert data["distance"] == 3000.0
+    assert len(data["instructions"]) == 2
+    assert mock_calculate.called
+    args, kwargs = mock_calculate.call_args
+    assert kwargs["waypoints"] == [(4.65, -74.05), (4.66, -74.06), (4.67, -74.07)]

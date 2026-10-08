@@ -137,13 +137,21 @@ def health_check(db: Session = Depends(get_db)):
 
 @router.post("/route", response_model=RoutingRouteResponse)
 def calculate_route(req: RoutingRouteRequest, db: Session = Depends(get_db)):
-    """Calcula una ruta entre dos puntos"""
+    """Calcula una ruta entre dos o más puntos"""
     try:
+        waypoints = []
+        if req.waypoints and len(req.waypoints) >= 2:
+            waypoints = [(p.lat, p.lng) for p in req.waypoints]
+        elif req.origin and req.destination:
+            waypoints = [(req.origin.lat, req.origin.lng), (req.destination.lat, req.destination.lng)]
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Debe proporcionar origen y destino o una lista de waypoints.",
+            )
+
         route = osrm_service.calculate_route(
-            origin_lat=req.origin.lat,
-            origin_lng=req.origin.lng,
-            destination_lat=req.destination.lat,
-            destination_lng=req.destination.lng,
+            waypoints=waypoints,
             profile=req.profile,
         )
         
