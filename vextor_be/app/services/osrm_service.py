@@ -14,28 +14,26 @@ class OsrmService:
 
     def calculate_route(
         self,
-        origin_lat: float,
-        origin_lng: float,
-        destination_lat: float,
-        destination_lng: float,
+        origin_lat: float | None = None,
+        origin_lng: float | None = None,
+        destination_lat: float | None = None,
+        destination_lng: float | None = None,
+        waypoints: list[tuple[float, float]] | None = None,
         profile: str = "driving",
     ) -> dict:
         """
-        Calcula una ruta entre dos puntos.
+        Calcula una ruta entre dos o más puntos.
         
-        Retorna:
-            - distance: distancia en metros
-            - duration: duración en segundos
-            - geometry: GeoJSON LineString
-            - instructions: instrucciones de navegación
+        Retorna la estructura de la ruta de OSRM (distance, duration, geometry, legs).
         """
         try:
             route = self.client.route(
-                origin_lat,
-                origin_lng,
-                destination_lat,
-                destination_lng,
-                profile,
+                origin_lat=origin_lat,
+                origin_lng=origin_lng,
+                destination_lat=destination_lat,
+                destination_lng=destination_lng,
+                waypoints=waypoints,
+                profile=profile,
             )
             return route
         except OsrmError as e:

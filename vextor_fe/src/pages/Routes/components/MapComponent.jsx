@@ -55,19 +55,32 @@ const TILE_PROVIDERS = [
   }
 ];
 
-// Custom Marker Icons using pure Tailwind to avoid asset path errors in Vite
-const createMarkerIcon = (type, label = '') => {
-  const colorClass = type === 'origin' ? 'bg-emerald-500' : 'bg-red-500';
+export const STOP_COLORS = [
+  { hex: '#3b82f6', bgClass: 'bg-blue-500', textClass: 'text-blue-500', borderClass: 'border-blue-500' },
+  { hex: '#10b981', bgClass: 'bg-emerald-500', textClass: 'text-emerald-500', borderClass: 'border-emerald-500' },
+  { hex: '#f59e0b', bgClass: 'bg-amber-500', textClass: 'text-amber-500', borderClass: 'border-amber-500' },
+  { hex: '#8b5cf6', bgClass: 'bg-purple-500', textClass: 'text-purple-500', borderClass: 'border-purple-500' },
+  { hex: '#ef4444', bgClass: 'bg-red-500', textClass: 'text-red-500', borderClass: 'border-red-500' },
+  { hex: '#06b6d4', bgClass: 'bg-cyan-500', textClass: 'text-cyan-500', borderClass: 'border-cyan-500' },
+  { hex: '#ec4899', bgClass: 'bg-pink-500', textClass: 'text-pink-500', borderClass: 'border-pink-500' },
+  { hex: '#6366f1', bgClass: 'bg-indigo-500', textClass: 'text-indigo-500', borderClass: 'border-indigo-500' },
+];
+
+export const getStopColor = (index) => {
+  return STOP_COLORS[index % STOP_COLORS.length];
+};
+
+const createNumberedMarkerIcon = (number, colorHex = '#3b82f6') => {
   return L.divIcon({
-    html: `<div class="relative flex items-center justify-center w-6 h-6">
-             <span class="animate-ping absolute inline-flex h-full w-full rounded-full ${colorClass} opacity-40"></span>
-             <div class="relative flex items-center justify-center w-5 h-5 rounded-full ${colorClass} border-2 border-white shadow-lg text-white font-bold text-[9px]">
-               ${label}
+    html: `<div class="relative flex items-center justify-center w-8 h-8">
+             <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-30" style="background-color: ${colorHex}"></span>
+             <div class="relative flex items-center justify-center w-7 h-7 rounded-full text-white font-extrabold text-xs shadow-xl border-2 border-white" style="background-color: ${colorHex}">
+               ${number}
              </div>
            </div>`,
-    className: 'custom-leaflet-marker-div',
-    iconSize: [24, 24],
-    iconAnchor: [12, 12]
+    className: 'custom-numbered-marker-div',
+    iconSize: [32, 32],
+    iconAnchor: [16, 16]
   });
 };
 
@@ -126,6 +139,7 @@ const DISTINCT_COLORS = [
 const MapComponent = ({
   routes = [],
   activeRoute = null,
+  stops = [],
   selectedOrigin = '',
   selectedDestination = '',
   driverPosition = null,
@@ -489,8 +503,8 @@ const MapComponent = ({
 
     // Generate unique key representing the target route state
     const currentRouteKey = activeRoute
-      ? `${activeRoute.id_ruta || ''}|${activeRoute.origen || ''}|${activeRoute.destino || ''}`
-      : `${selectedOrigin || ''}|${selectedDestination || ''}`;
+      ? `${activeRoute.id_ruta || ''}|${activeRoute.origen || ''}|${activeRoute.destino || ''}|${activeRoute.paradas || ''}`
+      : `${stops.map(s => `${s.id}:${s.coordinates}`).join(';')}|${selectedOrigin}|${selectedDestination}`;
 
     // If route identity/endpoints haven't changed and we already have a polyline, skip re-calculating
     if (lastRouteKeyRef.current === currentRouteKey && routePolylineRef.current && map.hasLayer(routePolylineRef.current)) {
@@ -558,84 +572,100 @@ const MapComponent = ({
       }
     });
 
-    // 3. Draw Active Route or Temporary Clicked Points
+    // 3. Draw Active Multi-Stop Route or Legacy Selected Route
     const renderActiveRoute = async () => {
-      let originToDraw = null;
-      let destToDraw = null;
-      let activeRouteName = 'Nueva Ruta';
+      let activeRouteName = activeRoute?.nombre_ruta || activeRoute?.codigo_ruta || 'Ruta';
+      let stopsToRender = [];
 
-      if (activeRoute) {
-        originToDraw = await resolveCoordsAsync(activeRoute.origen);
-        destToDraw = await resolveCoordsAsync(activeRoute.destino);
-        activeRouteName = activeRoute.nombre_ruta || activeRoute.codigo_ruta || 'Ruta Seleccionada';
-      } else {
-        originToDraw = await resolveCoordsAsync(selectedOrigin);
-        destToDraw = await resolveCoordsAsync(selectedDestination);
+      // Determine stops to render:
+      if (stops && stops.length > 0) {
+        stopsToRender = stops;
+      } else if (activeRoute) {
+        if (activeRoute.paradas) {
+          try {
+            const parsed = typeof activeRoute.paradas === 'string' ? JSON.parse(activeRoute.paradas) : activeRoute.paradas;
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              stopsToRender = parsed;
+            }
+          } catch (e) {
+            console.warn('Error parsing activeRoute.paradas:', e);
+          }
+        }
+        if (stopsToRender.length === 0) {
+          stopsToRender = [
+            { id: 'stop-1', order: 1, address: activeRoute.origen, coordinates: activeRoute.origen },
+            { id: 'stop-2', order: 2, address: activeRoute.destino, coordinates: activeRoute.destino },
+          ];
+        }
+      } else if (selectedOrigin || selectedDestination) {
+        stopsToRender = [
+          ...(selectedOrigin ? [{ id: 'stop-orig', order: 1, address: selectedOrigin, coordinates: selectedOrigin }] : []),
+          ...(selectedDestination ? [{ id: 'stop-dest', order: 2, address: selectedDestination, coordinates: selectedDestination }] : []),
+        ];
       }
 
       if (currentGen !== routingGenerationRef.current || !mapInstanceRef.current) return;
 
-      if (originToDraw) {
-        const origMarker = L.marker(originToDraw, {
-          icon: createMarkerIcon('origin', 'A'),
-          draggable: true
-        })
-          .bindPopup(`<b>Origen (A)</b><br>${activeRouteName}`)
-          .addTo(map);
+      const validWaypoints = [];
+      const validMarkers = [];
 
-        origMarker.on('dragend', (e) => {
-          const { lat, lng } = e.target.getLatLng();
-          const newCoordString = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+      for (let idx = 0; idx < stopsToRender.length; idx++) {
+        const stop = stopsToRender[idx];
+        const stopNumber = idx + 1;
+        const colorInfo = getStopColor(idx);
+        const resolvedCoords = await resolveCoordsAsync(stop.coordinates);
 
-          fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=es`, {
-            headers: { 'User-Agent': 'VextorFleetApp/1.0 (contact: info@vextor.com)' }
+        if (currentGen !== routingGenerationRef.current || !mapInstanceRef.current) return;
+
+        if (resolvedCoords) {
+          validWaypoints.push(resolvedCoords);
+
+          const marker = L.marker(resolvedCoords, {
+            icon: createNumberedMarkerIcon(stopNumber, colorInfo.hex),
+            draggable: true
           })
-            .then(res => res.json())
-            .then(data => {
-              const address = data?.display_name || `Ubicación en ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-              onMarkerDragEnd?.({ type: 'origin', coordinates: newCoordString, address });
-            })
-            .catch(err => {
-              console.warn('Reverse geocoding error on origin drag:', err);
-              onMarkerDragEnd?.({ type: 'origin', coordinates: newCoordString, address: newCoordString });
-            });
-        });
+            .bindPopup(`<b>Parada ${stopNumber}</b><br>${stop.address || 'Sin dirección'}`)
+            .addTo(map);
 
-        activeLayersRef.current.push(origMarker);
+          marker.on('dragend', (e) => {
+            const { lat, lng } = e.target.getLatLng();
+            const newCoordString = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=es`, {
+              headers: { 'User-Agent': 'VextorFleetApp/1.0 (contact: info@vextor.com)' }
+            })
+              .then(res => res.json())
+              .then(data => {
+                const address = data?.display_name || `Ubicación en ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                onMarkerDragEnd?.({
+                  stopId: stop.id,
+                  stopIndex: idx,
+                  coordinates: newCoordString,
+                  address,
+                  // Backwards compatibility
+                  type: idx === 0 ? 'origin' : (idx === stopsToRender.length - 1 ? 'destination' : 'stop')
+                });
+              })
+              .catch(err => {
+                console.warn('Reverse geocoding error on marker drag:', err);
+                onMarkerDragEnd?.({
+                  stopId: stop.id,
+                  stopIndex: idx,
+                  coordinates: newCoordString,
+                  address: newCoordString,
+                  type: idx === 0 ? 'origin' : (idx === stopsToRender.length - 1 ? 'destination' : 'stop')
+                });
+              });
+          });
+
+          activeLayersRef.current.push(marker);
+          validMarkers.push(marker);
+        }
       }
 
-      if (destToDraw) {
-        const destMarker = L.marker(destToDraw, {
-          icon: createMarkerIcon('destination', 'B'),
-          draggable: true
-        })
-          .bindPopup(`<b>Destino (B)</b><br>${activeRouteName}`)
-          .addTo(map);
-
-        destMarker.on('dragend', (e) => {
-          const { lat, lng } = e.target.getLatLng();
-          const newCoordString = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-
-          fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=es`, {
-            headers: { 'User-Agent': 'VextorFleetApp/1.0 (contact: info@vextor.com)' }
-          })
-            .then(res => res.json())
-            .then(data => {
-              const address = data?.display_name || `Ubicación en ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-              onMarkerDragEnd?.({ type: 'destination', coordinates: newCoordString, address });
-            })
-            .catch(err => {
-              console.warn('Reverse geocoding error on destination drag:', err);
-              onMarkerDragEnd?.({ type: 'destination', coordinates: newCoordString, address: newCoordString });
-            });
-        });
-
-        activeLayersRef.current.push(destMarker);
-      }
-
-      // 4. Ask VEXTOR's API for the real route, then render its GeoJSON geometry.
-      if (originToDraw && destToDraw) {
-        routeService.calculateRoute({ origin: originToDraw, destination: destToDraw })
+      // 4. Calculate route through all waypoints if >= 2 valid points
+      if (validWaypoints.length >= 2) {
+        routeService.calculateRoute({ waypoints: validWaypoints })
           .then((route) => {
             if (currentGen !== routingGenerationRef.current || !mapInstanceRef.current) return;
 
@@ -654,7 +684,7 @@ const MapComponent = ({
               color: '#10b981',
               weight: 6,
               opacity: 0.9
-            }).bindPopup(`<b>${activeRouteName}</b>`).addTo(map);
+            }).bindPopup(`<b>${activeRouteName} (${validWaypoints.length} paradas)</b>`).addTo(map);
             routePolylineRef.current = polyline;
 
             map.fitBounds(polyline.getBounds(), { padding: [50, 50], maxZoom: 15 });
@@ -672,10 +702,8 @@ const MapComponent = ({
 
       } else {
         onRouteCalculated?.(null);
-        if (originToDraw) {
-          map.setView(originToDraw, 14);
-        } else if (destToDraw) {
-          map.setView(destToDraw, 14);
+        if (validWaypoints.length === 1) {
+          map.setView(validWaypoints[0], 14);
         }
       }
     };
@@ -688,7 +716,7 @@ const MapComponent = ({
       }
     }, 150);
 
-  }, [routes, activeRoute, selectedOrigin, selectedDestination]);
+  }, [routes, activeRoute, stops, selectedOrigin, selectedDestination]);
 
   // Update vehicle position marker and center view when autoFollow is active
   useEffect(() => {

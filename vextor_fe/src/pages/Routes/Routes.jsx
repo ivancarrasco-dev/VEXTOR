@@ -18,11 +18,15 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
+  GripVertical,
   Route as RouteIcon,
   Navigation,
   Compass,
   ArrowRight
 } from 'lucide-react';
+import MapComponent, { getStopColor } from './components/MapComponent';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
@@ -31,7 +35,6 @@ import { routeService } from './services/routeService';
 import { WS_BASE_URL } from '../../config/api';
 import { driverService } from '../Drivers/services/driverService';
 import { vehicleService } from '../Vehicles/services/vehicleService';
-import MapComponent from './components/MapComponent';
 import NominatimAutocomplete from './components/NominatimAutocomplete';
 import { cn } from '../../utils/cn';
 
@@ -41,6 +44,13 @@ const ROUTE_STATUSES = [
   { value: 'COMPLETADA', label: 'Completada', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
   { value: 'SUSPENDIDA', label: 'Suspendida', color: 'bg-red-500/10 text-red-500 border-red-500/20' },
   { value: 'CANCELADA', label: 'Cancelada', color: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20' }
+];
+
+const generateStopId = () => 'stop-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7);
+
+const createDefaultStops = () => [
+  { id: generateStopId(), order: 1, address: '', coordinates: '' },
+  { id: generateStopId(), order: 2, address: '', coordinates: '' },
 ];
 
 const Routes = () => {
@@ -71,9 +81,9 @@ const Routes = () => {
   const [routeToDelete, setRouteToDelete] = useState(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
-  // Friendly address search inputs
-  const [origenSearch, setOrigenSearch] = useState('');
-  const [destinoSearch, setDestinoSearch] = useState('');
+  // Dynamic Stops State for Multi-stop Routes
+  const [stops, setStops] = useState(createDefaultStops());
+  const [draggedIndex, setDraggedIndex] = useState(null);
 
   // Live route metrics from Nominatim / OSRM
   const [routeInfo, setRouteInfo] = useState(null);
@@ -85,6 +95,7 @@ const Routes = () => {
     nombre_ruta: '',
     origen: '',
     destino: '',
+    paradas: JSON.stringify(createDefaultStops()),
     fecha_programada: '',
     hora_inicio_real: '',
     hora_fin_real: '',
@@ -211,12 +222,27 @@ const Routes = () => {
     }
   };
 
-  // Helper to reverse-geocode coordinates of old routes to fill search inputs
-  const resolveRouteAddresses = async (origenCoords, destinoCoords) => {
+  // Sync formData with stops whenever stops state changes
+  useEffect(() => {
+    const firstStop = stops[0];
+    const lastStop = stops[stops.length - 1];
+    setFormData(prev => ({
+      ...prev,
+      origen: firstStop?.address || firstStop?.coordinates || '',
+      destino: lastStop?.address || lastStop?.coordinates || '',
+      paradas: JSON.stringify(stops)
+    }));
+  }, [stops]);
+
+  // Helper to reverse-geocode coordinates of legacy routes to fill addresses
+  const resolveRouteAddresses = async (origenCoords, destinoCoords, onDone) => {
     try {
       const origParts = origenCoords.split(',');
       const destParts = destinoCoords.split(',');
-      if (origParts.length !== 2 || destParts.length !== 2) return;
+      if (origParts.length !== 2 || destParts.length !== 2) {
+        if (onDone) onDone(origenCoords, destinoCoords);
+        return;
+      }
 
       const origLat = origParts[0].trim();
       const origLng = origParts[1].trim();
@@ -232,56 +258,88 @@ const Routes = () => {
         })
       ]);
 
+      let origAddr = origenCoords;
+      let destAddr = destinoCoords;
+
       if (origRes.ok) {
         const oData = await origRes.json();
-        setOrigenSearch(oData?.display_name || origenCoords);
-      } else {
-        setOrigenSearch(origenCoords);
+        origAddr = oData?.display_name || origenCoords;
       }
-
       if (destRes.ok) {
         const dData = await destRes.json();
-        setDestinoSearch(dData?.display_name || destinoCoords);
-      } else {
-        setDestinoSearch(destinoCoords);
+        destAddr = dData?.display_name || destinoCoords;
       }
+
+      if (onDone) onDone(origAddr, destAddr);
     } catch (err) {
       console.error('Failed to resolve route addresses:', err);
-      setOrigenSearch(origenCoords);
-      setDestinoSearch(destinoCoords);
+      if (onDone) onDone(origenCoords, destinoCoords);
     }
   };
 
   // Click on Map coordinates callback
   const handleSelectPointsOnMap = ({ coordinates, address }) => {
-    setFormData(prev => {
-      if (!prev.origen) {
-        setOrigenSearch(address);
-        if (formErrors.origen) setFormErrors(errs => ({ ...errs, origen: '' }));
-        return { ...prev, origen: coordinates };
-      } else if (!prev.destino) {
-        setDestinoSearch(address);
-        if (formErrors.destino) setFormErrors(errs => ({ ...errs, destino: '' }));
-        return { ...prev, destino: coordinates };
+    setStops(prev => {
+      // Find the first stop that lacks coordinates
+      const emptyIndex = prev.findIndex(s => !s.coordinates);
+      if (emptyIndex !== -1) {
+        const updated = [...prev];
+        updated[emptyIndex] = { ...updated[emptyIndex], address, coordinates };
+        return updated;
       }
-      // If both origin and destination exist, a 3rd map click does NOT erase or overwrite either point.
+      // If all stops are already filled, DO NOT overwrite any stop on map click!
       return prev;
     });
   };
 
-  // Drag marker callback (independently updates origin or destination)
-  const handleMarkerDragEnd = ({ type, coordinates, address }) => {
-    setFormData(prev => {
-      if (type === 'origin') {
-        setOrigenSearch(address);
-        if (formErrors.origen) setFormErrors(errs => ({ ...errs, origen: '' }));
-        return { ...prev, origen: coordinates };
-      } else if (type === 'destination') {
-        setDestinoSearch(address);
-        if (formErrors.destino) setFormErrors(errs => ({ ...errs, destino: '' }));
-        return { ...prev, destino: coordinates };
+  // Drag marker callback
+  const handleMarkerDragEnd = ({ stopId, stopIndex, coordinates, address }) => {
+    setStops(prev => {
+      return prev.map((stop, idx) => {
+        if (stop.id === stopId || idx === stopIndex) {
+          return { ...stop, coordinates, address };
+        }
+        return stop;
+      });
+    });
+  };
+
+  // Stop Actions: Add, Remove, Update, Reorder
+  const handleAddStop = () => {
+    setStops(prev => [
+      ...prev,
+      { id: generateStopId(), order: prev.length + 1, address: '', coordinates: '' }
+    ]);
+  };
+
+  const handleRemoveStop = (stopId) => {
+    if (stops.length <= 2) {
+      showFeedback('error', 'La ruta debe tener al menos 2 paradas (Origen y Destino).');
+      return;
+    }
+    setStops(prev => {
+      const filtered = prev.filter(s => s.id !== stopId);
+      return filtered.map((s, idx) => ({ ...s, order: idx + 1 }));
+    });
+  };
+
+  const handleUpdateStop = (stopId, newValues) => {
+    setStops(prev => prev.map(s => {
+      if (s.id === stopId) {
+        return { ...s, ...newValues };
       }
-      return prev;
+      return s;
+    }));
+    if (formErrors.stops) setFormErrors(errs => ({ ...errs, stops: '' }));
+  };
+
+  const reorderStops = (fromIndex, toIndex) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= stops.length || toIndex >= stops.length) return;
+    setStops(prev => {
+      const updated = [...prev];
+      const [moved] = updated.splice(fromIndex, 1);
+      updated.splice(toIndex, 0, moved);
+      return updated.map((s, idx) => ({ ...s, order: idx + 1 }));
     });
   };
 
@@ -302,12 +360,9 @@ const Routes = () => {
       errors.nombre_ruta = 'Máximo 100 caracteres';
     }
 
-    if (!formData.origen.trim()) {
-      errors.origen = 'El origen es obligatorio (utiliza el buscador o haz clic en el mapa)';
-    }
-
-    if (!formData.destino.trim()) {
-      errors.destino = 'El destino es obligatorio (utiliza el buscador o haz clic en el mapa)';
+    const filledStops = stops.filter(s => s.coordinates && s.coordinates.trim());
+    if (filledStops.length < 2) {
+      errors.stops = 'Debe indicar al menos 2 paradas con dirección o coordenadas válidas.';
     }
 
     if (!formData.fecha_programada) {
@@ -352,13 +407,22 @@ const Routes = () => {
       return;
     }
 
+    const firstStop = stops[0];
+    const lastStop = stops[stops.length - 1];
+    const submitPayload = {
+      ...formData,
+      origen: firstStop?.address || firstStop?.coordinates || '',
+      destino: lastStop?.address || lastStop?.coordinates || '',
+      paradas: JSON.stringify(stops)
+    };
+
     setIsSubmitLoading(true);
     try {
       if (selectedRoute) {
-        await routeService.updateRoute(selectedRoute.id_ruta, formData);
+        await routeService.updateRoute(selectedRoute.id_ruta, submitPayload);
         showFeedback('success', 'Ruta actualizada correctamente.');
       } else {
-        await routeService.createRoute(formData);
+        await routeService.createRoute(submitPayload);
         showFeedback('success', 'Nueva ruta programada correctamente.');
       }
       handleClearForm();
@@ -373,11 +437,46 @@ const Routes = () => {
   // Select a route to load in form and center on map
   const handleSelectRoute = (route) => {
     setSelectedRoute(route);
+
+    let loadedStops = [];
+    if (route.paradas) {
+      try {
+        const parsed = typeof route.paradas === 'string' ? JSON.parse(route.paradas) : route.paradas;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          loadedStops = parsed.map((s, idx) => ({
+            id: s.id || generateStopId(),
+            order: idx + 1,
+            address: s.address || '',
+            coordinates: s.coordinates || (s.latitude ? `${s.latitude}, ${s.longitude}` : '')
+          }));
+        }
+      } catch (e) {
+        console.warn('Error parsing route.paradas:', e);
+      }
+    }
+
+    if (loadedStops.length === 0) {
+      loadedStops = [
+        { id: generateStopId(), order: 1, address: route.origen, coordinates: route.origen },
+        { id: generateStopId(), order: 2, address: route.destino, coordinates: route.destino }
+      ];
+      resolveRouteAddresses(route.origen, route.destino, (origAddr, destAddr) => {
+        setStops(prev => prev.map((s, idx) => {
+          if (idx === 0) return { ...s, address: origAddr, coordinates: route.origen };
+          if (idx === prev.length - 1) return { ...s, address: destAddr, coordinates: route.destino };
+          return s;
+        }));
+      });
+    }
+
+    setStops(loadedStops);
+
     setFormData({
       codigo_ruta: route.codigo_ruta,
       nombre_ruta: route.nombre_ruta,
       origen: route.origen,
       destino: route.destino,
+      paradas: JSON.stringify(loadedStops),
       fecha_programada: route.fecha_programada,
       hora_inicio_real: route.hora_inicio_real || '',
       hora_fin_real: route.hora_fin_real || '',
@@ -387,14 +486,13 @@ const Routes = () => {
       id_vehiculo: route.id_vehiculo
     });
     setFormErrors({});
-    resolveRouteAddresses(route.origen, route.destino);
   };
 
   // Reset form
   const handleClearForm = () => {
     setSelectedRoute(null);
-    setOrigenSearch('');
-    setDestinoSearch('');
+    const defaultStops = createDefaultStops();
+    setStops(defaultStops);
     setRouteInfo(null);
     setIsIndicationsOpen(false);
     const availableDrivers = drivers.filter(d => d.estado_conductor === 'DISPONIBLE' || d.estado_conductor === 'ACTIVO');
@@ -404,6 +502,7 @@ const Routes = () => {
       nombre_ruta: '',
       origen: '',
       destino: '',
+      paradas: JSON.stringify(defaultStops),
       fecha_programada: '',
       hora_inicio_real: '',
       hora_fin_real: '',
@@ -639,6 +738,7 @@ const Routes = () => {
             <MapComponent
               routes={routes}
               activeRoute={selectedRoute}
+              stops={stops}
               selectedOrigin={formData.origen}
               selectedDestination={formData.destino}
               onSelectPoints={handleSelectPointsOnMap}
@@ -661,14 +761,24 @@ const Routes = () => {
                     <Compass className="animate-spin-slow text-primary" size={20} />
                   </div>
                   <div className="space-y-0.5 overflow-hidden">
-                    <span className="text-xs font-bold text-v-gray uppercase tracking-wider block">Indicadores de Trayecto Real</span>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-v-white text-sm font-semibold truncate max-w-50" title={origenSearch || 'Origen'}>
-                        {(origenSearch || 'Origen').split(',')[0]}
+                    <span className="text-xs font-bold text-v-gray uppercase tracking-wider block">
+                      Indicadores de Trayecto ({stops.length} Paradas)
+                    </span>
+                    <div className="flex items-center gap-2 flex-wrap text-v-white text-xs font-semibold">
+                      <span className="truncate max-w-40" title={stops[0]?.address || 'Parada 1'}>
+                        1. {(stops[0]?.address || 'Parada 1').split(',')[0]}
                       </span>
-                      <ArrowRight size={14} className="text-v-gray shrink-0" />
-                      <span className="text-v-white text-sm font-semibold truncate max-w-50" title={destinoSearch || 'Destino'}>
-                        {(destinoSearch || 'Destino').split(',')[0]}
+                      <ArrowRight size={13} className="text-v-gray shrink-0" />
+                      {stops.length > 2 && (
+                        <>
+                          <span className="px-2 py-0.5 bg-v-dark border border-v-dark-border rounded text-[10px] text-v-gray font-mono">
+                            +{stops.length - 2} paradas interm.
+                          </span>
+                          <ArrowRight size={13} className="text-v-gray shrink-0" />
+                        </>
+                      )}
+                      <span className="truncate max-w-40" title={stops[stops.length - 1]?.address || `Parada ${stops.length}`}>
+                        {stops.length}. {(stops[stops.length - 1]?.address || `Parada ${stops.length}`).split(',')[0]}
                       </span>
                     </div>
                   </div>
@@ -677,7 +787,7 @@ const Routes = () => {
                 <div className="flex items-center gap-4 shrink-0 flex-wrap sm:flex-nowrap w-full sm:w-auto justify-end">
                   <div className="flex items-center gap-4">
                     <div className="space-y-0.5">
-                      <span className="text-[10px] font-bold text-v-gray uppercase tracking-wider block">Distancia</span>
+                      <span className="text-[10px] font-bold text-v-gray uppercase tracking-wider block">Distancia Total</span>
                       <span className="text-xl font-black text-primary font-mono">{routeInfo.distance} <span className="text-xs">km</span></span>
                     </div>
                     <div className="h-8 w-px bg-v-dark-border" />
@@ -821,44 +931,120 @@ const Routes = () => {
                 </div>
               </div>
 
-              {/* Autocomplete Origen */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-v-gray flex items-center gap-1.5">
-                  <MapPin size={13} className="text-emerald-500" /> Dirección de Origen
-                </label>
-                <NominatimAutocomplete
-                  placeholder="Escribe el origen (ej: Portal Norte)..."
-                  value={origenSearch}
-                  onChange={(val) => setOrigenSearch(val)}
-                  onSelect={({ address, coordinates }) => {
-                    setOrigenSearch(address);
-                    setFormData(prev => ({ ...prev, origen: coordinates }));
-                    if (formErrors.origen) setFormErrors(errs => ({ ...errs, origen: '' }));
-                  }}
-                  onError={(msg) => showFeedback('error', msg)}
-                  error={formErrors.origen}
-                />
-                {formErrors.origen && <p className="text-[11px] text-red-500 mt-0.5 font-medium">{formErrors.origen}</p>}
-              </div>
+              {/* Dynamic Multi-Stop List */}
+              <div className="space-y-3 pt-1 border-t border-b border-v-dark-border py-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-v-white uppercase tracking-wider flex items-center gap-1.5">
+                    <MapPin size={14} className="text-primary" /> Paradas de la Ruta ({stops.length})
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleAddStop}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                  >
+                    <Plus size={14} /> Agregar parada
+                  </button>
+                </div>
 
-              {/* Autocomplete Destino */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-v-gray flex items-center gap-1.5">
-                  <MapPin size={13} className="text-red-500" /> Dirección de Destino
-                </label>
-                <NominatimAutocomplete
-                  placeholder="Escribe el destino (ej: Aeropuerto El Dorado)..."
-                  value={destinoSearch}
-                  onChange={(val) => setDestinoSearch(val)}
-                  onSelect={({ address, coordinates }) => {
-                    setDestinoSearch(address);
-                    setFormData(prev => ({ ...prev, destino: coordinates }));
-                    if (formErrors.destino) setFormErrors(errs => ({ ...errs, destino: '' }));
-                  }}
-                  onError={(msg) => showFeedback('error', msg)}
-                  error={formErrors.destino}
-                />
-                {formErrors.destino && <p className="text-[11px] text-red-500 mt-0.5 font-medium">{formErrors.destino}</p>}
+                {formErrors.stops && (
+                  <p className="text-xs text-red-500 font-medium">{formErrors.stops}</p>
+                )}
+
+                <div className="space-y-2.5 max-h-80 overflow-y-auto custom-scrollbar pr-1">
+                  {stops.map((stop, index) => {
+                    const colorInfo = getStopColor(index);
+                    const isFirst = index === 0;
+                    const isLast = index === stops.length - 1;
+                    const stopLabel = isFirst ? 'Parada 1 (Origen)' : (isLast ? `Parada ${index + 1} (Destino)` : `Parada ${index + 1}`);
+
+                    return (
+                      <div
+                        key={stop.id}
+                        draggable
+                        onDragStart={() => setDraggedIndex(index)}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={() => {
+                          if (draggedIndex !== null) {
+                            reorderStops(draggedIndex, index);
+                            setDraggedIndex(null);
+                          }
+                        }}
+                        className={cn(
+                          "p-3 rounded-xl bg-v-dark border transition-all flex items-center gap-2.5 shadow-md group hover:border-v-dark-border/80",
+                          draggedIndex === index ? "opacity-40 border-primary" : "border-v-dark-border"
+                        )}
+                      >
+                        {/* Drag Handle */}
+                        <div
+                          className="cursor-grab active:cursor-grabbing text-v-gray hover:text-v-white p-1 rounded hover:bg-v-dark-border/40 transition-colors shrink-0"
+                          title="Arrastrar para reordenar"
+                        >
+                          <GripVertical size={16} />
+                        </div>
+
+                        {/* Number Badge */}
+                        <div
+                          className={cn(
+                            "h-7 w-7 rounded-full flex items-center justify-center text-white text-xs font-extrabold shrink-0 shadow-sm",
+                            colorInfo.bgClass
+                          )}
+                        >
+                          {index + 1}
+                        </div>
+
+                        {/* Autocomplete Input */}
+                        <div className="flex-1 space-y-1 overflow-hidden">
+                          <span className="text-[10px] font-bold text-v-gray uppercase tracking-wider block">
+                            {stopLabel}
+                          </span>
+                          <NominatimAutocomplete
+                            placeholder={`Escriba dirección de parada ${index + 1}...`}
+                            value={stop.address}
+                            onChange={(val) => handleUpdateStop(stop.id, { address: val })}
+                            onSelect={({ address, coordinates }) => {
+                              handleUpdateStop(stop.id, { address, coordinates });
+                            }}
+                            onError={(msg) => showFeedback('error', msg)}
+                          />
+                        </div>
+
+                        {/* Reorder Up / Down Controls */}
+                        <div className="flex flex-col gap-0.5 shrink-0">
+                          <button
+                            type="button"
+                            disabled={index === 0}
+                            onClick={() => reorderStops(index, index - 1)}
+                            className="p-1 text-v-gray hover:text-v-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-v-dark-border/40 rounded transition-colors cursor-pointer"
+                            title="Mover arriba"
+                          >
+                            <ChevronUp size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={index === stops.length - 1}
+                            onClick={() => reorderStops(index, index + 1)}
+                            className="p-1 text-v-gray hover:text-v-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-v-dark-border/40 rounded transition-colors cursor-pointer"
+                            title="Mover abajo"
+                          >
+                            <ChevronDown size={12} />
+                          </button>
+                        </div>
+
+                        {/* Delete Control */}
+                        {stops.length > 2 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveStop(stop.id)}
+                            className="p-1.5 text-v-gray hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer shrink-0"
+                            title="Eliminar esta parada"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Conductor & Vehículo */}

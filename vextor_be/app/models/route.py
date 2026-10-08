@@ -15,6 +15,7 @@ class Ruta(Base):
     nombre_ruta = Column(String(100), nullable=False)
     origen = Column(String(150), nullable=False)
     destino = Column(String(150), nullable=False)
+    paradas = Column(Text, nullable=True)
     fecha_programada = Column(DateTime, nullable=False)
     hora_inicio_real = Column(DateTime, nullable=True)
     hora_fin_real = Column(DateTime, nullable=True)
