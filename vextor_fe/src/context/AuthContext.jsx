@@ -98,8 +98,17 @@ export const AuthProvider = ({ children }) => {
       // Requerimiento: El tema no debe mantenerse después de cerrar sesión
       localStorage.removeItem('vextor_theme');
       localStorage.removeItem('vextor_theme_color');
+      localStorage.removeItem('theme');
+      localStorage.removeItem('themeColor');
+      localStorage.removeItem('vextor_preferences');
       document.documentElement.setAttribute('data-theme', 'light');
       document.documentElement.classList.remove('dark');
+      document.documentElement.className.split(' ').forEach((cls) => {
+        if (cls.startsWith('theme-')) {
+          document.documentElement.classList.remove(cls);
+        }
+      });
+      document.documentElement.classList.add('theme-emerald');
     }
   };
 

@@ -593,13 +593,44 @@ class UserService:
 
     @staticmethod
     def update(user_id: UUID, user_data: dict, db: Session):
+        from uuid import uuid4
+        from app.models import Rol
+
         usuario = UserService.get_by_id(user_id, db)
         if not usuario:
             raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
         for key, value in user_data.items():
             if value is not None:
-                setattr(usuario, key, value)
+                if key == "id_rol":
+                    old_role_id = usuario.id_rol
+                    setattr(usuario, key, value)
+                    if str(old_role_id) != str(value):
+                        target_rol = db.query(Rol).filter(Rol.id_rol == value).first()
+                        if target_rol:
+                            if target_rol.nombre_rol in ["Conductor", "rol-conductor"]:
+                                existing_cond = db.query(Conductor).filter(Conductor.id_usuario == user_id).first()
+                                if not existing_cond:
+                                    new_cond = Conductor(
+                                        id_conductor=uuid4(),
+                                        id_usuario=user_id,
+                                        nombre_conductor=usuario.nombres_usuario,
+                                        apellido_conductor=usuario.apellidos_usuario,
+                                        cedula_conductor=f"CC-{str(user_id)[:8]}",
+                                        telefono_conductor=usuario.telefono_usuario or "3000000000",
+                                        licencia="C1",
+                                        estado_conductor="DISPONIBLE",
+                                        fecha_ingreso=datetime.now().date(),
+                                    )
+                                    db.add(new_cond)
+                                else:
+                                    existing_cond.estado_conductor = "DISPONIBLE"
+                            else:
+                                existing_cond = db.query(Conductor).filter(Conductor.id_usuario == user_id).first()
+                                if existing_cond:
+                                    existing_cond.estado_conductor = "INACTIVO"
+                else:
+                    setattr(usuario, key, value)
 
         db.commit()
         db.refresh(usuario)

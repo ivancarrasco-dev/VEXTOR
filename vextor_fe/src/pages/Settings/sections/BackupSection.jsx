@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button } from '../../../components/ui/Button';
 import { cn } from '../../../utils/cn';
+import { showConfirm, showAlert } from '../../../utils/sweetalert';
 
 const BackupSection = ({
   isAutoBackup,
@@ -70,10 +71,22 @@ const BackupSection = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="text-xs h-8 px-3 font-semibold"
-                  onClick={() => {
-                    if (window.confirm(`¿Confirmar restauración de la base de datos al punto: ${bk.filename}?`)) {
-                      showToast('¡Sistema restaurado con éxito!');
+                  className="text-xs h-8 px-3 font-semibold cursor-pointer"
+                  onClick={async () => {
+                    const confirm = await showConfirm(
+                      '¿Restaurar copia de seguridad?',
+                      `Está a punto de restaurar la base de datos al punto: ${bk.filename}. Esta acción reemplazará la información actual por la de esta copia.`,
+                      'Sí, Restaurar',
+                      'Cancelar',
+                      true
+                    );
+                    if (confirm.isConfirmed) {
+                      await showAlert(
+                        'Restauración Exitosa',
+                        `El sistema ha sido restaurado correctamente a la copia ${bk.filename}.`,
+                        'success'
+                      );
+                      window.location.reload();
                     }
                   }}
                 >

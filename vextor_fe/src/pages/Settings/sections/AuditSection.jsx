@@ -359,7 +359,7 @@ const AuditSection = ({ showToast }) => {
                     {log.id_registro_afectado && (
                       <>
                         <span>•</span>
-                        <span>ID Recurso: <strong className="text-v-white font-mono text-[10px]">{log.id_registro_afectado}</strong></span>
+                        <span>Identificación / Ref: <strong className="text-v-white font-mono text-[10px]">{log.id_registro_afectado.length > 18 ? log.id_registro_afectado.substring(0, 8) + '...' : log.id_registro_afectado}</strong></span>
                       </>
                     )}
                   </div>

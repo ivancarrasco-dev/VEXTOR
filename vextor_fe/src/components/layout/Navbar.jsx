@@ -6,14 +6,12 @@ import { Logo } from '../ui/Logo';
 import { Badge } from '../ui/Badge';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { useTranslation } from 'react-i18next';
-import NavbarSearch from './NavbarSearch';
-
 /**
  * Navbar Component
  *
  * Responsabilidad:
  * Header superior de la plataforma B2B VEXTOR.
- * Muestra el título contextual del módulo, el buscador global,
+ * Muestra el título contextual del módulo,
  * el indicador de conectividad en tiempo real y controles de usuario.
  */
 const Navbar = ({ onMenuClick }) => {
@@ -83,11 +81,6 @@ const Navbar = ({ onMenuClick }) => {
               </Badge>
             </div>
           </div>
-        </div>
-
-        {/* Global Search Center */}
-        <div className="flex-1 max-w-md mx-4 hidden md:block">
-          <NavbarSearch />
         </div>
 
         {/* Right Section: Theme Toggle + Notifications + User Menu */}
