@@ -195,6 +195,7 @@ const Settings = () => {
 
   // 3. Users and Roles State
   const [usersList, setUsersList] = useState([]);
+  const [rolesList, setRolesList] = useState([]);
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [isEditingUser, setIsEditingUser] = useState(false);
   const [userForm, setUserForm] = useState({
@@ -203,9 +204,21 @@ const Settings = () => {
     apellidos_usuario: '',
     correo_usuario: '',
     contrasenia_usuario: '',
-    id_rol: '11111111-2222-3333-4444-555555555552',
+    id_rol: '',
     estado_usuario: 'ACTIVO'
   });
+
+  const fetchRoles = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/roles`);
+      setRolesList(response.data || []);
+      if (response.data && response.data.length > 0 && !userForm.id_rol) {
+        setUserForm(prev => ({ ...prev, id_rol: response.data[0].id_rol }));
+      }
+    } catch (error) {
+      console.error('Error fetching roles:', error);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -217,6 +230,7 @@ const Settings = () => {
   };
 
   useEffect(() => {
+    fetchRoles();
     fetchUsers();
   }, []);
 
@@ -238,13 +252,14 @@ const Settings = () => {
 
   const handleOpenAddUser = () => {
     setIsEditingUser(false);
+    const defaultRoleId = rolesList.length > 0 ? rolesList[0].id_rol : '';
     setUserForm({
       id_usuario: '',
       nombres_usuario: '',
       apellidos_usuario: '',
       correo_usuario: '',
       contrasenia_usuario: '',
-      id_rol: '11111111-2222-3333-4444-555555555552',
+      id_rol: defaultRoleId,
       estado_usuario: 'ACTIVO'
     });
     setUserModalOpen(true);
@@ -610,6 +625,7 @@ const Settings = () => {
               {activeCategory === 'users' && (
                 <UsersSection
                   usersList={usersList}
+                  rolesList={rolesList}
                   handleUserToggleStatus={handleUserToggleStatus}
                   handleOpenAddUser={handleOpenAddUser}
                   handleOpenEditUser={handleOpenEditUser}

@@ -592,6 +592,20 @@ class UserService:
         return db.query(Usuario).filter(Usuario.id_usuario == user_id).first()
 
     @staticmethod
+    def update(user_id: UUID, user_data: dict, db: Session):
+        usuario = UserService.get_by_id(user_id, db)
+        if not usuario:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+        for key, value in user_data.items():
+            if value is not None:
+                setattr(usuario, key, value)
+
+        db.commit()
+        db.refresh(usuario)
+        return usuario
+
+    @staticmethod
     def delete(user_id: UUID, db: Session):
         usuario = UserService.get_by_id(user_id, db)
         if not usuario:

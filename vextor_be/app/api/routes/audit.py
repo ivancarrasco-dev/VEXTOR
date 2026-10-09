@@ -150,7 +150,12 @@ def mark_all_notifications_as_read(
         NotificacionModel.leido == False
     ).update({"leido": True}, synchronize_session=False)
     db.commit()
-    return {"message": "Todas las notificaciones fueron marcadas como leídas"}
+    return db.query(NotificacionModel).filter(
+        or_(
+            NotificacionModel.id_usuario == current_user.id_usuario,
+            NotificacionModel.id_usuario.is_(None)
+        )
+    ).order_by(desc(NotificacionModel.fecha_hora)).all()
 
 
 @router.put("/api/notifications/{id_notificacion}/read")

@@ -11,6 +11,7 @@ import { showConfirm, showAlert } from '../../utils/sweetalert';
 
 export const UsersPage = () => {
   const [users, setUsers] = useState([]);
+  const [rolesList, setRolesList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('TODOS');
@@ -25,9 +26,21 @@ export const UsersPage = () => {
     apellidos_usuario: '',
     correo_usuario: '',
     contrasenia_usuario: '',
-    id_rol: '11111111-2222-3333-4444-555555555551',
+    id_rol: '',
     estado_usuario: 'ACTIVO'
   });
+
+  const fetchRoles = async () => {
+    try {
+      const res = await axios.get(`${API_BASE_URL}/api/roles`);
+      setRolesList(res.data || []);
+      if (res.data && res.data.length > 0 && !userForm.id_rol) {
+        setUserForm(prev => ({ ...prev, id_rol: res.data[0].id_rol }));
+      }
+    } catch (err) {
+      console.error('Error fetching roles:', err);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -42,18 +55,20 @@ export const UsersPage = () => {
   };
 
   useEffect(() => {
+    fetchRoles();
     fetchUsers();
   }, []);
 
   const handleOpenAdd = () => {
     setIsEditing(false);
     setCurrentUser(null);
+    const defaultRoleId = rolesList.length > 0 ? rolesList[0].id_rol : '';
     setUserForm({
       nombres_usuario: '',
       apellidos_usuario: '',
       correo_usuario: '',
       contrasenia_usuario: '',
-      id_rol: '11111111-2222-3333-4444-555555555551',
+      id_rol: defaultRoleId,
       estado_usuario: 'ACTIVO'
     });
     setUserModalOpen(true);
@@ -67,7 +82,7 @@ export const UsersPage = () => {
       apellidos_usuario: user.apellidos_usuario || '',
       correo_usuario: user.correo_usuario || '',
       contrasenia_usuario: '',
-      id_rol: user.id_rol || '11111111-2222-3333-4444-555555555551',
+      id_rol: user.id_rol || (rolesList.length > 0 ? rolesList[0].id_rol : ''),
       estado_usuario: user.estado_usuario || 'ACTIVO'
     });
     setUserModalOpen(true);
@@ -122,33 +137,42 @@ export const UsersPage = () => {
     e.preventDefault();
     try {
       if (isEditing && currentUser) {
-        await axios.put(`${API_BASE_URL}/api/users/${currentUser.id_usuario}`, userForm);
-        showAlert('Usuario Actualizado', 'Los datos del usuario han sido guardados.', 'success');
+        const updatePayload = {
+          nombres_usuario: userForm.nombres_usuario,
+          apellidos_usuario: userForm.apellidos_usuario,
+          correo_usuario: userForm.correo_usuario,
+          id_rol: userForm.id_rol,
+          estado_usuario: userForm.estado_usuario
+        };
+        await axios.put(`${API_BASE_URL}/api/users/${currentUser.id_usuario}`, updatePayload);
+        await showAlert('Usuario Actualizado', 'El rol y datos del usuario han sido guardados correctamente.', 'success');
       } else {
         await axios.post(`${API_BASE_URL}/api/auth/register`, {
           fullName: `${userForm.nombres_usuario} ${userForm.apellidos_usuario}`.trim(),
           email: userForm.correo_usuario,
           password: userForm.contrasenia_usuario || 'Vextor2026!'
         });
-        showAlert('Usuario Creado', 'El nuevo usuario ha sido registrado exitosamente.', 'success');
+        await showAlert('Usuario Creado', 'El nuevo usuario ha sido registrado exitosamente.', 'success');
       }
       setUserModalOpen(false);
       fetchUsers();
     } catch (err) {
-      showAlert('Guardado', 'Los datos han sido registrados en la plataforma.', 'success');
-      setUserModalOpen(false);
-      fetchUsers();
+      console.error('Error saving user:', err);
+      showAlert('Error', err.response?.data?.detail || 'No se pudo guardar el usuario en el servidor.', 'error');
     }
+  };
+
+  const getRoleName = (id_rol) => {
+    const r = rolesList.find(role => role.id_rol === id_rol);
+    return r ? r.nombre_rol : 'Usuario';
   };
 
   const filteredUsers = users.filter(u => {
     const nameMatch = `${u.nombres_usuario} ${u.apellidos_usuario}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
                       u.correo_usuario?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const isUserAdmin = u.id_rol === '11111111-2222-3333-4444-555555555551';
-    const roleMatch = roleFilter === 'TODOS' ||
-                      (roleFilter === 'ADMIN' && isUserAdmin) ||
-                      (roleFilter === 'CONDUCTOR' && !isUserAdmin);
+    const userRoleName = getRoleName(u.id_rol);
+    const roleMatch = roleFilter === 'TODOS' || userRoleName.toUpperCase() === roleFilter.toUpperCase();
 
     const statusMatch = statusFilter === 'TODOS' || u.estado_usuario === statusFilter;
 
@@ -189,8 +213,9 @@ export const UsersPage = () => {
         <div className="space-y-1">
           <Select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
             <option value="TODOS">Todos los Roles</option>
-            <option value="ADMIN">Administradores</option>
-            <option value="CONDUCTOR">Conductores / Usuarios</option>
+            {rolesList.map(r => (
+              <option key={r.id_rol} value={r.nombre_rol}>{r.nombre_rol}</option>
+            ))}
           </Select>
         </div>
 
@@ -227,7 +252,8 @@ export const UsersPage = () => {
                 </tr>
               ) : (
                 filteredUsers.map((usr) => {
-                  const isAdmin = usr.id_rol === '11111111-2222-3333-4444-555555555551';
+                  const roleName = getRoleName(usr.id_rol);
+                  const isAdmin = roleName === 'Administrador';
                   const isActive = usr.estado_usuario === 'ACTIVO';
                   return (
                     <tr key={usr.id_usuario} className="hover:bg-v-dark/30 transition-colors">
@@ -239,7 +265,7 @@ export const UsersPage = () => {
                       </td>
                       <td className="p-4">
                         <Badge variant={isAdmin ? 'primary' : 'neutral'} size="xs">
-                          {isAdmin ? 'Administrador' : 'Conductor / Cliente'}
+                          {roleName}
                         </Badge>
                       </td>
                       <td className="p-4">
@@ -338,8 +364,9 @@ export const UsersPage = () => {
                     value={userForm.id_rol}
                     onChange={(e) => setUserForm({ ...userForm, id_rol: e.target.value })}
                   >
-                    <option value="11111111-2222-3333-4444-555555555551">Administrador</option>
-                    <option value="11111111-2222-3333-4444-555555555552">Conductor / Usuario</option>
+                    {rolesList.map(r => (
+                      <option key={r.id_rol} value={r.id_rol}>{r.nombre_rol}</option>
+                    ))}
                   </Select>
                 </div>
 

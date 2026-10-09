@@ -67,6 +67,7 @@ class UsuarioCreate(UsuarioBase):
 
 
 class UsuarioUpdate(BaseModel):
+    id_rol: Optional[UUID] = None
     nombres_usuario: Optional[str] = Field(None, max_length=100)
     apellidos_usuario: Optional[str] = Field(None, max_length=100)
     correo_usuario: Optional[EmailStr] = None
