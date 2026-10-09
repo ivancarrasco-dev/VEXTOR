@@ -72,7 +72,12 @@ const NotificationButton = () => {
     // Optimistic update
     setNotifications(prev => prev.map(n => ({ ...n, leido: true })));
     try {
-      await axios.put(`${API_BASE_URL}/api/notifications/read-all`);
+      const response = await axios.put(`${API_BASE_URL}/api/notifications/read-all`);
+      if (Array.isArray(response.data)) {
+        setNotifications(response.data);
+      } else {
+        fetchNotifications();
+      }
     } catch (error) {
       console.error('Error marking all as read:', error);
       fetchNotifications();

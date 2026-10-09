@@ -14,7 +14,7 @@ from app.schemas import (
     Conductor, ConductorCreate, ConductorUpdate,
     Ruta, RutaCreate, RutaUpdate,
     Mantenimiento, MantenimientoCreate, MantenimientoUpdate,
-    Usuario, UsuarioCreate, UsuarioUpdate,
+    Usuario, UsuarioCreate, UsuarioUpdate, Rol,
     Empresa, EmpresaCreate, EmpresaUpdate,
 )
 from app.services import (
@@ -23,7 +23,7 @@ from app.services import (
     AuditService,
 )
 from app.api.routes.auth import get_current_user
-from app.models import Rol
+from app.models import Rol as RolModel
 
 # Routers
 vehicles_router = APIRouter(prefix="/api/vehicles", tags=["Vehicles"])
@@ -31,12 +31,13 @@ drivers_router = APIRouter(prefix="/api/drivers", tags=["Drivers"])
 routes_router = APIRouter(prefix="/api/routes", tags=["Routes"])
 maintenance_router = APIRouter(prefix="/api/maintenance", tags=["Maintenance"])
 users_router = APIRouter(prefix="/api/users", tags=["Users"])
+roles_router = APIRouter(prefix="/api/roles", tags=["Roles"])
 company_router = APIRouter(prefix="/api/company", tags=["Company"])
 
 
 # Dependencia para requerir rol de Administrador
 def require_admin(current_user = Depends(get_current_user), db: Session = Depends(get_db)):
-    rol = db.query(Rol).filter(Rol.id_rol == current_user.id_rol).first()
+    rol = db.query(RolModel).filter(RolModel.id_rol == current_user.id_rol).first()
     if not rol or rol.nombre_rol != "Administrador":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -125,7 +126,7 @@ def get_drivers(
     """
     from app.models import Conductor as ConductorModel, Usuario as UsuarioModel
     
-    query = db.query(ConductorModel).join(UsuarioModel).join(Rol, UsuarioModel.id_rol == Rol.id_rol).filter(Rol.nombre_rol.in_(["Conductor", "rol-conductor"])).offset(skip).limit(min(limit, 100))
+    query = db.query(ConductorModel).join(UsuarioModel).join(RolModel, UsuarioModel.id_rol == RolModel.id_rol).filter(RolModel.nombre_rol.in_(["Conductor", "rol-conductor"])).offset(skip).limit(min(limit, 100))
     conductores = query.all()
     
     # Enriquecer con correo del usuario
@@ -173,9 +174,9 @@ def create_driver(
             id_usuario = existing_user.id_usuario
         else:
             # Obtener rol Conductor
-            rol_conductor = db.query(Rol).filter(Rol.nombre_rol.in_(["Conductor", "rol-conductor"])).first()
+            rol_conductor = db.query(RolModel).filter(RolModel.nombre_rol.in_(["Conductor", "rol-conductor"])).first()
             if not rol_conductor:
-                rol_conductor = db.query(Rol).first()
+                rol_conductor = db.query(RolModel).first()
             rol_id = rol_conductor.id_rol if rol_conductor else uuid.uuid4()
             
             new_user = Usuario(
@@ -195,9 +196,9 @@ def create_driver(
     
     # Si no hay id_usuario ni correo, generar automáticamente
     elif not id_usuario:
-        rol_conductor = db.query(Rol).filter(Rol.nombre_rol.in_(["Conductor", "rol-conductor"])).first()
+        rol_conductor = db.query(RolModel).filter(RolModel.nombre_rol.in_(["Conductor", "rol-conductor"])).first()
         if not rol_conductor:
-            rol_conductor = db.query(Rol).first()
+            rol_conductor = db.query(RolModel).first()
         rol_id = rol_conductor.id_rol if rol_conductor else uuid.uuid4()
         
         email_derived = f"conductor_{driver_data['cedula_conductor']}@vextor.com"
@@ -352,7 +353,7 @@ def update_route(
     current_user = Depends(get_current_user),
 ):
     from app.models import Conductor, AsignacionConductor
-    rol = db.query(Rol).filter(Rol.id_rol == current_user.id_rol).first()
+    rol = db.query(RolModel).filter(RolModel.id_rol == current_user.id_rol).first()
     is_admin = rol and rol.nombre_rol == "Administrador"
 
     if not is_admin:
@@ -463,6 +464,16 @@ def delete_maintenance(
     return {"message": "Mantenimiento eliminado correctamente"}
 
 
+# ========== ROLES ==========
+
+@roles_router.get("", response_model=List[Rol])
+def get_roles(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
+):
+    return db.query(RolModel).all()
+
+
 # ========== USERS ==========
 
 @users_router.get("", response_model=List[Usuario])
@@ -474,6 +485,22 @@ def get_users(
 ):
     limit = min(limit, 100)
     return UserService.get_all(db)[skip : skip + limit]
+
+
+@users_router.put("/{id_usuario}", response_model=Usuario)
+def update_user(
+    id_usuario: UUID,
+    user_update: UsuarioUpdate,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_admin),
+):
+    res = UserService.update(id_usuario, user_update.model_dump(exclude_unset=True), db)
+    AuditService.record_activity(
+        db, current_user.id_usuario,
+        f"{current_user.nombres_usuario} {current_user.apellidos_usuario}".strip(),
+        "ACTUALIZACION", "Usuarios", f"Usuario actualizado ID: {id_usuario}"
+    )
+    return res
 
 
 @users_router.delete("/{id_usuario}")

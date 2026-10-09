@@ -112,7 +112,53 @@ def export_report_file(
 
     filename = f"VEXTOR_Reporte_{report_type.upper()}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
-    if file_format in ["csv", "xlsx", "excel"]:
+    if file_format in ["xlsx", "excel"]:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = report_type.capitalize()[:30]
+
+        if items:
+            headers = list(items[0].keys())
+            ws.append(headers)
+
+            # Header styling
+            header_fill = PatternFill(start_color="0F6A43", end_color="0F6A43", fill_type="solid")
+            header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+            align_center = Alignment(horizontal="center", vertical="center")
+
+            for col_num, _ in enumerate(headers, 1):
+                cell = ws.cell(row=1, column=col_num)
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = align_center
+
+            for row in items:
+                ws.append([row.get(h, "") for h in headers])
+
+            # Auto-adjust column widths
+            for col in ws.columns:
+                max_len = max(len(str(cell.value or "")) for cell in col)
+                col_letter = openpyxl.utils.get_column_letter(col[0].column)
+                ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
+        else:
+            ws.append(["Sin datos disponibles para los filtros seleccionados"])
+
+        excel_stream = io.BytesIO()
+        wb.save(excel_stream)
+        excel_data = excel_stream.getvalue()
+
+        return Response(
+            content=excel_data,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}.xlsx"
+            }
+        )
+
+    elif file_format == "csv":
         output = io.StringIO()
         if items:
             headers = list(items[0].keys())
@@ -126,14 +172,12 @@ def export_report_file(
             writer.writerow(["Sin datos disponibles para los filtros seleccionados"])
 
         csv_data = output.getvalue().encode("utf-8-sig")
-        content_type = "text/csv" if file_format == "csv" else "application/vnd.ms-excel"
-        ext = "csv" if file_format == "csv" else "xlsx"
 
         return Response(
             content=csv_data,
-            media_type=content_type,
+            media_type="text/csv",
             headers={
-                "Content-Disposition": f"attachment; filename={filename}.{ext}"
+                "Content-Disposition": f"attachment; filename={filename}.csv"
             }
         )
 

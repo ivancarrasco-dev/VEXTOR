@@ -130,6 +130,7 @@ app.include_router(crud.drivers_router)
 app.include_router(crud.routes_router)
 app.include_router(crud.maintenance_router)
 app.include_router(crud.users_router)
+app.include_router(crud.roles_router)
 app.include_router(crud.company_router)
 
 # Driver Routes (my-routes endpoint)

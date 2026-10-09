@@ -12,7 +12,7 @@ class InMemoryRateLimiter:
         self.requests = defaultdict(list)
 
     def check(self, request: Request, key_prefix: str = ""):
-        client_ip = request.client.host if request.client else "unknown"
+        client_ip = request.client.host if request and request.client else "testclient"
         key = f"{key_prefix}:{client_ip}"
         now = time.time()
 

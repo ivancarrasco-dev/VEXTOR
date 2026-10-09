@@ -95,6 +95,11 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setUser(null);
       setIsAuthenticated(false);
+      // Requerimiento: El tema no debe mantenerse después de cerrar sesión
+      localStorage.removeItem('vextor_theme');
+      localStorage.removeItem('vextor_theme_color');
+      document.documentElement.setAttribute('data-theme', 'light');
+      document.documentElement.classList.remove('dark');
     }
   };
 

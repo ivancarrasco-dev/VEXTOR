@@ -9,6 +9,7 @@ import { cn } from '../../../utils/cn';
 
 const UsersSection = ({
   usersList,
+  rolesList = [],
   handleUserToggleStatus,
   handleOpenAddUser,
   handleOpenEditUser,
@@ -20,6 +21,10 @@ const UsersSection = ({
   setUserForm,
   handleSaveUser
 }) => {
+  const getRoleName = (id_rol) => {
+    const r = rolesList.find(role => role.id_rol === id_rol);
+    return r ? r.nombre_rol : 'Usuario';
+  };
   return (
     <div className="space-y-6 text-left">
       <div className="flex justify-between items-center bg-v-dark/20 p-4 rounded-2xl border border-v-dark-border">
@@ -48,6 +53,7 @@ const UsersSection = ({
             <tbody className="divide-y divide-v-dark-border">
               {usersList.map((usr) => {
                 const isUserActive = (usr.estado_usuario === 'ACTIVO');
+                const roleName = getRoleName(usr.id_rol);
                 return (
                   <tr key={usr.id_usuario} className="hover:bg-v-dark/20 transition-colors">
                     <td className="p-3.5 font-bold text-v-white text-sm">
@@ -55,8 +61,8 @@ const UsersSection = ({
                     </td>
                     <td className="p-3.5 text-v-gray text-xs font-mono">{usr.correo_usuario}</td>
                     <td className="p-3.5 text-v-white text-sm">
-                      <Badge variant="primary" size="xs">
-                        {usr.id_rol === '11111111-2222-3333-4444-555555555551' ? 'Administrador' : 'Conductor'}
+                      <Badge variant={roleName === 'Administrador' ? 'primary' : 'neutral'} size="xs">
+                        {roleName}
                       </Badge>
                     </td>
                     <td className="p-3.5">
@@ -144,8 +150,9 @@ const UsersSection = ({
                     value={userForm.id_rol}
                     onChange={(e) => setUserForm({ ...userForm, id_rol: e.target.value })}
                   >
-                    <option value="11111111-2222-3333-4444-555555555551">Administrador</option>
-                    <option value="11111111-2222-3333-4444-555555555552">Conductor</option>
+                    {rolesList.map(r => (
+                      <option key={r.id_rol} value={r.id_rol}>{r.nombre_rol}</option>
+                    ))}
                   </Select>
                 </div>
                 <div className="space-y-1.5">
