@@ -30,6 +30,12 @@ import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 
 // Helper for relative time (e.g. "Hace 10 minutos")
+const formatDescriptionText = (text) => {
+  if (!text) return '';
+  const uuidRegex = /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g;
+  return text.replace(uuidRegex, (match) => `#${match.slice(0, 8).toUpperCase()}`);
+};
+
 const getRelativeTime = (dateStr) => {
   if (!dateStr) return '';
   const now = new Date();
@@ -416,7 +422,7 @@ const Dashboard = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-v-white truncate group-hover:text-primary transition-colors">
-                            {activity.descripcion}
+                            {formatDescriptionText(activity.descripcion)}
                           </p>
                           <p className="text-xs text-v-gray truncate mt-0.5">
                             Por <strong className="text-v-white font-medium">{activity.nombres_usuario || 'Sistema'}</strong> • {getRelativeTime(activity.fecha_hora)}
@@ -547,7 +553,7 @@ const Dashboard = () => {
                                   <Badge variant="neutral" size="xs">{act.modulo}</Badge>
                                 </div>
                                 <p className="text-xs text-v-white font-medium leading-relaxed">
-                                  {act.descripcion}
+                                  {formatDescriptionText(act.descripcion)}
                                 </p>
                               </div>
                             );

@@ -592,10 +592,43 @@ class UserService:
         return db.query(Usuario).filter(Usuario.id_usuario == user_id).first()
 
     @staticmethod
+    def create(user_data: dict, db: Session):
+        from app.core.security import hash_password
+        from app.models import Rol as RolModel
+        import uuid
+
+        raw_password = user_data.pop("contrasenia_usuario", None) or "Vextor2026!"
+        user_data["contrasenia_usuario"] = hash_password(raw_password)
+
+        existing = db.query(Usuario).filter(Usuario.correo_usuario == user_data["correo_usuario"]).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="El correo electrónico ya se encuentra registrado.")
+
+        if "id_rol" in user_data and user_data["id_rol"]:
+            rol = db.query(RolModel).filter(RolModel.id_rol == user_data["id_rol"]).first()
+            if not rol:
+                raise HTTPException(status_code=400, detail="El rol especificado no existe.")
+
+        if "id_usuario" not in user_data or not user_data["id_usuario"]:
+            user_data["id_usuario"] = uuid.uuid4()
+
+        usuario = Usuario(**user_data)
+        db.add(usuario)
+        db.commit()
+        db.refresh(usuario)
+        return usuario
+
+    @staticmethod
     def update(user_id: UUID, user_data: dict, db: Session):
+        from app.models import Rol as RolModel
         usuario = UserService.get_by_id(user_id, db)
         if not usuario:
             raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+        if "id_rol" in user_data and user_data["id_rol"]:
+            rol = db.query(RolModel).filter(RolModel.id_rol == user_data["id_rol"]).first()
+            if not rol:
+                raise HTTPException(status_code=400, detail="El rol especificado no existe.")
 
         for key, value in user_data.items():
             if value is not None:

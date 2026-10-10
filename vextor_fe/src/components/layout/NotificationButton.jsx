@@ -45,6 +45,24 @@ const NotificationButton = () => {
 
   const unreadCount = notifications.filter(n => !n.leido).length;
 
+  const handleMarkAsRead = async (notif, e) => {
+    if (e) e.stopPropagation();
+    if (notif.leido) return; // Already read, do nothing
+
+    setNotifications(prev =>
+      prev.map(n => n.id_notificacion === notif.id_notificacion ? { ...n, leido: true } : n)
+    );
+
+    try {
+      await axios.put(`${API_BASE_URL}/api/notifications/${notif.id_notificacion}/read`);
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      setNotifications(prev =>
+        prev.map(n => n.id_notificacion === notif.id_notificacion ? { ...n, leido: false } : n)
+      );
+    }
+  };
+
   const handleToggleReadStatus = async (notif, e) => {
     if (e) e.stopPropagation();
     const isCurrentlyRead = notif.leido;
@@ -52,7 +70,6 @@ const NotificationButton = () => {
       ? `${API_BASE_URL}/api/notifications/${notif.id_notificacion}/unread`
       : `${API_BASE_URL}/api/notifications/${notif.id_notificacion}/read`;
 
-    // Optimistic local update
     setNotifications(prev =>
       prev.map(n => n.id_notificacion === notif.id_notificacion ? { ...n, leido: !isCurrentlyRead } : n)
     );
@@ -61,7 +78,6 @@ const NotificationButton = () => {
       await axios.put(endpoint);
     } catch (error) {
       console.error('Error updating notification read status:', error);
-      // Revert if error
       setNotifications(prev =>
         prev.map(n => n.id_notificacion === notif.id_notificacion ? { ...n, leido: isCurrentlyRead } : n)
       );
@@ -172,7 +188,7 @@ const NotificationButton = () => {
                   notifications.slice(0, 5).map((notif) => (
                     <div
                       key={notif.id_notificacion}
-                      onClick={(e) => handleToggleReadStatus(notif, e)}
+                      onClick={(e) => handleMarkAsRead(notif, e)}
                       className={cn(
                         "p-4 border-b border-v-dark-border hover:bg-v-dark-border/20 transition-colors cursor-pointer relative flex gap-3 items-start",
                         !notif.leido && "bg-primary/5"
@@ -286,7 +302,7 @@ const NotificationButton = () => {
                         notifications.map((notif) => (
                           <div
                             key={notif.id_notificacion}
-                            onClick={(e) => handleToggleReadStatus(notif, e)}
+                            onClick={(e) => handleMarkAsRead(notif, e)}
                             className={cn(
                               "p-4 rounded-2xl border transition-all cursor-pointer relative flex gap-3.5 items-start group",
                               !notif.leido

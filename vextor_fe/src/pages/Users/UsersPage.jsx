@@ -147,10 +147,13 @@ export const UsersPage = () => {
         await axios.put(`${API_BASE_URL}/api/users/${currentUser.id_usuario}`, updatePayload);
         await showAlert('Usuario Actualizado', 'El rol y datos del usuario han sido guardados correctamente.', 'success');
       } else {
-        await axios.post(`${API_BASE_URL}/api/auth/register`, {
-          fullName: `${userForm.nombres_usuario} ${userForm.apellidos_usuario}`.trim(),
-          email: userForm.correo_usuario,
-          password: userForm.contrasenia_usuario || 'Vextor2026!'
+        await axios.post(`${API_BASE_URL}/api/users`, {
+          nombres_usuario: userForm.nombres_usuario,
+          apellidos_usuario: userForm.apellidos_usuario,
+          correo_usuario: userForm.correo_usuario,
+          contrasenia_usuario: userForm.contrasenia_usuario || 'Vextor2026!',
+          id_rol: userForm.id_rol,
+          estado_usuario: userForm.estado_usuario || 'ACTIVO'
         });
         await showAlert('Usuario Creado', 'El nuevo usuario ha sido registrado exitosamente.', 'success');
       }

@@ -434,7 +434,7 @@
       "language": "Idioma de la Interfaz",
       "langEs": "Español (América Latina)",
       "langEn": "English (US)",
-      "toastColor": "Color de acento cambiado a {color}.",
+      "toastColor": "Color de acento cambiado a {{color}}.",
       "toastLang": "Idioma del sistema configurado correctamente."
     },
     "security": {

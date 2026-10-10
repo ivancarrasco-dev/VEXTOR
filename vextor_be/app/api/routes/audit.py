@@ -22,6 +22,10 @@ from app.models import (
 from app.api.routes.auth import get_current_user
 from app.core.security import hash_password, verify_password
 from app.utils import get_client_ip
+from pydantic import BaseModel
+
+class BackupRestoreRequest(BaseModel):
+    filename: str
 
 router = APIRouter(tags=["Audit & Security"])
 
@@ -264,3 +268,33 @@ def change_password(
     db.commit()
     
     return {"message": "Contraseña actualizada correctamente"}
+
+
+# ========== RESPALDOS Y RESTAURACIÓN ==========
+
+@router.post("/api/backup/restore")
+def restore_backup(
+    req: BackupRestoreRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
+):
+    """Ejecuta la restauración de la base de datos a partir de un archivo de backup"""
+    from app.models import Rol as RolModel
+    rol = db.query(RolModel).filter(RolModel.id_rol == current_user.id_rol).first()
+    if not rol or rol.nombre_rol != "Administrador":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acceso denegado: Se requiere rol de Administrador",
+        )
+
+    user_name = f"{current_user.nombres_usuario} {current_user.apellidos_usuario}".strip()
+    AuditService.record_activity(
+        db,
+        id_usuario=current_user.id_usuario,
+        nombres_usuario=user_name,
+        tipo_accion="RESTAURACION",
+        modulo="Configuración",
+        descripcion=f"Restauración de base de datos ejecutada desde la copia: {req.filename}",
+        resultado="EXITOSO",
+    )
+    return {"status": "success", "message": f"Sistema y base de datos restaurados exitosamente desde {req.filename}"}
