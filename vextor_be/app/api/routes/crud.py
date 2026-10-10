@@ -126,7 +126,7 @@ def get_drivers(
     """
     from app.models import Conductor as ConductorModel, Usuario as UsuarioModel
     
-    query = db.query(ConductorModel).join(UsuarioModel).join(RolModel, UsuarioModel.id_rol == RolModel.id_rol).filter(RolModel.nombre_rol.in_(["Conductor", "rol-conductor"])).offset(skip).limit(min(limit, 100))
+    query = db.query(ConductorModel).join(UsuarioModel).join(RolModel, UsuarioModel.id_rol == RolModel.id_rol).filter(RolModel.nombre_rol == "Conductor").offset(skip).limit(min(limit, 100))
     conductores = query.all()
     
     # Enriquecer con correo del usuario
@@ -174,7 +174,7 @@ def create_driver(
             id_usuario = existing_user.id_usuario
         else:
             # Obtener rol Conductor
-            rol_conductor = db.query(RolModel).filter(RolModel.nombre_rol.in_(["Conductor", "rol-conductor"])).first()
+            rol_conductor = db.query(RolModel).filter(RolModel.nombre_rol == "Conductor").first()
             if not rol_conductor:
                 rol_conductor = db.query(RolModel).first()
             rol_id = rol_conductor.id_rol if rol_conductor else uuid.uuid4()
@@ -196,7 +196,7 @@ def create_driver(
     
     # Si no hay id_usuario ni correo, generar automáticamente
     elif not id_usuario:
-        rol_conductor = db.query(RolModel).filter(RolModel.nombre_rol.in_(["Conductor", "rol-conductor"])).first()
+        rol_conductor = db.query(RolModel).filter(RolModel.nombre_rol == "Conductor").first()
         if not rol_conductor:
             rol_conductor = db.query(RolModel).first()
         rol_id = rol_conductor.id_rol if rol_conductor else uuid.uuid4()
@@ -466,12 +466,15 @@ def delete_maintenance(
 
 # ========== ROLES ==========
 
+ALLOWED_ROLES = ["Administrador", "Conductor", "Usuario"]
+
+
 @roles_router.get("", response_model=List[Rol])
 def get_roles(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
 ):
-    return db.query(RolModel).all()
+    return db.query(RolModel).filter(RolModel.nombre_rol.in_(ALLOWED_ROLES)).all()
 
 
 # ========== USERS ==========
@@ -485,6 +488,21 @@ def get_users(
 ):
     limit = min(limit, 100)
     return UserService.get_all(db)[skip : skip + limit]
+
+
+@users_router.post("", response_model=Usuario)
+def create_user(
+    user_create: UsuarioCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_admin),
+):
+    res = UserService.create(user_create.model_dump(), db)
+    AuditService.record_activity(
+        db, current_user.id_usuario,
+        f"{current_user.nombres_usuario} {current_user.apellidos_usuario}".strip(),
+        "CREACION", "Usuarios", f"Usuario registrado con correo: {res.correo_usuario}"
+    )
+    return res
 
 
 @users_router.put("/{id_usuario}", response_model=Usuario)

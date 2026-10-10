@@ -125,6 +125,29 @@ export const ThemeProvider = ({ children }) => {
     setTheme((prevTheme) => (prevTheme === 'dark' ? 'light' : 'dark'));
   };
 
+  const resetTheme = () => {
+    localStorage.removeItem('theme');
+    localStorage.removeItem('themeColor');
+    localStorage.removeItem('vextor_preferences');
+    localStorage.removeItem('language');
+    localStorage.removeItem('vextor_theme');
+    localStorage.removeItem('vextor_theme_color');
+
+    setTheme('dark');
+    setThemeColor('emerald');
+    setLanguage('es');
+
+    const root = window.document.documentElement;
+    root.classList.add('dark');
+    root.classList.remove('light');
+    root.className.split(' ').forEach((cls) => {
+      if (cls.startsWith('theme-')) {
+        root.classList.remove(cls);
+      }
+    });
+    root.classList.add('theme-emerald');
+  };
+
   return (
     <ThemeContext.Provider value={{
       theme,
@@ -133,7 +156,8 @@ export const ThemeProvider = ({ children }) => {
       themeColor,
       setThemeColor,
       language,
-      setLanguage
+      setLanguage,
+      resetTheme
     }}>
       {children}
     </ThemeContext.Provider>

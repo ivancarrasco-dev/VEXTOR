@@ -41,7 +41,7 @@ const ProtectedRoute = ({ adminOnly = false }) => {
 
   const roleLower = (user?.role || '').toLowerCase();
   const isConductor = roleLower.includes('conductor');
-  const isUsuario = roleLower.includes('usuario') || roleLower.includes('cliente') || roleLower.includes('user') || roleLower.includes('invitado');
+  const isUsuario = roleLower.includes('usuario');
 
   if (adminOnly && (isConductor || isUsuario)) {
     if (isConductor) return <Navigate to="/driver/my-routes" replace />;

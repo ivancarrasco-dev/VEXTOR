@@ -95,7 +95,7 @@ export const reportService = {
           withCredentials: true
         });
 
-        const mimeType = format === 'csv' ? 'text/csv' : 'application/vnd.ms-excel';
+        const mimeType = format === 'csv' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
         const blob = new Blob([response.data], { type: mimeType });
         const downloadUrl = window.URL.createObjectURL(blob);
         const link = document.createElement('a');

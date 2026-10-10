@@ -88,7 +88,7 @@ def export_report_file(
     if file_format in ["xlsx", "excel"]:
         is_admin = (
             current_user.id_rol == ADMIN_ROLE_ID or
-            (current_user.rol and current_user.rol.nombre_rol in ["Administrador", "Super Administrador"])
+            (current_user.rol and current_user.rol.nombre_rol == "Administrador")
         )
         if not is_admin:
             raise HTTPException(

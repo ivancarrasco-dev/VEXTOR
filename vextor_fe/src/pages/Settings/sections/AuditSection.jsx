@@ -37,6 +37,21 @@ const formatFriendlyDate = (dateStr) => {
   });
 };
 
+  const formatIdentifier = (str) => {
+    if (!str) return '';
+    const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    if (uuidRegex.test(str)) {
+      return `#${str.slice(0, 8).toUpperCase()}`;
+    }
+    return str;
+  };
+
+  const formatDescriptionText = (text) => {
+    if (!text) return '';
+    const uuidRegex = /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g;
+    return text.replace(uuidRegex, (match) => `#${match.slice(0, 8).toUpperCase()}`);
+  };
+
 const getModuleIcon = (modulo) => {
   switch (modulo) {
     case 'Seguridad':
@@ -349,7 +364,7 @@ const AuditSection = ({ showToast }) => {
                   </div>
 
                   <p className="text-xs text-v-white font-medium leading-relaxed">
-                    {log.descripcion}
+                    {formatDescriptionText(log.descripcion)}
                   </p>
 
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-[11px] text-v-gray">
@@ -359,7 +374,7 @@ const AuditSection = ({ showToast }) => {
                     {log.id_registro_afectado && (
                       <>
                         <span>•</span>
-                        <span>ID Recurso: <strong className="text-v-white font-mono text-[10px]">{log.id_registro_afectado}</strong></span>
+                        <span>ID Recurso: <strong className="text-v-white font-mono text-[10px]">{formatIdentifier(log.id_registro_afectado)}</strong></span>
                       </>
                     )}
                   </div>

@@ -96,10 +96,22 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       setIsAuthenticated(false);
       // Requerimiento: El tema no debe mantenerse después de cerrar sesión
+      localStorage.removeItem('theme');
+      localStorage.removeItem('themeColor');
+      localStorage.removeItem('vextor_preferences');
+      localStorage.removeItem('language');
       localStorage.removeItem('vextor_theme');
       localStorage.removeItem('vextor_theme_color');
-      document.documentElement.setAttribute('data-theme', 'light');
-      document.documentElement.classList.remove('dark');
+
+      const root = window.document.documentElement;
+      root.classList.add('dark');
+      root.classList.remove('light');
+      root.className.split(' ').forEach((cls) => {
+        if (cls.startsWith('theme-')) {
+          root.classList.remove(cls);
+        }
+      });
+      root.classList.add('theme-emerald');
     }
   };
 

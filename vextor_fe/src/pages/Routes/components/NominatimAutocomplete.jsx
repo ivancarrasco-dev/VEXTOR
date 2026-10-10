@@ -32,10 +32,9 @@ const NominatimAutocomplete = ({
     if (textToSearch === lastResolvedQueryRef.current) return;
 
     setIsLoading(true);
-    const bogotaViewbox = '-74.25,4.85,-73.95,4.45';
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
       textToSearch
-    )}&countrycodes=co&viewbox=${bogotaViewbox}&bounded=0&addressdetails=1&limit=1`;
+    )}&countrycodes=co&addressdetails=1&limit=1`;
 
     try {
       const res = await fetch(url, {
@@ -97,10 +96,9 @@ const NominatimAutocomplete = ({
     setIsLoading(true);
 
     // Filter to Colombia (countrycodes=co) and focus on Bogotá / surrounding area using Nominatim viewbox parameter
-    const bogotaViewbox = '-74.25,4.85,-73.95,4.45'; // West, North, East, South bounding box of Bogotá
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
       searchQuery
-    )}&countrycodes=co&viewbox=${bogotaViewbox}&bounded=0&addressdetails=1&limit=5`;
+    )}&countrycodes=co&addressdetails=1&limit=5`;
 
     fetch(url, {
       headers: {
