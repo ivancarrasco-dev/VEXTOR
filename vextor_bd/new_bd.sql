@@ -1,498 +1,268 @@
 -- =============================================================================
--- BASE DE DATOS POSTGRESQL PARA SUPABASE - PROYECTO VEXTOR
--- DDL COMPLETO CON UUID Y POLÍTICAS DE SEGURIDAD (RLS - ROW LEVEL SECURITY)
--- Motor: PostgreSQL 14+ / Supabase
+-- BASE DE DATOS POSTGRESQL PARA SUPABASE/PRODUCCIÓN - PROYECTO VEXTOR
+-- DDL COMPLETO CON UUID Y RESTRICCIONES OFICIALES VEXTOR
 -- =============================================================================
 
 BEGIN;
 
--- -----------------------------------------------------------------------------
--- 0. EXTENSIONES REQUERIDAS Y CONFIGURACIÓN
--- -----------------------------------------------------------------------------
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS btree_gist;
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- -----------------------------------------------------------------------------
--- 1. TABLA EMPRESA (AISLADA / SIN CONEXIONES NI FK)
--- -----------------------------------------------------------------------------
-CREATE TABLE empresa (
+-- 1. EMPRESA
+CREATE TABLE IF NOT EXISTS empresa (
     id_empresa UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    nit_identificacion VARCHAR(20) NOT NULL,
-    razon_social VARCHAR(150) NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    nit VARCHAR(50) NOT NULL UNIQUE,
+    address VARCHAR(255) NULL,
+    city VARCHAR(100) NULL,
+    email VARCHAR(150) NULL,
+    phone VARCHAR(50) NULL,
+    retention_days INT NULL DEFAULT 30,
     estado VARCHAR(20) NOT NULL DEFAULT 'ACTIVO',
     fecha_creacion TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT uk_empresa_nit UNIQUE (nit_identificacion),
     CONSTRAINT chk_empresa_estado CHECK (estado IN ('ACTIVO', 'SUSPENDIDO', 'INACTIVO'))
 );
 
-COMMENT ON TABLE empresa IS 'Tabla independiente para la gestión multi-tenant futura (sin relaciones activas)';
-
--- -----------------------------------------------------------------------------
--- 2. TABLAS CORE Y GESTIÓN DE USUARIOS
--- -----------------------------------------------------------------------------
-
--- Rol (Catálogo Global)
-CREATE TABLE rol (
-    id_rol INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    codigo VARCHAR(30) NOT NULL UNIQUE,
-    nombre VARCHAR(50) NOT NULL,
-    descripcion VARCHAR(255)
+-- 2. ROL
+CREATE TABLE IF NOT EXISTS rol (
+    id_rol UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nombre_rol VARCHAR(50) NOT NULL UNIQUE,
+    descripcion_rol VARCHAR(255) NULL,
+    CONSTRAINT chk_nombre_rol CHECK (LOWER(nombre_rol) IN ('conductor', 'administrador', 'usuario'))
 );
 
-INSERT INTO rol (codigo, nombre, descripcion) VALUES
-('ADMINISTRADOR', 'Administrador de Empresa', 'Acceso total a la configuración y gestión del sistema'),
-('OPERADOR', 'Operador de Logística', 'Gestión de rutas, viajes, asignaciones y novedades'),
-('CONDUCTOR', 'Conductor Operativo', 'Acceso a viajes asignados, reportes de estado y novedades'),
-('AUDITOR', 'Auditor de Sistema', 'Acceso de solo lectura a reportes, trazabilidad y bitácoras'),
-('INVITADO', 'Usuario Invitado / Demo', 'Acceso de solo lectura para exploración del aplicativo y vistas previas');
+INSERT INTO rol (id_rol, nombre_rol, descripcion_rol) VALUES
+    ('11111111-2222-3333-4444-555555555551', 'administrador', 'Control total del sistema'),
+    ('11111111-2222-3333-4444-555555555552', 'conductor', 'Operación de vehículos y navegación'),
+    ('11111111-2222-3333-4444-555555555555', 'usuario', 'Usuario final')
+ON CONFLICT (id_rol) DO NOTHING;
 
--- Usuario
-CREATE TABLE usuario (
+-- 3. USUARIO
+CREATE TABLE IF NOT EXISTS usuario (
     id_usuario UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    id_empresa UUID NOT NULL,
-    id_rol INT NOT NULL,
-    nombres VARCHAR(100) NOT NULL,
-    apellidos VARCHAR(100) NOT NULL,
-    correo_electronico VARCHAR(150) NOT NULL UNIQUE,
-    contrasena_hash VARCHAR(255) NOT NULL,
-    estado VARCHAR(20) NOT NULL DEFAULT 'ACTIVO',
+    id_rol UUID NOT NULL,
+    nombres_usuario VARCHAR(100) NOT NULL,
+    apellidos_usuario VARCHAR(100) NOT NULL,
+    correo_usuario VARCHAR(150) NOT NULL UNIQUE,
+    contrasenia_usuario VARCHAR(255) NOT NULL,
+    telefono_usuario VARCHAR(20) NULL,
+    estado_usuario VARCHAR(20) NOT NULL DEFAULT 'ACTIVO',
     fecha_creacion TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT uk_usuario_empresa UNIQUE (id_empresa, id_usuario),
-    CONSTRAINT fk_usuario_rol FOREIGN KEY (id_rol)
-        REFERENCES rol (id_rol) ON DELETE RESTRICT,
-    CONSTRAINT chk_usuario_estado CHECK (estado IN ('ACTIVO', 'INACTIVO', 'BLOQUEADO'))
+    token_recuperacion VARCHAR(255) NULL,
+    foto_perfil TEXT NULL,
+    requiere_cambio_clave BOOLEAN NOT NULL DEFAULT FALSE,
+    CONSTRAINT fk_usuario_rol FOREIGN KEY (id_rol) REFERENCES rol (id_rol) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT chk_usuario_estado CHECK (estado_usuario IN ('ACTIVO', 'INACTIVO'))
 );
 
--- Sesión de Usuario (Revocación JWT y Control de Dispositivos)
-CREATE TABLE sesion_usuario (
+-- 4. SESION_USUARIO
+CREATE TABLE IF NOT EXISTS sesion_usuario (
     id_sesion UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     id_usuario UUID NOT NULL,
-    token_jti VARCHAR(100) NOT NULL UNIQUE,
-    ip_conexion VARCHAR(45) NOT NULL,
-    user_agent TEXT,
-    fecha_creacion TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    fecha_expiracion TIMESTAMPTZ NOT NULL,
-    fecha_revocacion TIMESTAMPTZ,
+    token VARCHAR(255) NULL,
+    ip_origen VARCHAR(45) NULL,
+    dispositivo VARCHAR(255) NULL,
+    user_agent TEXT NULL,
+    fecha_inicio TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ultima_actividad TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     estado_sesion VARCHAR(20) NOT NULL DEFAULT 'ACTIVA',
-
-    CONSTRAINT fk_sesion_usuario FOREIGN KEY (id_usuario)
-        REFERENCES usuario (id_usuario) ON DELETE CASCADE,
-    CONSTRAINT chk_sesion_estado CHECK (estado_sesion IN ('ACTIVA', 'REVOCADA', 'EXPIRADA')),
-    CONSTRAINT chk_sesion_fechas CHECK (fecha_expiracion > fecha_creacion)
+    CONSTRAINT fk_sesion_usuario FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT chk_sesion_estado CHECK (estado_sesion IN ('ACTIVA', 'CERRADA', 'REVOCADA', 'EXPIRADA'))
 );
 
--- Conductor (Extensión 1:0..1 de Usuario)
-CREATE TABLE conductor (
+-- 5. CONDUCTOR
+CREATE TABLE IF NOT EXISTS conductor (
     id_conductor UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    id_empresa UUID NOT NULL,
     id_usuario UUID NOT NULL UNIQUE,
-    numero_identificacion VARCHAR(20) NOT NULL,
-    numero_licencia VARCHAR(30) NOT NULL,
-    categoria_licencia VARCHAR(10) NOT NULL,
-    fecha_vencimiento_licencia DATE NOT NULL,
-    estado_operativo VARCHAR(25) NOT NULL DEFAULT 'DISPONIBLE',
-
-    CONSTRAINT uk_conductor_empresa UNIQUE (id_empresa, id_conductor),
-    CONSTRAINT uk_conductor_identificacion UNIQUE (id_empresa, numero_identificacion),
-    CONSTRAINT fk_conductor_usuario_empresa FOREIGN KEY (id_empresa, id_usuario)
-        REFERENCES usuario (id_empresa, id_usuario) ON DELETE RESTRICT,
-    CONSTRAINT chk_conductor_estado CHECK (estado_operativo IN ('DISPONIBLE', 'EN_VIAJE', 'LICENCIA_VENCIDA', 'INACTIVO'))
+    nombre_conductor VARCHAR(100) NOT NULL,
+    apellido_conductor VARCHAR(100) NOT NULL,
+    cedula_conductor VARCHAR(20) NOT NULL UNIQUE,
+    telefono_conductor VARCHAR(20) NULL,
+    licencia VARCHAR(50) NOT NULL,
+    estado_conductor VARCHAR(20) NOT NULL DEFAULT 'DISPONIBLE',
+    fecha_ingreso DATE NOT NULL,
+    CONSTRAINT fk_conductor_usuario FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT chk_conductor_estado CHECK (estado_conductor IN ('DISPONIBLE', 'EN_RUTA', 'NO_DISPONIBLE', 'ACTIVO', 'INACTIVO', 'SUSPENDIDO'))
 );
 
--- -----------------------------------------------------------------------------
--- 3. GESTIÓN DE FLOTA Y DOCUMENTACIÓN
--- -----------------------------------------------------------------------------
+-- 6. MARCA & MODELO
+CREATE TABLE IF NOT EXISTS marca (
+    id_marca UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nombre_marca VARCHAR(100) NOT NULL UNIQUE
+);
 
--- Vehículo
-CREATE TABLE vehiculo (
+CREATE TABLE IF NOT EXISTS modelo (
+    id_modelo UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_marca UUID NOT NULL,
+    nombre_modelo VARCHAR(100) NOT NULL,
+    capacidad_pasajeros INT NOT NULL DEFAULT 4,
+    anio INT NOT NULL,
+    CONSTRAINT fk_modelo_marca FOREIGN KEY (id_marca) REFERENCES marca (id_marca) ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+-- 7. VEHICULO
+CREATE TABLE IF NOT EXISTS vehiculo (
     id_vehiculo UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    id_empresa UUID NOT NULL,
-    placa VARCHAR(10) NOT NULL UNIQUE,
+    id_modelo UUID NULL,
+    placa VARCHAR(15) NOT NULL UNIQUE,
     marca VARCHAR(50) NOT NULL,
     modelo VARCHAR(50) NOT NULL,
     anio INT NOT NULL,
-    numero_chasis VARCHAR(50),
-    numero_motor VARCHAR(50),
+    color VARCHAR(30) NULL,
+    tipo_vehiculo VARCHAR(50) NOT NULL,
+    capacidad_pasajeros INT NOT NULL,
     kilometraje_actual INT NOT NULL DEFAULT 0,
-    estado_operativo VARCHAR(25) NOT NULL DEFAULT 'DISPONIBLE',
-
-    CONSTRAINT uk_vehiculo_empresa UNIQUE (id_empresa, id_vehiculo),
-    CONSTRAINT chk_vehiculo_marca CHECK (marca IN (
-        'CHEVROLET', 'RENAULT', 'TOYOTA', 'NISSAN', 'MERCEDES-BENZ', 
-        'VOLKSWAGEN', 'FORD', 'HYUNDAI', 'KIA', 'HINO', 'INTERNATIONAL', 
-        'KENWORTH', 'FOTON', 'JAK', 'OTRO'
-    )),
-    CONSTRAINT chk_vehiculo_kilometraje CHECK (kilometraje_actual >= 0),
-    CONSTRAINT chk_vehiculo_estado CHECK (estado_operativo IN ('DISPONIBLE', 'EN_VIAJE', 'EN_MANTENIMIENTO', 'FUERA_DE_SERVICIO', 'RETIRADO'))
+    kilometraje_limite_mantenimiento INT NOT NULL,
+    estado_vehiculo VARCHAR(20) NOT NULL DEFAULT 'DISPONIBLE',
+    documentacion_vehiculo VARCHAR(255) NULL,
+    CONSTRAINT fk_vehiculo_modelo FOREIGN KEY (id_modelo) REFERENCES modelo (id_modelo) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT chk_vehiculo_estado CHECK (estado_vehiculo IN ('DISPONIBLE', 'EN_RUTA', 'MANTENIMIENTO', 'INACTIVO'))
 );
 
-COMMENT ON COLUMN vehiculo.marca IS 'Fabricante o compañía que construye el vehículo (e.g., Toyota, Renault)';
-COMMENT ON COLUMN vehiculo.modelo IS 'Línea o diseño específico del vehículo (e.g., Corolla, Sandero, Onix)';
-
--- Documento de Vehículo
-CREATE TABLE documento_vehiculo (
-    id_documento_vehiculo UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    id_empresa UUID NOT NULL,
+-- 8. DOCUMENTO_VEHICULO
+CREATE TABLE IF NOT EXISTS documento_vehiculo (
+    id_documento UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     id_vehiculo UUID NOT NULL,
-    tipo_documento VARCHAR(40) NOT NULL,
-    numero_documento VARCHAR(50),
-    entidad_emisora VARCHAR(100),
-    fecha_emision DATE,
-    fecha_vencimiento DATE,
-    ruta_archivo_storage VARCHAR(255),
-    descripcion TEXT,
-    origen_datos VARCHAR(30) NOT NULL DEFAULT 'SISTEMA',
-    estado_vigencia VARCHAR(20) NOT NULL DEFAULT 'VIGENTE',
-
-    CONSTRAINT fk_documento_vehiculo_padre FOREIGN KEY (id_empresa, id_vehiculo)
-        REFERENCES vehiculo (id_empresa, id_vehiculo) ON DELETE RESTRICT,
-    CONSTRAINT chk_documento_fechas CHECK (fecha_vencimiento IS NULL OR fecha_emision IS NULL OR fecha_vencimiento >= fecha_emision),
-    CONSTRAINT chk_documento_vigencia CHECK (estado_vigencia IN ('VIGENTE', 'POR_VENCER', 'VENCIDO', 'REEMPLAZADO'))
+    tipo_documento VARCHAR(50) NOT NULL,
+    numero_documento VARCHAR(50) NULL,
+    fecha_vencimiento DATE NOT NULL,
+    CONSTRAINT fk_documento_vehiculo FOREIGN KEY (id_vehiculo) REFERENCES vehiculo (id_vehiculo) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
--- Mantenimiento
-CREATE TABLE mantenimiento (
-    id_mantenimiento UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    id_empresa UUID NOT NULL,
-    id_vehiculo UUID NOT NULL,
-    tipo_mantenimiento VARCHAR(20) NOT NULL,
-    descripcion TEXT NOT NULL,
-    fecha_inicio TIMESTAMPTZ NOT NULL,
-    fecha_fin TIMESTAMPTZ,
-    kilometraje_entrada INT NOT NULL,
-    kilometraje_salida INT,
-    costo_total NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
-    estado VARCHAR(20) NOT NULL DEFAULT 'PROGRAMADO',
-
-    CONSTRAINT fk_mantenimiento_vehiculo FOREIGN KEY (id_empresa, id_vehiculo)
-        REFERENCES vehiculo (id_empresa, id_vehiculo) ON DELETE RESTRICT,
-    CONSTRAINT chk_mantenimiento_tipo CHECK (tipo_mantenimiento IN ('PREVENTIVO', 'CORRECTIVO')),
-    CONSTRAINT chk_mantenimiento_estado CHECK (estado IN ('PROGRAMADO', 'EN_PROCESO', 'FINALIZADO', 'CANCELADO')),
-    CONSTRAINT chk_mantenimiento_km CHECK (kilometraje_salida IS NULL OR kilometraje_salida >= kilometraje_entrada),
-    CONSTRAINT chk_mantenimiento_costo CHECK (costo_total >= 0),
-    CONSTRAINT chk_mantenimiento_fechas CHECK (fecha_fin IS NULL OR fecha_fin >= fecha_inicio)
-);
-
--- -----------------------------------------------------------------------------
--- 4. OPERACIÓN DE RUTAS, VIAJES Y ASIGNACIONES
--- -----------------------------------------------------------------------------
-
--- Ruta Definición
-CREATE TABLE ruta_definicion (
-    id_ruta_definicion UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    id_empresa UUID NOT NULL,
-    codigo_ruta VARCHAR(30) NOT NULL,
+-- 9. RUTA_DEFINICION
+CREATE TABLE IF NOT EXISTS ruta_definicion (
+    id_ruta UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    codigo_ruta VARCHAR(50) NOT NULL UNIQUE,
     nombre_ruta VARCHAR(100) NOT NULL,
-    origen_predeterminado VARCHAR(150) NOT NULL,
-    destino_predeterminado VARCHAR(150) NOT NULL,
-    distancia_estimada_km NUMERIC(8, 2),
-    duracion_estimada_minutos INT,
-    estado VARCHAR(20) NOT NULL DEFAULT 'ACTIVA',
-
-    CONSTRAINT uk_ruta_definicion_empresa UNIQUE (id_empresa, id_ruta_definicion),
-    CONSTRAINT uk_ruta_definicion_codigo UNIQUE (id_empresa, codigo_ruta),
-    CONSTRAINT chk_ruta_estado CHECK (estado IN ('ACTIVA', 'INACTIVA'))
-);
-
--- Viaje
-CREATE TABLE viaje (
-    id_viaje UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    id_empresa UUID NOT NULL,
-    id_ruta_definicion UUID,
-    codigo_viaje VARCHAR(30) NOT NULL,
     origen VARCHAR(150) NOT NULL,
     destino VARCHAR(150) NOT NULL,
+    paradas TEXT NULL,
+    fecha_programada TIMESTAMPTZ NULL,
+    hora_inicio_real TIMESTAMPTZ NULL,
+    hora_fin_real TIMESTAMPTZ NULL,
+    estado_ruta VARCHAR(30) NOT NULL DEFAULT 'PROGRAMADA',
+    motivo_suspension VARCHAR(255) NULL,
+    CONSTRAINT chk_ruta_estado CHECK (estado_ruta IN ('PROGRAMADA', 'EN_PROCESO', 'COMPLETADA', 'SUSPENDIDA', 'CANCELADA'))
+);
+
+-- 10. VIAJE
+CREATE TABLE IF NOT EXISTS viaje (
+    id_viaje UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_conductor UUID NOT NULL,
+    id_vehiculo UUID NOT NULL,
+    id_ruta UUID NOT NULL,
+    estado_viaje VARCHAR(20) NOT NULL DEFAULT 'PROGRAMADO',
     fecha_hora_salida_programada TIMESTAMPTZ NOT NULL,
     fecha_hora_llegada_programada TIMESTAMPTZ NOT NULL,
-    fecha_hora_salida_real TIMESTAMPTZ,
-    fecha_hora_llegada_real TIMESTAMPTZ,
-    es_adhoc BOOLEAN NOT NULL DEFAULT FALSE,
-    estado_viaje VARCHAR(20) NOT NULL DEFAULT 'PROGRAMADO',
-
-    CONSTRAINT uk_viaje_empresa UNIQUE (id_empresa, id_viaje),
-    CONSTRAINT uk_viaje_codigo UNIQUE (id_empresa, codigo_viaje),
-    CONSTRAINT fk_viaje_ruta FOREIGN KEY (id_empresa, id_ruta_definicion)
-        REFERENCES ruta_definicion (id_empresa, id_ruta_definicion) ON DELETE RESTRICT,
-    CONSTRAINT chk_viaje_fechas_prog CHECK (fecha_hora_llegada_programada > fecha_hora_salida_programada),
-    CONSTRAINT chk_viaje_fechas_real CHECK (fecha_hora_llegada_real IS NULL OR fecha_hora_salida_real IS NULL OR fecha_hora_llegada_real >= fecha_hora_salida_real),
+    CONSTRAINT fk_viaje_conductor FOREIGN KEY (id_conductor) REFERENCES conductor (id_conductor) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_viaje_vehiculo FOREIGN KEY (id_vehiculo) REFERENCES vehiculo (id_vehiculo) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_viaje_ruta FOREIGN KEY (id_ruta) REFERENCES ruta_definicion (id_ruta) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT chk_viaje_estado CHECK (estado_viaje IN ('PROGRAMADO', 'EN_PROCESO', 'FINALIZADO', 'CANCELADO'))
 );
 
-COMMENT ON COLUMN viaje.es_adhoc IS 'Indica si el viaje es un servicio especial imprevisto (TRUE) o de ruta fija programada (FALSE)';
-
--- Asignación de Viaje (Con Exclusión GIST por Rango Temporal)
-CREATE TABLE asignacion_viaje (
-    id_asignacion_viaje UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    id_empresa UUID NOT NULL,
-    id_viaje UUID NOT NULL,
-    id_conductor UUID NOT NULL,
-    id_vehiculo UUID NOT NULL,
-    fecha_inicio TIMESTAMPTZ NOT NULL,
-    fecha_fin TIMESTAMPTZ,
-    rango_tiempo tstzrange GENERATED ALWAYS AS (
-        tstzrange(fecha_inicio, COALESCE(fecha_fin, 'infinity'::timestamptz), '[)')
-    ) STORED,
-    estado_asignacion VARCHAR(20) NOT NULL DEFAULT 'PROGRAMADA',
-    motivo_cambio TEXT,
-
-    CONSTRAINT fk_asignacion_viaje_padre FOREIGN KEY (id_empresa, id_viaje)
-        REFERENCES viaje (id_empresa, id_viaje) ON DELETE RESTRICT,
-    CONSTRAINT fk_asignacion_conductor FOREIGN KEY (id_empresa, id_conductor)
-        REFERENCES conductor (id_empresa, id_conductor) ON DELETE RESTRICT,
-    CONSTRAINT fk_asignacion_vehiculo FOREIGN KEY (id_empresa, id_vehiculo)
-        REFERENCES vehiculo (id_empresa, id_vehiculo) ON DELETE RESTRICT,
-    CONSTRAINT chk_asignacion_fechas CHECK (fecha_fin IS NULL OR fecha_fin > fecha_inicio),
-    CONSTRAINT chk_asignacion_estado CHECK (estado_asignacion IN ('PROGRAMADA', 'EN_PROCESO', 'COMPLETADA', 'REEMPLAZADA', 'CANCELADA')),
-
-    CONSTRAINT ex_asignacion_conductor_solapamiento EXCLUDE USING GIST (
-        id_conductor WITH =,
-        rango_tiempo WITH &&
-    ) WHERE (estado_asignacion IN ('PROGRAMADA', 'EN_PROCESO')),
-
-    CONSTRAINT ex_asignacion_vehiculo_solapamiento EXCLUDE USING GIST (
-        id_vehiculo WITH =,
-        rango_tiempo WITH &&
-    ) WHERE (estado_asignacion IN ('PROGRAMADA', 'EN_PROCESO'))
-);
-
--- Novedad
-CREATE TABLE novedad (
-    id_novedad UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    id_empresa UUID NOT NULL,
-    id_viaje UUID NOT NULL,
-    id_usuario_reporta UUID NOT NULL,
-    tipo_novedad VARCHAR(50) NOT NULL,
-    descripcion TEXT NOT NULL,
-    fecha_hora_novedad TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    nivel_prioridad VARCHAR(15) NOT NULL DEFAULT 'MEDIA',
-    requiere_cambio_recurso BOOLEAN NOT NULL DEFAULT FALSE,
-
-    CONSTRAINT fk_novedad_viaje FOREIGN KEY (id_empresa, id_viaje)
-        REFERENCES viaje (id_empresa, id_viaje) ON DELETE RESTRICT,
-    CONSTRAINT fk_novedad_usuario FOREIGN KEY (id_empresa, id_usuario_reporta)
-        REFERENCES usuario (id_empresa, id_usuario) ON DELETE RESTRICT,
-    CONSTRAINT chk_novedad_prioridad CHECK (nivel_prioridad IN ('BAJA', 'MEDIA', 'ALTA', 'CRITICA'))
-);
-
--- -----------------------------------------------------------------------------
--- 5. TELEMETRÍA Y GPS (HOT & COLD STORAGE)
--- -----------------------------------------------------------------------------
-
--- Estado Viaje Tiempo Real (HOT STORAGE)
-CREATE TABLE estado_viaje_tiempo_real (
-    id_viaje UUID PRIMARY KEY,
-    id_empresa UUID NOT NULL,
-    ultima_latitud NUMERIC(10, 7) NOT NULL,
-    ultima_longitud NUMERIC(10, 7) NOT NULL,
-    velocidad_kmh NUMERIC(5, 2) NOT NULL DEFAULT 0.00,
-    rumbo_grados NUMERIC(5, 2),
-    ultima_actualizacion_gps TIMESTAMPTZ NOT NULL,
-    porcentaje_bateria_gps INT,
-
-    CONSTRAINT fk_estado_tiempo_real_viaje FOREIGN KEY (id_empresa, id_viaje)
-        REFERENCES viaje (id_empresa, id_viaje) ON DELETE CASCADE,
-    CONSTRAINT chk_gps_latitud CHECK (ultima_latitud BETWEEN -90 AND 90),
-    CONSTRAINT chk_gps_longitud CHECK (ultima_longitud BETWEEN -180 AND 180),
-    CONSTRAINT chk_gps_velocidad CHECK (velocidad_kmh >= 0)
-);
-
--- Historial Ubicación Viaje (COLD STORAGE - PARTICIONADO)
-CREATE TABLE historial_ubicacion_viaje (
-    id_historial_ubicacion UUID DEFAULT gen_random_uuid(),
-    fecha_registro TIMESTAMPTZ NOT NULL,
-    id_empresa UUID NOT NULL,
-    id_viaje UUID NOT NULL,
-    latitud NUMERIC(10, 7) NOT NULL,
-    longitud NUMERIC(10, 7) NOT NULL,
-    velocidad_kmh NUMERIC(5, 2) NOT NULL DEFAULT 0.00,
-    rumbo_grados NUMERIC(5, 2),
-
-    CONSTRAINT pk_historial_ubicacion PRIMARY KEY (fecha_registro, id_historial_ubicacion),
-    CONSTRAINT fk_historial_gps_viaje FOREIGN KEY (id_empresa, id_viaje)
-        REFERENCES viaje (id_empresa, id_viaje) ON DELETE RESTRICT,
-    CONSTRAINT chk_hist_latitud CHECK (latitud BETWEEN -90 AND 90),
-    CONSTRAINT chk_hist_longitud CHECK (longitud BETWEEN -180 AND 180),
-    CONSTRAINT chk_hist_velocidad CHECK (velocidad_kmh >= 0)
-) PARTITION BY RANGE (fecha_registro);
-
--- Particiones de Ejemplo
-CREATE TABLE historial_ubicacion_y2026m09 PARTITION OF historial_ubicacion_viaje
-    FOR VALUES FROM ('2026-09-01 00:00:00+00') TO ('2026-10-01 00:00:00+00');
-
-CREATE TABLE historial_ubicacion_y2026m10 PARTITION OF historial_ubicacion_viaje
-    FOR VALUES FROM ('2026-10-01 00:00:00+00') TO ('2026-11-01 00:00:00+00');
-
--- -----------------------------------------------------------------------------
--- 6. SERVICIOS TRANSACCIONALES
--- -----------------------------------------------------------------------------
-
-CREATE TABLE solicitud_recuperacion_clave (
-    id_solicitud_recuperacion UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    id_usuario UUID NOT NULL,
-    token_hash VARCHAR(255) NOT NULL,
-    fecha_creacion TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    fecha_expiracion TIMESTAMPTZ NOT NULL,
-    fecha_uso TIMESTAMPTZ,
-    ip_solicitante VARCHAR(45) NOT NULL,
-    estado VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE',
-
-    CONSTRAINT fk_solicitud_usuario FOREIGN KEY (id_usuario)
-        REFERENCES usuario (id_usuario) ON DELETE CASCADE,
-    CONSTRAINT chk_recuperacion_fechas CHECK (fecha_expiracion > fecha_creacion),
-    CONSTRAINT chk_recuperacion_estado CHECK (estado IN ('PENDIENTE', 'USADO', 'EXPIRADO', 'CANCELADO'))
-);
-
-CREATE TABLE notificacion_envio (
-    id_notificacion_envio UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    id_empresa UUID NOT NULL,
-    id_usuario_destinatario UUID,
-    canal VARCHAR(20) NOT NULL DEFAULT 'EMAIL',
-    tipo_evento VARCHAR(50) NOT NULL,
-    correo_destino VARCHAR(150) NOT NULL,
-    asunto VARCHAR(200) NOT NULL,
-    resumen_cuerpo TEXT NOT NULL,
-    estado_envio VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE',
-    intentos INT NOT NULL DEFAULT 0,
-    fecha_ultimo_intento TIMESTAMPTZ,
-    proximo_reintento TIMESTAMPTZ,
-    mensaje_error TEXT,
-    id_proveedor_externo VARCHAR(100),
-    fecha_creacion TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_notificacion_usuario FOREIGN KEY (id_usuario_destinatario)
-        REFERENCES usuario (id_usuario) ON DELETE SET NULL,
-    CONSTRAINT chk_notificacion_intentos CHECK (intentos >= 0),
-    CONSTRAINT chk_notificacion_estado CHECK (estado_envio IN ('PENDIENTE', 'EN_PROCESO', 'ENVIADO', 'REINTENTAR', 'FALLIDO_DEFINITIVO'))
-);
-
-CREATE TABLE auditoria_bitacora (
-    id_auditoria UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    id_empresa UUID,
-    id_usuario UUID,
-    snapshot_usuario_nombre VARCHAR(200) NOT NULL,
-    snapshot_usuario_rol VARCHAR(50) NOT NULL,
-    accion VARCHAR(50) NOT NULL,
-    modulo VARCHAR(50) NOT NULL,
-    tabla_afectada VARCHAR(50) NOT NULL,
-    id_registro_afectado VARCHAR(50),
-    direccion_ip VARCHAR(45) NOT NULL,
+-- 11. HISTORIAL_UBICACION_VIAJE
+CREATE TABLE IF NOT EXISTS historial_ubicacion_viaje (
+    id_historial UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_viaje UUID NULL,
+    latitud NUMERIC(10, 6) NOT NULL,
+    longitud NUMERIC(10, 6) NOT NULL,
+    velocidad NUMERIC(5, 2) NULL DEFAULT 0.0,
     fecha_hora TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    resultado VARCHAR(20) NOT NULL DEFAULT 'EXITO',
-    datos_contexto_jsonb JSONB,
-
-    CONSTRAINT fk_auditoria_usuario FOREIGN KEY (id_usuario)
-        REFERENCES usuario (id_usuario) ON DELETE SET NULL,
-    CONSTRAINT chk_auditoria_resultado CHECK (resultado IN ('EXITO', 'DENEGADO', 'ERROR'))
+    CONSTRAINT fk_historial_viaje FOREIGN KEY (id_viaje) REFERENCES viaje (id_viaje) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
-CREATE TABLE staging_errores_migracion (
-    id_error_migracion UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tabla_origen VARCHAR(50) NOT NULL,
-    id_registro_origen VARCHAR(50),
-    tipo_error VARCHAR(50) NOT NULL,
-    datos_registro_original JSONB NOT NULL,
-    motivo_rechazo TEXT NOT NULL,
-    fecha_registro TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+-- 12. NOVEDAD
+CREATE TABLE IF NOT EXISTS novedad (
+    id_novedad UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_conductor UUID NOT NULL,
+    id_viaje UUID NULL,
+    id_vehiculo UUID NULL,
+    id_usuario UUID NULL,
+    tipo_novedad VARCHAR(50) NOT NULL,
+    descripcion_novedad TEXT NOT NULL,
+    fecha_hora_reporte TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    evidencia_adjunta VARCHAR(255) NULL,
+    estado_novedad VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE',
+    CONSTRAINT fk_novedad_conductor FOREIGN KEY (id_conductor) REFERENCES conductor (id_conductor) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_novedad_viaje FOREIGN KEY (id_viaje) REFERENCES viaje (id_viaje) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_novedad_vehiculo FOREIGN KEY (id_vehiculo) REFERENCES vehiculo (id_vehiculo) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_novedad_usuario FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT chk_novedad_estado CHECK (estado_novedad IN ('PENDIENTE', 'EN_REVISION', 'RESUELTA', 'RECHAZADA'))
 );
 
--- -----------------------------------------------------------------------------
--- 7. ÍNDICES DE RENDIMIENTO Y OPTIMIZACIÓN
--- -----------------------------------------------------------------------------
-CREATE INDEX idx_usuario_empresa ON usuario (id_empresa);
-CREATE INDEX idx_sesion_usuario ON sesion_usuario (id_usuario, estado_sesion);
-CREATE INDEX idx_conductor_empresa_usuario ON conductor (id_empresa, id_usuario);
-CREATE INDEX idx_vehiculo_empresa_estado ON vehiculo (id_empresa, estado_operativo);
-CREATE INDEX idx_documento_vehiculo_vencimiento ON documento_vehiculo (id_empresa, fecha_vencimiento);
-CREATE INDEX idx_mantenimiento_vehiculo ON mantenimiento (id_empresa, id_vehiculo, estado);
-CREATE INDEX idx_viaje_empresa_fechas ON viaje (id_empresa, fecha_hora_salida_programada);
-CREATE INDEX idx_viaje_estado ON viaje (id_empresa, estado_viaje);
-CREATE INDEX idx_asignacion_viaje_busqueda ON asignacion_viaje (id_empresa, id_viaje, estado_asignacion);
-CREATE INDEX idx_novedad_viaje ON novedad (id_empresa, id_viaje);
-CREATE INDEX idx_asignacion_rango_tiempo ON asignacion_viaje USING GIST (rango_tiempo);
-CREATE INDEX idx_historial_gps_viaje_fecha ON historial_ubicacion_viaje (id_viaje, fecha_registro);
+-- 13. MANTENIMIENTO
+CREATE TABLE IF NOT EXISTS mantenimiento (
+    id_mantenimiento UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_vehiculo UUID NOT NULL,
+    id_conductor UUID NULL,
+    id_novedad UUID NULL,
+    tipo_mantenimiento VARCHAR(50) NOT NULL,
+    descripcion_mantenimiento TEXT NOT NULL,
+    fecha_mantenimiento DATE NOT NULL,
+    costo_mantenimiento NUMERIC(10, 2) NOT NULL,
+    kilometraje_mantenimiento INT NOT NULL,
+    estado_mantenimiento VARCHAR(20) NOT NULL DEFAULT 'PROGRAMADO',
+    CONSTRAINT fk_mantenimiento_vehiculo FOREIGN KEY (id_vehiculo) REFERENCES vehiculo (id_vehiculo) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_mantenimiento_conductor FOREIGN KEY (id_conductor) REFERENCES conductor (id_conductor) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_mantenimiento_novedad FOREIGN KEY (id_novedad) REFERENCES novedad (id_novedad) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT chk_mantenimiento_estado CHECK (estado_mantenimiento IN ('PROGRAMADO', 'EN_PROCESO', 'COMPLETADA', 'CANCELADO'))
+);
 
-CREATE INDEX idx_notificacion_pendientes ON notificacion_envio (proximo_reintento, fecha_creacion)
-    WHERE estado_envio IN ('PENDIENTE', 'REINTENTAR');
+-- 14. INSPECCION_UNIDAD
+CREATE TABLE IF NOT EXISTS inspeccion_unidad (
+    id_inspeccion UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_vehiculo UUID NOT NULL,
+    id_usuario UUID NOT NULL,
+    resultado VARCHAR(30) NOT NULL,
+    observaciones TEXT NULL,
+    fecha_inspeccion TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_inspeccion_vehiculo FOREIGN KEY (id_vehiculo) REFERENCES vehiculo (id_vehiculo) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_inspeccion_usuario FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT chk_inspeccion_resultado CHECK (resultado IN ('APROBADO', 'RECHAZADO', 'CON_OBSERVACIONES'))
+);
 
-CREATE INDEX idx_vehiculo_placa_trgm ON vehiculo USING GIN (placa gin_trgm_ops);
-CREATE INDEX idx_usuario_nombre_trgm ON usuario USING GIN ((nombres || ' ' || apellidos) gin_trgm_ops);
+-- 15. REPORTE
+CREATE TABLE IF NOT EXISTS reporte (
+    id_reporte UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_usuario UUID NOT NULL,
+    tipo_reporte VARCHAR(50) NOT NULL,
+    fecha_generacion TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_rango_inicio DATE NOT NULL,
+    fecha_rango_fin DATE NOT NULL,
+    formato_exportacion VARCHAR(10) NOT NULL DEFAULT 'PDF',
+    CONSTRAINT fk_reporte_usuario FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT chk_formato_exportacion CHECK (formato_exportacion IN ('PDF', 'EXCEL', 'CSV'))
+);
 
--- -----------------------------------------------------------------------------
--- 8. FUNCIONES AUXILIARES DE SEGURIDAD PARA SUPABASE (JWT HELPER)
--- -----------------------------------------------------------------------------
+-- 16. ACTIVIDAD
+CREATE TABLE IF NOT EXISTS actividad (
+    id_actividad UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_usuario UUID NULL,
+    nombres_usuario VARCHAR(150) NULL,
+    tipo_accion VARCHAR(50) NOT NULL,
+    modulo VARCHAR(50) NOT NULL,
+    descripcion TEXT NOT NULL,
+    fecha_hora TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    id_registro_afectado VARCHAR(100) NULL,
+    ip_origen VARCHAR(45) NULL,
+    resultado VARCHAR(20) NOT NULL DEFAULT 'EXITOSO',
+    CONSTRAINT fk_actividad_usuario FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario) ON DELETE SET NULL ON UPDATE CASCADE
+);
 
-CREATE OR REPLACE FUNCTION auth.get_user_empresa_id()
-RETURNS UUID AS $$
-    SELECT NULLIF(
-        COALESCE(
-            current_setting('request.jwt.claims', true)::jsonb ->> 'id_empresa',
-            (current_setting('request.jwt.claims', true)::jsonb -> 'app_metadata' ->> 'id_empresa')
-        ),
-        ''
-    )::UUID;
-$$ LANGUAGE sql STABLE SECURITY DEFINER;
-
--- -----------------------------------------------------------------------------
--- 9. POLÍTICAS DE SEGURIDAD POR FILA (ROW LEVEL SECURITY - RLS)
--- -----------------------------------------------------------------------------
-
-ALTER TABLE usuario ENABLE ROW LEVEL SECURITY;
-ALTER TABLE conductor ENABLE ROW LEVEL SECURITY;
-ALTER TABLE vehiculo ENABLE ROW LEVEL SECURITY;
-ALTER TABLE documento_vehiculo ENABLE ROW LEVEL SECURITY;
-ALTER TABLE mantenimiento ENABLE ROW LEVEL SECURITY;
-ALTER TABLE ruta_definicion ENABLE ROW LEVEL SECURITY;
-ALTER TABLE viaje ENABLE ROW LEVEL SECURITY;
-ALTER TABLE asignacion_viaje ENABLE ROW LEVEL SECURITY;
-ALTER TABLE novedad ENABLE ROW LEVEL SECURITY;
-ALTER TABLE estado_viaje_tiempo_real ENABLE ROW LEVEL SECURITY;
-ALTER TABLE historial_ubicacion_viaje ENABLE ROW LEVEL SECURITY;
-ALTER TABLE notificacion_envio ENABLE ROW LEVEL SECURITY;
-ALTER TABLE auditoria_bitacora ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY rls_usuario_tenant ON usuario FOR ALL
-    USING (id_empresa = auth.get_user_empresa_id()) WITH CHECK (id_empresa = auth.get_user_empresa_id());
-
-CREATE POLICY rls_conductor_tenant ON conductor FOR ALL
-    USING (id_empresa = auth.get_user_empresa_id()) WITH CHECK (id_empresa = auth.get_user_empresa_id());
-
-CREATE POLICY rls_vehiculo_tenant ON vehiculo FOR ALL
-    USING (id_empresa = auth.get_user_empresa_id()) WITH CHECK (id_empresa = auth.get_user_empresa_id());
-
-CREATE POLICY rls_documento_vehiculo_tenant ON documento_vehiculo FOR ALL
-    USING (id_empresa = auth.get_user_empresa_id()) WITH CHECK (id_empresa = auth.get_user_empresa_id());
-
-CREATE POLICY rls_mantenimiento_tenant ON mantenimiento FOR ALL
-    USING (id_empresa = auth.get_user_empresa_id()) WITH CHECK (id_empresa = auth.get_user_empresa_id());
-
-CREATE POLICY rls_ruta_definicion_tenant ON ruta_definicion FOR ALL
-    USING (id_empresa = auth.get_user_empresa_id()) WITH CHECK (id_empresa = auth.get_user_empresa_id());
-
-CREATE POLICY rls_viaje_tenant ON viaje FOR ALL
-    USING (id_empresa = auth.get_user_empresa_id()) WITH CHECK (id_empresa = auth.get_user_empresa_id());
-
-CREATE POLICY rls_asignacion_viaje_tenant ON asignacion_viaje FOR ALL
-    USING (id_empresa = auth.get_user_empresa_id()) WITH CHECK (id_empresa = auth.get_user_empresa_id());
-
-CREATE POLICY rls_novedad_tenant ON novedad FOR ALL
-    USING (id_empresa = auth.get_user_empresa_id()) WITH CHECK (id_empresa = auth.get_user_empresa_id());
-
-CREATE POLICY rls_estado_viaje_tiempo_real_tenant ON estado_viaje_tiempo_real FOR ALL
-    USING (id_empresa = auth.get_user_empresa_id()) WITH CHECK (id_empresa = auth.get_user_empresa_id());
-
-CREATE POLICY rls_historial_ubicacion_viaje_tenant ON historial_ubicacion_viaje FOR ALL
-    USING (id_empresa = auth.get_user_empresa_id()) WITH CHECK (id_empresa = auth.get_user_empresa_id());
-
-CREATE POLICY rls_notificacion_envio_tenant ON notificacion_envio FOR ALL
-    USING (id_empresa = auth.get_user_empresa_id()) WITH CHECK (id_empresa = auth.get_user_empresa_id());
-
-CREATE POLICY rls_auditoria_bitacora_tenant ON auditoria_bitacora FOR SELECT
-    USING (id_empresa = auth.get_user_empresa_id());
+-- 17. NOTIFICACION_ENVIO
+CREATE TABLE IF NOT EXISTS notificacion_envio (
+    id_notificacion UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_usuario UUID NULL,
+    id_viaje UUID NULL,
+    titulo VARCHAR(150) NOT NULL,
+    descripcion TEXT NOT NULL,
+    estado_envio VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE',
+    fecha_hora TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    leido BOOLEAN NOT NULL DEFAULT FALSE,
+    tipo VARCHAR(50) NULL DEFAULT 'general',
+    CONSTRAINT fk_notificacion_usuario FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_notificacion_viaje FOREIGN KEY (id_viaje) REFERENCES viaje (id_viaje) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT chk_estado_envio CHECK (estado_envio IN ('PENDIENTE', 'ENVIADO', 'FALLIDO'))
+);
 
 COMMIT;
-
-
-NO RECOMENDABLE

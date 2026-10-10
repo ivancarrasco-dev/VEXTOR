@@ -5,17 +5,10 @@ import { Button } from '../../../components/ui/Button';
 
 /**
  * FinalCTASection Component
- *
- * Responsabilidad:
- * Sección final de llamada a la acción compacta y comercialmente directa.
- *
- * Mensaje principal: "Lleva la gestión de tu operación al siguiente nivel."
- * Botón principal: "Comenzar gratis" -> /register
- * Botón secundario: "Solicitar información" -> /contacto
  */
 const FinalCTASection = () => {
   return (
-    <section className="py-16 sm:py-20 bg-v-dark border-t border-v-dark-border transition-colors duration-300 relative overflow-hidden">
+    <section id="contacto" className="py-16 sm:py-20 bg-v-dark border-t border-v-dark-border transition-colors duration-300 relative overflow-hidden">
       <div className="container mx-auto px-4 sm:px-6">
         <div className="max-w-4xl mx-auto">
 
@@ -26,7 +19,6 @@ const FinalCTASection = () => {
             transition={{ duration: 0.5 }}
             className="relative bg-v-dark-soft border border-v-dark-border rounded-2xl p-8 sm:p-12 text-center shadow-md overflow-hidden"
           >
-            {/* Subtle brand background glow */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-[#124A2F]/10 dark:bg-[#A6C98F]/10 blur-3xl rounded-full pointer-events-none -z-0" />
 
             <div className="relative z-10 max-w-2xl mx-auto">
@@ -53,11 +45,14 @@ const FinalCTASection = () => {
                   </Button>
                 </Link>
 
-                <Link to="/contacto" className="w-full sm:w-auto">
-                  <Button size="lg" variant="secondary" className="w-full sm:w-auto text-sm sm:text-base font-semibold h-12 px-6 rounded-lg">
+                <a href="#contacto" onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById('contacto')?.scrollIntoView({ behavior: 'smooth' });
+                }} className="w-full sm:w-auto">
+                  <Button size="lg" variant="secondary" className="w-full sm:w-auto text-sm sm:text-base font-semibold h-12 px-6 rounded-lg cursor-pointer">
                     Solicitar información
                   </Button>
-                </Link>
+                </a>
               </div>
 
               <div className="mt-8 pt-6 border-t border-v-dark-border flex flex-wrap items-center justify-center gap-6 text-xs text-v-gray font-medium">

@@ -17,9 +17,15 @@ export const maintenanceService = {
   async createMaintenance(maintenanceData) {
     try {
       const formattedData = {
-        ...maintenanceData,
+        id_vehiculo: maintenanceData.id_vehiculo,
+        id_conductor: maintenanceData.id_conductor || null,
+        id_novedad: maintenanceData.id_novedad || null,
+        tipo_mantenimiento: maintenanceData.tipo_mantenimiento,
+        descripcion_mantenimiento: maintenanceData.descripcion_mantenimiento,
+        fecha_mantenimiento: maintenanceData.fecha_mantenimiento,
         costo_mantenimiento: parseFloat(maintenanceData.costo_mantenimiento),
-        kilometraje_mantenimiento: parseInt(maintenanceData.kilometraje_mantenimiento, 10)
+        kilometraje_mantenimiento: parseInt(maintenanceData.kilometraje_mantenimiento, 10),
+        estado_mantenimiento: maintenanceData.estado_mantenimiento || 'PROGRAMADO'
       };
       const response = await axios.post(API_URL, formattedData);
       return response.data;
@@ -38,9 +44,15 @@ export const maintenanceService = {
   async updateMaintenance(id_mantenimiento, maintenanceData) {
     try {
       const formattedData = {
-        ...maintenanceData,
+        id_vehiculo: maintenanceData.id_vehiculo,
+        id_conductor: maintenanceData.id_conductor || null,
+        id_novedad: maintenanceData.id_novedad || null,
+        tipo_mantenimiento: maintenanceData.tipo_mantenimiento,
+        descripcion_mantenimiento: maintenanceData.descripcion_mantenimiento,
+        fecha_mantenimiento: maintenanceData.fecha_mantenimiento,
         costo_mantenimiento: parseFloat(maintenanceData.costo_mantenimiento),
-        kilometraje_mantenimiento: parseInt(maintenanceData.kilometraje_mantenimiento, 10)
+        kilometraje_mantenimiento: parseInt(maintenanceData.kilometraje_mantenimiento, 10),
+        estado_mantenimiento: maintenanceData.estado_mantenimiento
       };
       const response = await axios.put(`${API_URL}/${id_mantenimiento}`, formattedData);
       return response.data;

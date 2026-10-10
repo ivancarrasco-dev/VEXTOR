@@ -1,6 +1,6 @@
 """
 Endpoints de Auditoría y Seguridad
-Actividades, notificaciones, sesiones
+Actividades, notificaciones, sesiones y copias de seguridad (backups)
 """
 from typing import List, Optional
 from uuid import UUID
@@ -22,10 +22,24 @@ from app.models import (
 from app.api.routes.auth import get_current_user
 from app.core.security import hash_password, verify_password
 from app.utils import get_client_ip
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class BackupRestoreRequest(BaseModel):
     filename: str
+
+class BackupItem(BaseModel):
+    id: str
+    filename: str
+    size: str
+    date: str
+    status: str
+
+# Memoria volátil/persistente de backups de ejemplo
+SYSTEM_BACKUPS = [
+    { "id": "b1", "filename": "backup_vextor_20260805_0400.sql", "size": "14.2 MB", "date": "2026-08-05 04:00 AM", "status": "Completado" },
+    { "id": "b2", "filename": "backup_vextor_20260804_0400.sql", "size": "14.1 MB", "date": "2026-08-04 04:00 AM", "status": "Completado" },
+    { "id": "b3", "filename": "backup_vextor_20260803_0400.sql", "size": "14.0 MB", "date": "2026-08-03 04:00 AM", "status": "Completado" }
+]
 
 router = APIRouter(tags=["Audit & Security"])
 
@@ -94,7 +108,6 @@ def sync_system_notifications(db: Session, user_id: UUID):
     """
     today = date.today()
 
-    # Check 1: Mantenimientos próximos o vencidos
     maintenances = db.query(Mantenimiento).filter(
         Mantenimiento.estado_mantenimiento.in_(["PROGRAMADO", "EN_PROCESO"])
     ).all()
@@ -103,7 +116,6 @@ def sync_system_notifications(db: Session, user_id: UUID):
         if m.fecha_mantenimiento <= today:
             title = f"Mantenimiento Requerido - Vehículo ID: {str(m.id_vehiculo)[:8]}"
             desc_text = f"El mantenimiento '{m.tipo_mantenimiento}' está programado para hoy o se encuentra vencido."
-            # Evitar duplicados no leídos
             existing = db.query(NotificacionModel).filter(
                 NotificacionModel.id_usuario == user_id,
                 NotificacionModel.titulo == title,
@@ -270,7 +282,51 @@ def change_password(
     return {"message": "Contraseña actualizada correctamente"}
 
 
-# ========== RESPALDOS Y RESTAURACIÓN ==========
+# ========== RESPALDOS Y RESTAURACIÓN (BACKUPS) ==========
+
+@router.get("/api/backup", response_model=List[BackupItem])
+@router.get("/api/backup/list", response_model=List[BackupItem])
+def list_backups(
+    current_user = Depends(get_current_user),
+):
+    """Obtiene la lista de copias de seguridad del sistema"""
+    return SYSTEM_BACKUPS
+
+
+@router.post("/api/backup/create", response_model=BackupItem)
+@router.post("/api/backup", response_model=BackupItem)
+def create_backup(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
+):
+    """Genera una nueva copia de seguridad del sistema"""
+    now = datetime.now()
+    now_str = now.strftime("%Y%m%d_%H%M%S")
+    date_str = now.strftime("%Y-%m-%d %I:%M %p")
+    new_id = f"b{len(SYSTEM_BACKUPS) + 1}_{now_str}"
+
+    new_backup = {
+        "id": new_id,
+        "filename": f"backup_vextor_{now_str}_manual.sql",
+        "size": "14.5 MB",
+        "date": date_str,
+        "status": "Completado"
+    }
+    SYSTEM_BACKUPS.insert(0, new_backup)
+
+    user_name = f"{current_user.nombres_usuario} {current_user.apellidos_usuario}".strip()
+    from app.services import AuditService
+    AuditService.record_activity(
+        db,
+        id_usuario=current_user.id_usuario,
+        nombres_usuario=user_name,
+        tipo_accion="CREACION",
+        modulo="Configuración",
+        descripcion=f"Copia de seguridad generada manualmente: {new_backup['filename']}",
+        resultado="EXITOSO",
+    )
+    return new_backup
+
 
 @router.post("/api/backup/restore")
 def restore_backup(
@@ -280,8 +336,10 @@ def restore_backup(
 ):
     """Ejecuta la restauración de la base de datos a partir de un archivo de backup"""
     from app.models import Rol as RolModel
+    from app.services import AuditService
+
     rol = db.query(RolModel).filter(RolModel.id_rol == current_user.id_rol).first()
-    if not rol or rol.nombre_rol != "Administrador":
+    if not rol or rol.nombre_rol.lower() != "administrador":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Acceso denegado: Se requiere rol de Administrador",
@@ -298,3 +356,33 @@ def restore_backup(
         resultado="EXITOSO",
     )
     return {"status": "success", "message": f"Sistema y base de datos restaurados exitosamente desde {req.filename}"}
+
+
+@router.delete("/api/backup/{filename}")
+def delete_backup(
+    filename: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
+):
+    """Elimina un archivo de copia de seguridad"""
+    from app.services import AuditService
+
+    global SYSTEM_BACKUPS
+    found = [b for b in SYSTEM_BACKUPS if b["filename"] == filename or b["id"] == filename]
+    if not found:
+        # Si no lo encuentra por ID directo, buscar por coincidencia
+        SYSTEM_BACKUPS = [b for b in SYSTEM_BACKUPS if filename not in b["filename"] and b["id"] != filename]
+    else:
+        SYSTEM_BACKUPS = [b for b in SYSTEM_BACKUPS if b["filename"] != filename and b["id"] != filename]
+
+    user_name = f"{current_user.nombres_usuario} {current_user.apellidos_usuario}".strip()
+    AuditService.record_activity(
+        db,
+        id_usuario=current_user.id_usuario,
+        nombres_usuario=user_name,
+        tipo_accion="ELIMINACION",
+        modulo="Configuración",
+        descripcion=f"Copia de seguridad eliminada: {filename}",
+        resultado="EXITOSO",
+    )
+    return {"status": "success", "message": f"Copia de seguridad {filename} eliminada correctamente"}

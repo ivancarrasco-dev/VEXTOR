@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
@@ -15,6 +15,8 @@ import { ThemeToggle } from '../../../components/ui/ThemeToggle';
 const LandingNavbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -25,13 +27,40 @@ const LandingNavbar = () => {
   }, []);
 
   const navLinks = [
-    { name: 'Inicio', href: '#inicio', isRoute: false },
-    { name: '¿Qué es?', href: '#que-es', isRoute: false },
-    { name: 'Soluciones', href: '#soluciones', isRoute: false },
-    { name: 'Demo', href: '#demo', isRoute: false },
-    { name: 'Cómo funciona', href: '#como-funciona', isRoute: false },
-    { name: 'Contacto', href: '/contacto', isRoute: true },
+    { name: 'Inicio', href: '#inicio' },
+    { name: '¿Qué es?', href: '#que-es' },
+    { name: 'Soluciones', href: '#soluciones' },
+    { name: 'Demo', href: '#demo' },
+    { name: 'Cómo funciona', href: '#como-funciona' },
+    { name: 'Contacto', href: '#contacto' },
   ];
+
+  const handleNavClick = (e, href) => {
+    e.preventDefault();
+    setIsMobileMenuOpen(false);
+
+    if (href.startsWith('#')) {
+      const targetId = href.substring(1);
+      if (location.pathname !== '/') {
+        navigate('/', { replace: false });
+        setTimeout(() => {
+          const element = document.getElementById(targetId);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 150);
+      } else {
+        const element = document.getElementById(targetId);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }
+    } else {
+      navigate(href);
+    }
+  };
 
   return (
     <header
@@ -50,23 +79,14 @@ const LandingNavbar = () => {
         {/* CENTRO: Links de navegación */}
         <nav className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => (
-            link.isRoute ? (
-              <Link
-                key={link.name}
-                to={link.href}
-                className="text-sm font-medium text-v-white/85 hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors duration-200"
-              >
-                {link.name}
-              </Link>
-            ) : (
-              <a
-                key={link.name}
-                href={link.href}
-                className="text-sm font-medium text-v-white/85 hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors duration-200"
-              >
-                {link.name}
-              </a>
-            )
+            <a
+              key={link.name}
+              href={link.href}
+              onClick={(e) => handleNavClick(e, link.href)}
+              className="text-sm font-medium text-v-white/85 hover:text-primary transition-colors duration-200 cursor-pointer"
+            >
+              {link.name}
+            </a>
           ))}
         </nav>
 
@@ -74,12 +94,12 @@ const LandingNavbar = () => {
         <div className="hidden md:flex items-center gap-3">
           <ThemeToggle />
           <Link to="/login">
-            <Button variant="ghost" className="text-sm font-semibold px-3.5">
+            <Button variant="ghost" className="text-sm font-semibold px-3.5 cursor-pointer">
               Iniciar Sesión
             </Button>
           </Link>
           <Link to="/register">
-            <Button variant="primary" className="text-sm font-semibold px-4.5 rounded-lg shadow-xs">
+            <Button variant="primary" className="text-sm font-semibold px-4.5 rounded-lg shadow-xs cursor-pointer">
               Crear Cuenta
             </Button>
           </Link>
@@ -109,35 +129,24 @@ const LandingNavbar = () => {
           >
             <div className="flex flex-col p-5 gap-3.5">
               {navLinks.map((link) => (
-                link.isRoute ? (
-                  <Link
-                    key={link.name}
-                    to={link.href}
-                    className="text-sm font-semibold text-v-white hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors py-1"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    {link.name}
-                  </Link>
-                ) : (
-                  <a
-                    key={link.name}
-                    href={link.href}
-                    className="text-sm font-semibold text-v-white hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors py-1"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    {link.name}
-                  </a>
-                )
+                <a
+                  key={link.name}
+                  href={link.href}
+                  onClick={(e) => handleNavClick(e, link.href)}
+                  className="text-sm font-semibold text-v-white hover:text-primary transition-colors py-1 cursor-pointer"
+                >
+                  {link.name}
+                </a>
               ))}
               <hr className="border-v-dark-border my-1" />
               <div className="flex flex-col gap-2.5">
                 <Link to="/register" onClick={() => setIsMobileMenuOpen(false)}>
-                  <Button variant="primary" className="w-full justify-center font-semibold">
+                  <Button variant="primary" className="w-full justify-center font-semibold cursor-pointer">
                     Crear Cuenta
                   </Button>
                 </Link>
                 <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
-                  <Button variant="secondary" className="w-full justify-center font-semibold">
+                  <Button variant="secondary" className="w-full justify-center font-semibold cursor-pointer">
                     Iniciar Sesión
                   </Button>
                 </Link>

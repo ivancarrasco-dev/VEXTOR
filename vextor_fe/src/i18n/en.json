@@ -20,17 +20,33 @@
     "no": "No",
     "active": "Active",
     "inactive": "Inactive",
-    "all": "All"
+    "all": "All",
+    "online": "Online"
   },
   "sidebar": {
-    "dashboard": "Dashboard",
-    "vehicles": "Vehicles",
-    "drivers": "Drivers",
-    "routes": "Routes",
-    "maintenance": "Maintenance",
-    "reports": "Reports",
-    "settings": "Settings",
+    "dashboard": "Control Center",
+    "users": "User Management",
+    "trips": "Trip Management",
+    "vehicles": "Vehicle Management",
+    "drivers": "Driver Management",
+    "routes": "Route Monitoring",
+    "maintenance": "Maintenance Control",
+    "reports": "Reports Center",
+    "settings": "System Settings",
+    "driverRoutes": "Home / My Routes",
+    "driverBus": "My Assigned Bus",
+    "activeRoute": "Active Route Monitoring",
+    "driverNotifications": "Driver Notifications",
     "logout": "Logout"
+  },
+  "user": {
+    "portalHome": "Home / User Portal",
+    "busesSearch": "Bus Search",
+    "routesSearch": "Route Search",
+    "schedules": "Schedules & Frequencies",
+    "history": "History / Trips",
+    "notifications": "User Notifications",
+    "profile": "My Profile"
   },
   "navbar": {
     "search": "Search the system...",

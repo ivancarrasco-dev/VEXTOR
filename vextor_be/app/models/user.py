@@ -29,6 +29,7 @@ class Usuario(Base):
     fecha_creacion = Column(DateTime, nullable=False, server_default=func.now())
     token_recuperacion = Column(String(255), nullable=True)
     foto_perfil = Column(Text, nullable=True)
+    requiere_cambio_clave = Column(Boolean, default=False, nullable=True)
 
     rol = relationship("Rol", back_populates="usuarios")
     conductor = relationship("Conductor", uselist=False, back_populates="usuario")
@@ -44,6 +45,7 @@ class SesionUsuario(Base):
     __tablename__ = "sesion_usuario"
     id_sesion = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     id_usuario = Column(UUID(as_uuid=True), ForeignKey("usuario.id_usuario", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
+    token = Column(String(255), nullable=True)
     ip_origen = Column(String(45), nullable=True)
     dispositivo = Column(String(255), nullable=True)
     user_agent = Column(Text, nullable=True)
