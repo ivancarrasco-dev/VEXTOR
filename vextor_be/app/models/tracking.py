@@ -1,4 +1,4 @@
-"""Modelos de Tracking en Tiempo Real"""
+"""Modelos de Tracking en Tiempo Real y HistorialUbicacionViaje"""
 import uuid
 from datetime import datetime
 from sqlalchemy import Column, DateTime, ForeignKey, Numeric, CheckConstraint, String
@@ -11,7 +11,7 @@ from app.database.connection import Base
 class SeguimientoRuta(Base):
     __tablename__ = "seguimiento_ruta"
     id_seguimiento = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    id_ruta = Column(UUID(as_uuid=True), ForeignKey("ruta.id_ruta", ondelete="CASCADE", onupdate="CASCADE"), nullable=False, unique=True)
+    id_ruta = Column(UUID(as_uuid=True), ForeignKey("ruta_definicion.id_ruta", ondelete="CASCADE", onupdate="CASCADE"), nullable=False, unique=True)
     id_conductor = Column(UUID(as_uuid=True), ForeignKey("conductor.id_conductor", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
     id_vehiculo = Column(UUID(as_uuid=True), ForeignKey("vehiculo.id_vehiculo", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
     latitud = Column(Numeric(10, 6), nullable=False)
@@ -21,7 +21,7 @@ class SeguimientoRuta(Base):
     ultima_actualizacion = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
     estado_seguimiento = Column(String(20), nullable=False, default="ACTIVO")
 
-    ruta = relationship("Ruta")
+    ruta = relationship("RutaDefinicion")
     conductor = relationship("Conductor")
     vehiculo = relationship("Vehiculo")
 
@@ -30,15 +30,20 @@ class SeguimientoRuta(Base):
     )
 
 
-class HistorialUbicacion(Base):
-    __tablename__ = "historial_ubicacion"
+class HistorialUbicacionViaje(Base):
+    __tablename__ = "historial_ubicacion_viaje"
     id_historial = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    id_seguimiento = Column(UUID(as_uuid=True), ForeignKey("seguimiento_ruta.id_seguimiento", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
-    id_ruta = Column(UUID(as_uuid=True), ForeignKey("ruta.id_ruta", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
+    id_viaje = Column(UUID(as_uuid=True), ForeignKey("viaje.id_viaje", ondelete="CASCADE", onupdate="CASCADE"), nullable=True)
+    id_seguimiento = Column(UUID(as_uuid=True), ForeignKey("seguimiento_ruta.id_seguimiento", ondelete="CASCADE", onupdate="CASCADE"), nullable=True)
+    id_ruta = Column(UUID(as_uuid=True), ForeignKey("ruta_definicion.id_ruta", ondelete="CASCADE", onupdate="CASCADE"), nullable=True)
     latitud = Column(Numeric(10, 6), nullable=False)
     longitud = Column(Numeric(10, 6), nullable=False)
     velocidad = Column(Numeric(5, 2), nullable=True)
     fecha_hora = Column(DateTime, nullable=False, server_default=func.now())
 
     seguimiento = relationship("SeguimientoRuta")
-    ruta = relationship("Ruta")
+    ruta = relationship("RutaDefinicion")
+
+
+# Alias para compatibilidad
+HistorialUbicacion = HistorialUbicacionViaje

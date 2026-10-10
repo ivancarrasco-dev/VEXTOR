@@ -18,6 +18,7 @@ const NominatimAutocomplete = ({
   const [activeIndex, setActiveIndex] = useState(-1);
   const wrapperRef = useRef(null);
   const searchTimeoutRef = useRef(null);
+  const autoGeocodeTimeoutRef = useRef(null);
   const lastResolvedQueryRef = useRef(value);
 
   // Sync internal query state with external value changes
@@ -26,10 +27,37 @@ const NominatimAutocomplete = ({
     lastResolvedQueryRef.current = value;
   }, [value]);
 
-  // Geocode manual query string when Enter is pressed or on blur
+  // Check if string matches lat, lon format
+  const parseCoordinates = (str) => {
+    if (!str) return null;
+    const match = str.trim().match(/^s*(-?\d+(\.\d+)?)\s*,\s*(-?\d+(\.\d+)?)\s*$/);
+    if (match) {
+      const lat = parseFloat(match[1]);
+      const lon = parseFloat(match[3]);
+      if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+        return `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+      }
+    }
+    return null;
+  };
+
+  // Geocode manual query string when Enter is pressed, on blur, or typing pause
   const geocodeManual = async (textToSearch) => {
     if (!textToSearch || textToSearch.trim().length < 3) return;
     if (textToSearch === lastResolvedQueryRef.current) return;
+
+    // Check if user entered raw coordinates
+    const directCoords = parseCoordinates(textToSearch);
+    if (directCoords) {
+      lastResolvedQueryRef.current = textToSearch;
+      setSuggestions([]);
+      setIsOpen(false);
+      onSelect?.({
+        address: textToSearch,
+        coordinates: directCoords,
+      });
+      return;
+    }
 
     setIsLoading(true);
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
@@ -67,11 +95,13 @@ const NominatimAutocomplete = ({
       setIsLoading(false);
     }
 
-    // Fallback if address could not be found
+    // Fallback if address could not be found via API
     setSuggestions([]);
     setIsOpen(false);
-    setQuery(value); // Revert to last valid address
-    onError?.(`No se pudo encontrar la dirección "${textToSearch}". Se mantiene la ubicación anterior.`);
+    onSelect?.({
+      address: textToSearch,
+      coordinates: textToSearch,
+    });
   };
 
   // Handle click outside to close dropdown
@@ -95,7 +125,6 @@ const NominatimAutocomplete = ({
 
     setIsLoading(true);
 
-    // Filter to Colombia (countrycodes=co) and focus on Bogotá / surrounding area using Nominatim viewbox parameter
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
       searchQuery
     )}&countrycodes=co&addressdetails=1&limit=5`;
@@ -126,6 +155,16 @@ const NominatimAutocomplete = ({
             };
           });
           setSuggestions(formatted);
+
+          // If top result is high confidence, pre-set coordinates automatically
+          if (formatted.length > 0) {
+            const top = formatted[0];
+            const coordString = `${top.lat.toFixed(6)}, ${top.lon.toFixed(6)}`;
+            onSelect?.({
+              address: searchQuery,
+              coordinates: coordString,
+            });
+          }
         } else {
           setSuggestions([]);
         }
@@ -145,13 +184,18 @@ const NominatimAutocomplete = ({
     setIsOpen(true);
     setActiveIndex(-1);
 
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    if (autoGeocodeTimeoutRef.current) clearTimeout(autoGeocodeTimeoutRef.current);
 
     searchTimeoutRef.current = setTimeout(() => {
       fetchSuggestions(val);
-    }, 500); // 500ms debounce to comply with Nominatim usage guidelines
+    }, 400);
+
+    autoGeocodeTimeoutRef.current = setTimeout(() => {
+      if (val && val.trim().length >= 3) {
+        geocodeManual(val);
+      }
+    }, 1000);
   };
 
   const handleSelectSuggestion = (item) => {

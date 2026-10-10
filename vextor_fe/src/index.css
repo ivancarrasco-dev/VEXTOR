@@ -1,6 +1,12 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Disable transitions during theme switching to eliminate lag/flicker */
+.theme-switching,
+.theme-switching * {
+  transition: none !important;
+}
+
 :root {
   /* Light mode: neutral surfaces with a deliberate VEXTOR green accent. */
   --vextor-green-dark: #0f5c3a;
@@ -101,7 +107,7 @@
 
 @layer base {
   body {
-    @apply bg-v-dark text-v-white font-sans antialiased transition-colors duration-300;
+    @apply bg-v-dark text-v-white font-sans antialiased;
   }
 
   ::selection {

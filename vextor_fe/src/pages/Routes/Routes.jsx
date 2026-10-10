@@ -96,7 +96,7 @@ const Routes = () => {
     origen: '',
     destino: '',
     paradas: JSON.stringify(createDefaultStops()),
-    fecha_programada: '',
+    fecha_programada: new Date().toISOString().slice(0, 16),
     hora_inicio_real: '',
     hora_fin_real: '',
     estado_ruta: 'PROGRAMADA',
@@ -287,8 +287,10 @@ const Routes = () => {
         updated[emptyIndex] = { ...updated[emptyIndex], address, coordinates };
         return updated;
       }
-      // If all stops are already filled, DO NOT overwrite any stop on map click!
-      return prev;
+      // If all stops are already filled, update last stop
+      const updated = [...prev];
+      updated[updated.length - 1] = { ...updated[updated.length - 1], address, coordinates };
+      return updated;
     });
   };
 
@@ -346,7 +348,6 @@ const Routes = () => {
   // Form validator
   const validateForm = () => {
     const errors = {};
-    const now = new Date();
 
     if (!formData.codigo_ruta.trim()) {
       errors.codigo_ruta = 'El código de ruta es obligatorio';
@@ -360,18 +361,13 @@ const Routes = () => {
       errors.nombre_ruta = 'Máximo 100 caracteres';
     }
 
-    const filledStops = stops.filter(s => s.coordinates && s.coordinates.trim());
+    const filledStops = stops.filter(s => (s.coordinates && s.coordinates.trim()) || (s.address && s.address.trim()));
     if (filledStops.length < 2) {
       errors.stops = 'Debe indicar al menos 2 paradas con dirección o coordenadas válidas.';
     }
 
     if (!formData.fecha_programada) {
       errors.fecha_programada = 'La fecha programada es obligatoria';
-    } else {
-      const scheduledDate = new Date(formData.fecha_programada);
-      if (!selectedRoute && scheduledDate < now) {
-        errors.fecha_programada = 'La fecha programada no puede ser en el pasado';
-      }
     }
 
     if (!formData.id_conductor) {
@@ -407,13 +403,19 @@ const Routes = () => {
       return;
     }
 
-    const firstStop = stops[0];
-    const lastStop = stops[stops.length - 1];
+    const cleanedStops = stops.map(s => ({
+      ...s,
+      coordinates: s.coordinates && s.coordinates.trim() ? s.coordinates : s.address,
+      address: s.address && s.address.trim() ? s.address : s.coordinates
+    }));
+
+    const firstStop = cleanedStops[0];
+    const lastStop = cleanedStops[cleanedStops.length - 1];
     const submitPayload = {
       ...formData,
-      origen: firstStop?.address || firstStop?.coordinates || '',
-      destino: lastStop?.address || lastStop?.coordinates || '',
-      paradas: JSON.stringify(stops)
+      origen: firstStop?.address || firstStop?.coordinates || 'Origen',
+      destino: lastStop?.address || lastStop?.coordinates || 'Destino',
+      paradas: JSON.stringify(cleanedStops)
     };
 
     setIsSubmitLoading(true);
@@ -503,7 +505,7 @@ const Routes = () => {
       origen: '',
       destino: '',
       paradas: JSON.stringify(defaultStops),
-      fecha_programada: '',
+      fecha_programada: new Date().toISOString().slice(0, 16),
       hora_inicio_real: '',
       hora_fin_real: '',
       estado_ruta: 'PROGRAMADA',
@@ -1275,7 +1277,7 @@ const Routes = () => {
                             </td>
                             <td className="p-3 space-y-1.5">
                               <div className="text-v-gray text-[11px] flex items-center gap-1">
-                                <Calendar size={11} /> {route.fecha_programada.replace('T', ' ')}
+                                <Calendar size={11} /> {route.fecha_programada ? route.fecha_programada.replace('T', ' ') : ''}
                               </div>
                               <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border", statusInfo.color)}>
                                 {statusInfo.label}

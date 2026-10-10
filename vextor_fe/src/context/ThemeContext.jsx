@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useLayoutEffect } from 'react';
 import i18n from '../i18n/i18n.js';
 
 const ThemeContext = createContext(undefined);
@@ -8,13 +8,6 @@ const ThemeContext = createContext(undefined);
  *
  * Responsabilidad:
  * Gestionar el estado global del tema (claro/oscuro), color de énfasis e idioma de toda la aplicación Vextor.
- *
- * Funcionalidades:
- * * Mantener el estado del tema actual ('light' o 'dark').
- * * Mantener el color de énfasis actual ('emerald', 'blue', 'purple', 'amber').
- * * Mantener el idioma actual de la interfaz ('es', 'en').
- * * Persistencia mediante localStorage unificado y claves individuales.
- * * Sincronización automática de clases en el elemento <html> y cambio dinámico en i18next.
  */
 export const ThemeProvider = ({ children }) => {
   // 1. Detectar tema oscuro/claro inicial
@@ -39,7 +32,6 @@ export const ThemeProvider = ({ children }) => {
         if (parsed.themeColor) themeColor = parsed.themeColor;
         if (parsed.language) language = parsed.language;
       } else {
-        // Buscar individualmente como fallback
         const savedColor = localStorage.getItem('themeColor');
         if (savedColor) themeColor = savedColor;
         const savedLang = localStorage.getItem('language');
@@ -55,30 +47,35 @@ export const ThemeProvider = ({ children }) => {
   const [themeColor, setThemeColor] = useState(() => getInitialPreferences().themeColor);
   const [language, setLanguage] = useState(() => getInitialPreferences().language);
 
-  // Sincronizar el tema claro/oscuro
-  useEffect(() => {
+  // Synchronous layout effect to eliminate lag / flicker on theme change
+  useLayoutEffect(() => {
     const root = window.document.documentElement;
+    root.classList.add('theme-switching');
+
     if (theme === 'dark') {
       root.classList.add('dark');
     } else {
       root.classList.remove('dark');
     }
     localStorage.setItem('theme', theme);
+
+    const timer = setTimeout(() => {
+      root.classList.remove('theme-switching');
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, [theme]);
 
   // Sincronizar el color de énfasis
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = window.document.documentElement;
-    // Eliminar clases de tema existentes de forma segura
     root.className.split(' ').forEach((cls) => {
-      if (cls.startsWith('theme-')) {
+      if (cls.startsWith('theme-') && cls !== 'theme-switching') {
         root.classList.remove(cls);
       }
     });
-    // Agregar la clase de color de énfasis
     root.classList.add(`theme-${themeColor}`);
 
-    // Persistir color individualmente y en objeto unificado
     localStorage.setItem('themeColor', themeColor);
     try {
       const savedPrefs = localStorage.getItem('vextor_preferences');
@@ -96,7 +93,6 @@ export const ThemeProvider = ({ children }) => {
       i18n.changeLanguage(language);
     }
 
-    // Persistir idioma individualmente y en objeto unificado
     localStorage.setItem('language', language);
     try {
       const savedPrefs = localStorage.getItem('vextor_preferences');
@@ -141,7 +137,7 @@ export const ThemeProvider = ({ children }) => {
     root.classList.add('dark');
     root.classList.remove('light');
     root.className.split(' ').forEach((cls) => {
-      if (cls.startsWith('theme-')) {
+      if (cls.startsWith('theme-') && cls !== 'theme-switching') {
         root.classList.remove(cls);
       }
     });

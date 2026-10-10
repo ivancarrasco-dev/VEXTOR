@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RefreshCw, AlertTriangle, Database, X } from 'lucide-react';
+import { RefreshCw, AlertTriangle, Database, Trash2, RotateCcw } from 'lucide-react';
 import axios from 'axios';
 import { Button } from '../../../components/ui/Button';
 import { API_BASE_URL } from '../../../config/api';
@@ -9,14 +9,54 @@ import { cn } from '../../../utils/cn';
 const BackupSection = ({
   isAutoBackup,
   setIsAutoBackup,
-  handleCreateBackup,
-  isBackingUp,
-  backupList,
-  setBackupList,
   showToast
 }) => {
+  const [backupList, setBackupList] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isBackingUp, setIsBackingUp] = useState(false);
   const [selectedBackupToRestore, setSelectedBackupToRestore] = useState(null);
   const [isRestoring, setIsRestoring] = useState(false);
+
+  const fetchBackups = async () => {
+    setIsLoading(true);
+    try {
+      const res = await axios.get(`${API_BASE_URL}/api/backup`);
+      setBackupList(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error('Error fetching backups:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBackups();
+  }, []);
+
+  const handleCreateBackup = async () => {
+    setIsBackingUp(true);
+    try {
+      const res = await axios.post(`${API_BASE_URL}/api/backup/create`);
+      showToast('Respaldo del sistema generado correctamente.');
+      await fetchBackups();
+    } catch (err) {
+      console.error('Error creating backup:', err);
+      showToast(err.response?.data?.detail || 'Error al generar la copia de seguridad.');
+    } finally {
+      setIsBackingUp(false);
+    }
+  };
+
+  const handleDeleteBackup = async (filename) => {
+    try {
+      await axios.delete(`${API_BASE_URL}/api/backup/${encodeURIComponent(filename)}`);
+      showToast('Copia de seguridad eliminada.');
+      setBackupList(prev => prev.filter(b => b.filename !== filename && b.id !== filename));
+    } catch (err) {
+      console.error('Error deleting backup:', err);
+      showToast('Error al eliminar la copia de seguridad.');
+    }
+  };
 
   const handleExecuteRestore = async () => {
     if (!selectedBackupToRestore) return;
@@ -81,39 +121,55 @@ const BackupSection = ({
 
       {/* Backups List */}
       <div className="space-y-3">
-        <h4 className="font-bold text-sm text-v-white">Copias Guardadas</h4>
-        <div className="border border-v-dark-border rounded-xl bg-v-dark/10 divide-y divide-v-dark-border">
-          {backupList.map((bk) => (
-            <div key={bk.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between text-sm gap-3 animate-in fade-in">
-              <div>
-                <p className="font-mono text-xs text-v-white font-bold">{bk.filename}</p>
-                <p className="text-xs text-v-gray mt-1">Peso: {bk.size} • Creado el: {bk.date}</p>
-              </div>
-
-              <div className="flex gap-2 shrink-0">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs h-8 px-3 font-semibold cursor-pointer"
-                  onClick={() => setSelectedBackupToRestore(bk)}
-                >
-                  Restaurar
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs h-8 px-3 text-red-400 hover:text-red-300 hover:bg-red-500/10 font-semibold cursor-pointer"
-                  onClick={() => {
-                    setBackupList(backupList.filter(b => b.id !== bk.id));
-                    showToast('Copia eliminada.');
-                  }}
-                >
-                  Eliminar
-                </Button>
-              </div>
-            </div>
-          ))}
+        <div className="flex items-center justify-between">
+          <h4 className="font-bold text-sm text-v-white">Copias Guardadas</h4>
+          <button
+            onClick={fetchBackups}
+            className="text-xs text-primary hover:underline flex items-center gap-1 font-semibold cursor-pointer"
+          >
+            <RefreshCw size={12} /> Actualizar
+          </button>
         </div>
+
+        {isLoading ? (
+          <div className="p-8 text-center text-v-gray text-xs border border-v-dark-border rounded-xl">
+            Cargando copias de seguridad...
+          </div>
+        ) : backupList.length === 0 ? (
+          <div className="p-8 text-center text-v-gray text-xs border border-v-dark-border rounded-xl">
+            No existen copias de seguridad guardadas.
+          </div>
+        ) : (
+          <div className="border border-v-dark-border rounded-xl bg-v-dark/10 divide-y divide-v-dark-border">
+            {backupList.map((bk) => (
+              <div key={bk.id || bk.filename} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between text-sm gap-3 animate-in fade-in">
+                <div>
+                  <p className="font-mono text-xs text-v-white font-bold">{bk.filename}</p>
+                  <p className="text-xs text-v-gray mt-1">Peso: {bk.size} • Creado el: {bk.date}</p>
+                </div>
+
+                <div className="flex gap-2 shrink-0">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-8 px-3 font-semibold cursor-pointer"
+                    onClick={() => setSelectedBackupToRestore(bk)}
+                  >
+                    Restaurar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-8 px-3 text-red-400 hover:text-red-300 hover:bg-red-500/10 font-semibold cursor-pointer"
+                    onClick={() => handleDeleteBackup(bk.filename)}
+                  >
+                    Eliminar
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Restore Confirmation Modal */}

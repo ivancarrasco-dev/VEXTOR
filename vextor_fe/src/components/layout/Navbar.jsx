@@ -1,10 +1,11 @@
-import { Menu, Activity } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import UserMenu from './UserMenu';
 import NotificationButton from './NotificationButton';
 import { useLocation } from 'react-router-dom';
 import { Logo } from '../ui/Logo';
 import { Badge } from '../ui/Badge';
 import { ThemeToggle } from '../ui/ThemeToggle';
+import { LanguageToggle } from '../ui/LanguageToggle';
 import { useTranslation } from 'react-i18next';
 
 /**
@@ -22,23 +23,23 @@ const Navbar = ({ onMenuClick }) => {
   const getPageTitle = () => {
     const path = location.pathname;
 
-    if (path.startsWith('/driver/my-routes')) return 'Inicio / Mis Rutas';
-    if (path.startsWith('/driver/my-bus')) return 'Mi Bus Asignado';
-    if (path.startsWith('/driver/active-route')) return 'Monitoreo de Ruta Activa';
-    if (path.startsWith('/driver/notifications')) return 'Notificaciones Conductor';
+    if (path.startsWith('/driver/my-routes')) return t('sidebar.driverRoutes', 'Inicio / Mis Rutas');
+    if (path.startsWith('/driver/my-bus')) return t('sidebar.driverBus', 'Mi Bus Asignado');
+    if (path.startsWith('/driver/active-route')) return t('sidebar.activeRoute', 'Monitoreo de Ruta Activa');
+    if (path.startsWith('/driver/notifications')) return t('sidebar.driverNotifications', 'Notificaciones Conductor');
 
-    if (path.startsWith('/user/home')) return 'Inicio / Portal Usuario';
-    if (path.startsWith('/user/buses')) return 'Consulta de Buses';
-    if (path.startsWith('/user/routes')) return 'Consulta de Rutas';
-    if (path.startsWith('/user/schedules')) return 'Horarios y Frecuencias';
-    if (path.startsWith('/user/history')) return 'Historial / Recorridos';
-    if (path.startsWith('/user/notifications')) return 'Notificaciones de Usuario';
-    if (path.startsWith('/user/profile')) return 'Mi Perfil';
+    if (path.startsWith('/user/home')) return t('user.portalHome', 'Inicio / Portal Usuario');
+    if (path.startsWith('/user/buses')) return t('user.busesSearch', 'Consulta de Buses');
+    if (path.startsWith('/user/routes')) return t('user.routesSearch', 'Consulta de Rutas');
+    if (path.startsWith('/user/schedules')) return t('user.schedules', 'Horarios y Frecuencias');
+    if (path.startsWith('/user/history')) return t('user.history', 'Historial / Recorridos');
+    if (path.startsWith('/user/notifications')) return t('user.notifications', 'Notificaciones de Usuario');
+    if (path.startsWith('/user/profile')) return t('user.profile', 'Mi Perfil');
 
     switch(path) {
       case '/dashboard': return t('sidebar.dashboard', 'Centro de Control');
-      case '/users': return 'Gestión de Usuarios';
-      case '/recorridos': return 'Gestión de Recorridos';
+      case '/users': return t('sidebar.users', 'Gestión de Usuarios');
+      case '/recorridos': return t('sidebar.trips', 'Gestión de Recorridos');
       case '/vehicles': return t('sidebar.vehicles', 'Gestión de Vehículos');
       case '/drivers': return t('sidebar.drivers', 'Gestión de Conductores');
       case '/routes': return t('sidebar.routes', 'Monitoreo de Rutas');
@@ -78,14 +79,15 @@ const Navbar = ({ onMenuClick }) => {
             </h1>
             <div className="hidden xl:block shrink-0">
               <Badge variant="success" size="xs" pulse className="font-mono text-[10px]">
-                En Línea
+                {t('common.online', 'En Línea')}
               </Badge>
             </div>
           </div>
         </div>
 
-        {/* Right Section: Theme Toggle + Notifications + User Menu */}
+        {/* Right Section: Theme Toggle + Language Toggle + Notifications + User Menu */}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          <LanguageToggle />
           <ThemeToggle />
           <NotificationButton />
           <div className="w-px h-7 bg-v-dark-border mx-1 hidden sm:block" />
