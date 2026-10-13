@@ -40,22 +40,23 @@ async def lifespan(app: FastAPI):
         from app.core.security import hash_password
         from uuid import uuid4
 
+        from sqlalchemy import func
         db = SessionLocal()
         try:
             roles_data = [
-                ("Administrador", "Control total del sistema y gestión corporativa"),
-                ("Conductor", "Operación de vehículos y consulta de rutas asignadas"),
-                ("Usuario", "Usuario estándar del sistema"),
+                ("administrador", "Control total del sistema y gestión corporativa"),
+                ("conductor", "Operación de vehículos y consulta de rutas asignadas"),
+                ("usuario", "Usuario estándar del sistema"),
             ]
             roles_dict = {}
             for role_name, desc in roles_data:
-                rol = db.query(Rol).filter(Rol.nombre_rol == role_name).first()
+                rol = db.query(Rol).filter(func.lower(Rol.nombre_rol) == role_name.lower()).first()
                 if not rol:
                     rol = Rol(id_rol=uuid4(), nombre_rol=role_name, descripcion_rol=desc)
                     db.add(rol)
                     db.commit()
                     db.refresh(rol)
-                roles_dict[role_name] = rol
+                roles_dict[role_name.lower()] = rol
 
             # Sembrar admin por defecto
             admin_email = "admin@vextor.com"
@@ -63,7 +64,7 @@ async def lifespan(app: FastAPI):
             if not admin_user:
                 admin_user = Usuario(
                     id_usuario=uuid4(),
-                    id_rol=roles_dict["Administrador"].id_rol,
+                    id_rol=roles_dict["administrador"].id_rol,
                     nombres_usuario="Administrador",
                     apellidos_usuario="Sistema",
                     correo_usuario=admin_email,

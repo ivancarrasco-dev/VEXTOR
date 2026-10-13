@@ -235,7 +235,8 @@ def get_me(current_user = Depends(get_current_user), db: Session = Depends(get_d
     from app.utils import generate_avatar_initials
     
     rol = db.query(Rol).filter(Rol.id_rol == current_user.id_rol).first()
-    role_name = rol.nombre_rol if rol else "Usuario"
+    raw_role = rol.nombre_rol if rol else "Usuario"
+    role_name = raw_role.capitalize() if raw_role else "Usuario"
     avatar = generate_avatar_initials(current_user.nombres_usuario, current_user.apellidos_usuario)
 
     return {

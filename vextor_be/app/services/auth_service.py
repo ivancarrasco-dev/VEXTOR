@@ -61,14 +61,17 @@ class AuthService:
                 detail="El correo electrónico ya está registrado.",
             )
 
+        from sqlalchemy import func
         # Obtener rol predeterminado 'Usuario' o fallback a 'Administrador'
-        rol = db.query(Rol).filter(Rol.nombre_rol == "Usuario").first()
+        rol = db.query(Rol).filter(func.lower(Rol.nombre_rol) == "usuario").first()
         if not rol:
-            rol = db.query(Rol).filter(Rol.nombre_rol == "Administrador").first()
+            rol = db.query(Rol).filter(func.lower(Rol.nombre_rol) == "administrador").first()
+        if not rol:
+            rol = db.query(Rol).first()
         if not rol:
             rol = Rol(
                 id_rol=uuid4(),
-                nombre_rol="Usuario",
+                nombre_rol="usuario",
                 descripcion_rol="Rol predeterminado asignado en el registro público.",
             )
             db.add(rol)
@@ -127,9 +130,10 @@ class AuthService:
                 detail="Su cuenta de usuario se encuentra inactiva.",
             )
 
-        # Obtener nombre de rol
+        # Obtener nombre de rol y normalizar para el frontend
         rol = db.query(Rol).filter(Rol.id_rol == user.id_rol).first()
-        role_name = rol.nombre_rol if rol else "Usuario"
+        raw_role = rol.nombre_rol if rol else "Usuario"
+        role_name = raw_role.capitalize() if raw_role else "Usuario"
 
         # Crear sesión en BD
         ua_str = request.headers.get("user-agent", "")
@@ -401,7 +405,8 @@ class AuthService:
         db.refresh(user)
 
         rol = db.query(Rol).filter(Rol.id_rol == user.id_rol).first()
-        role_name = rol.nombre_rol if rol else "Usuario"
+        raw_role = rol.nombre_rol if rol else "Usuario"
+        role_name = raw_role.capitalize() if raw_role else "Usuario"
         avatar = generate_avatar_initials(user.nombres_usuario, user.apellidos_usuario)
 
         return {
