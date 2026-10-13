@@ -14,6 +14,9 @@ elif db_url.startswith("postgres://"):
 
 if "postgresql" in db_url or "psycopg" in db_url:
     connect_args["connect_timeout"] = 10
+    # Evitar problemas de conexión o certificados SSL estrictos en redes restringidas si se utiliza sslmode
+    if "sslmode" not in db_url:
+        connect_args["sslmode"] = "prefer"
 elif db_url.startswith("sqlite"):
     connect_args["check_same_thread"] = False
 
