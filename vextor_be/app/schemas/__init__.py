@@ -5,7 +5,7 @@ Consolidado en un único archivo para facilitar importación
 from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
 from uuid import UUID
 from datetime import date, datetime
-from typing import Literal, Optional, List
+from typing import Literal, Optional, List, Any
 
 
 # ========== AUTH SCHEMAS ==========
@@ -359,7 +359,7 @@ class EmpresaBase(BaseModel):
     email: Optional[EmailStr] = None
     phone: Optional[str] = Field(None, max_length=50)
     retention_days: Optional[int] = 30
-    estado: str = Field("ACTIVO", max_length=20)
+    estado: Optional[Any] = "ACTIVO"
 
 
 class EmpresaCreate(EmpresaBase):

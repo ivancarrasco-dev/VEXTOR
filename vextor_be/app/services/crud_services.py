@@ -92,33 +92,82 @@ class VehicleService:
 
     @staticmethod
     def get_all(db: Session):
-        vehicles = db.query(Vehiculo).all()
+        from app.models import Modelo, Marca
+        vehicles = db.query(Vehiculo).options(
+            joinedload(Vehiculo.modelo_rel).joinedload(Modelo.marca)
+        ).all()
         for v in vehicles:
             sync_vehicle_status(v.id_vehiculo, db)
         return vehicles
 
     @staticmethod
     def get_by_id(vehicle_id: UUID, db: Session):
-        vehicle = db.query(Vehiculo).filter(Vehiculo.id_vehiculo == vehicle_id).first()
+        from app.models import Modelo, Marca
+        vehicle = db.query(Vehiculo).options(
+            joinedload(Vehiculo.modelo_rel).joinedload(Modelo.marca)
+        ).filter(Vehiculo.id_vehiculo == vehicle_id).first()
         if vehicle:
             sync_vehicle_status(vehicle.id_vehiculo, db)
         return vehicle
 
     @staticmethod
     def create(vehicle_data: dict, db: Session):
+        from app.models import Marca, Modelo
+        from uuid import uuid4
+        from sqlalchemy import func
+
+        marca_val = vehicle_data.pop("marca", None)
+        modelo_val = vehicle_data.pop("modelo", None)
+        anio_val = vehicle_data.pop("anio", 2024)
+
         # Validar placa
-        if not validate_colombian_plate(vehicle_data.get("placa", "")):
+        placa_str = vehicle_data.get("placa", "").upper()
+        if not validate_colombian_plate(placa_str):
             raise HTTPException(status_code=400, detail="Formato de placa inválido")
 
         # Verificar duplicado
         existing = db.query(Vehiculo).filter(
-            Vehiculo.placa == vehicle_data["placa"].upper()
+            Vehiculo.placa == placa_str
         ).first()
         if existing:
             raise HTTPException(status_code=400, detail="La placa ya existe")
 
+        # Vincular Marca y Modelo
+        if not vehicle_data.get("id_modelo") and marca_val and modelo_val:
+            marca_obj = db.query(Marca).filter(func.lower(Marca.nombre_marca) == str(marca_val).strip().lower()).first()
+            if not marca_obj:
+                marca_obj = Marca(id_marca=uuid4(), nombre_marca=str(marca_val).strip())
+                db.add(marca_obj)
+                db.commit()
+                db.refresh(marca_obj)
+
+            modelo_obj = db.query(Modelo).filter(
+                Modelo.id_marca == marca_obj.id_marca,
+                func.lower(Modelo.nombre_modelo) == str(modelo_val).strip().lower()
+            ).first()
+            if not modelo_obj:
+                modelo_obj = Modelo(
+                    id_modelo=uuid4(),
+                    id_marca=marca_obj.id_marca,
+                    nombre_modelo=str(modelo_val).strip(),
+                    capacidad_pasajeros=vehicle_data.get("capacidad_pasajeros", 4),
+                    anio=int(anio_val)
+                )
+                db.add(modelo_obj)
+                db.commit()
+                db.refresh(modelo_obj)
+
+            vehicle_data["id_modelo"] = modelo_obj.id_modelo
+
         vehicle = Vehiculo(**vehicle_data)
-        vehicle.placa = vehicle.placa.upper()
+        vehicle.placa = placa_str
+        if marca_val:
+            vehicle.marca = marca_val
+        if modelo_val:
+            vehicle.modelo = modelo_val
+        if anio_val:
+            vehicle.anio = anio_val
+
         db.add(vehicle)
         db.commit()
         db.refresh(vehicle)
@@ -148,11 +197,22 @@ class VehicleService:
                     detail="No se puede cambiar el estado a DISPONIBLE mientras el vehículo tenga una ruta activa o asignada."
                 )
 
+        marca_val = vehicle_data.pop("marca", None)
+        modelo_val = vehicle_data.pop("modelo", None)
+        anio_val = vehicle_data.pop("anio", None)
+
         for key, value in vehicle_data.items():
             if value is not None:
                 if key == "placa":
                     value = value.upper()
                 setattr(vehicle, key, value)
+
+        if marca_val:
+            vehicle.marca = marca_val
+        if modelo_val:
+            vehicle.modelo = modelo_val
+        if anio_val:
+            vehicle.anio = anio_val
 
         db.commit()
         db.refresh(vehicle)

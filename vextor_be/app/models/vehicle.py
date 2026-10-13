@@ -33,9 +33,6 @@ class Vehiculo(Base):
     id_vehiculo = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     id_modelo = Column(UUID(as_uuid=True), ForeignKey("modelo.id_modelo", ondelete="SET NULL", onupdate="CASCADE"), nullable=True)
     placa = Column(String(15), nullable=False, unique=True)
-    marca = Column(String(50), nullable=False)
-    modelo = Column(String(50), nullable=False)
-    anio = Column(Integer, nullable=False)
     color = Column(String(30), nullable=True)
     tipo_vehiculo = Column(String(50), nullable=False)
     capacidad_pasajeros = Column(Integer, nullable=False)
@@ -49,6 +46,36 @@ class Vehiculo(Base):
     inspecciones = relationship("InspeccionUnidad", back_populates="vehiculo", cascade="all, delete-orphan")
     asignaciones = relationship("AsignacionVehiculo", back_populates="vehiculo")
     mantenimientos = relationship("Mantenimiento", back_populates="vehiculo")
+
+    @property
+    def marca(self) -> str:
+        if self.modelo_rel and self.modelo_rel.marca:
+            return self.modelo_rel.marca.nombre_marca
+        return getattr(self, "_marca", "N/A") or "N/A"
+
+    @marca.setter
+    def marca(self, value: str):
+        self._marca = value
+
+    @property
+    def modelo(self) -> str:
+        if self.modelo_rel:
+            return self.modelo_rel.nombre_modelo
+        return getattr(self, "_modelo", "N/A") or "N/A"
+
+    @modelo.setter
+    def modelo(self, value: str):
+        self._modelo = value
+
+    @property
+    def anio(self) -> int:
+        if self.modelo_rel:
+            return self.modelo_rel.anio
+        return getattr(self, "_anio", 2024)
+
+    @anio.setter
+    def anio(self, value: int):
+        self._anio = value
 
     __table_args__ = (
         CheckConstraint("estado_vehiculo IN ('DISPONIBLE', 'EN_RUTA', 'MANTENIMIENTO', 'INACTIVO')", name="chk_estado_vehiculo"),
