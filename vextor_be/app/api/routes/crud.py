@@ -6,6 +6,7 @@ from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 import sys
 
 from app.database import get_db
@@ -38,7 +39,7 @@ company_router = APIRouter(prefix="/api/company", tags=["Company"])
 # Dependencia para requerir rol de Administrador
 def require_admin(current_user = Depends(get_current_user), db: Session = Depends(get_db)):
     rol = db.query(RolModel).filter(RolModel.id_rol == current_user.id_rol).first()
-    if not rol or rol.nombre_rol != "Administrador":
+    if not rol or rol.nombre_rol.lower() != "administrador":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Acceso denegado: Se requiere rol de Administrador"
@@ -126,7 +127,7 @@ def get_drivers(
     """
     from app.models import Conductor as ConductorModel, Usuario as UsuarioModel
     
-    query = db.query(ConductorModel).join(UsuarioModel).join(RolModel, UsuarioModel.id_rol == RolModel.id_rol).filter(RolModel.nombre_rol == "Conductor").offset(skip).limit(min(limit, 100))
+    query = db.query(ConductorModel).join(UsuarioModel).join(RolModel, UsuarioModel.id_rol == RolModel.id_rol).filter(func.lower(RolModel.nombre_rol) == "conductor").offset(skip).limit(min(limit, 100))
     conductores = query.all()
     
     # Enriquecer con correo del usuario
@@ -174,7 +175,7 @@ def create_driver(
             id_usuario = existing_user.id_usuario
         else:
             # Obtener rol Conductor
-            rol_conductor = db.query(RolModel).filter(RolModel.nombre_rol == "Conductor").first()
+            rol_conductor = db.query(RolModel).filter(func.lower(RolModel.nombre_rol) == "conductor").first()
             if not rol_conductor:
                 rol_conductor = db.query(RolModel).first()
             rol_id = rol_conductor.id_rol if rol_conductor else uuid.uuid4()
@@ -196,7 +197,7 @@ def create_driver(
     
     # Si no hay id_usuario ni correo, generar automáticamente
     elif not id_usuario:
-        rol_conductor = db.query(RolModel).filter(RolModel.nombre_rol == "Conductor").first()
+        rol_conductor = db.query(RolModel).filter(func.lower(RolModel.nombre_rol) == "conductor").first()
         if not rol_conductor:
             rol_conductor = db.query(RolModel).first()
         rol_id = rol_conductor.id_rol if rol_conductor else uuid.uuid4()
@@ -354,7 +355,7 @@ def update_route(
 ):
     from app.models import Conductor, AsignacionConductor
     rol = db.query(RolModel).filter(RolModel.id_rol == current_user.id_rol).first()
-    is_admin = rol and rol.nombre_rol == "Administrador"
+    is_admin = rol and rol.nombre_rol.lower() == "administrador"
 
     if not is_admin:
         driver = db.query(Conductor).filter(Conductor.id_usuario == current_user.id_usuario).first()
@@ -474,7 +475,8 @@ def get_roles(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
 ):
-    return db.query(RolModel).filter(RolModel.nombre_rol.in_(ALLOWED_ROLES)).all()
+    allowed_lower = [r.lower() for r in ALLOWED_ROLES]
+    return db.query(RolModel).filter(func.lower(RolModel.nombre_rol).in_(allowed_lower)).all()
 
 
 # ========== USERS ==========
