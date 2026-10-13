@@ -6,13 +6,16 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load .env from project root
-env_file = Path(__file__).parent.parent.parent / ".env"
-if env_file.exists():
-    load_dotenv(env_file)
-else:
-    # Si no existe .env, cargar desde el entorno (útil en Docker)
-    load_dotenv()
+# Load .env from project root, vextor_be directory, or environment variables
+base_dir = Path(__file__).resolve()
+root_env = base_dir.parents[3] / ".env"
+be_env = base_dir.parents[2] / ".env"
+
+if root_env.exists():
+    load_dotenv(root_env)
+if be_env.exists():
+    load_dotenv(be_env)
+load_dotenv()
 
 
 class Settings:

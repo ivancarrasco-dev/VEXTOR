@@ -23,15 +23,16 @@ async def lifespan(app: FastAPI):
     try:
         Base.metadata.create_all(bind=engine)
     except Exception as e:
-        print("Table creation note:", e)
+        print(f"[Startup Warning] Error en creación de tablas DDL: {e}")
 
-    try:
-        with engine.connect() as conn:
-            conn.execute(text("ALTER TABLE conductor DROP CONSTRAINT IF EXISTS chk_estado_conductor;"))
-            conn.execute(text("ALTER TABLE conductor ADD CONSTRAINT chk_estado_conductor CHECK (estado_conductor IN ('DISPONIBLE', 'EN_RUTA', 'NO_DISPONIBLE', 'ACTIVO', 'INACTIVO', 'SUSPENDIDO'));"))
-            conn.commit()
-    except Exception as e:
-        print("Constraint migration note:", e)
+    if engine.dialect.name == "postgresql":
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE conductor DROP CONSTRAINT IF EXISTS chk_estado_conductor;"))
+                conn.execute(text("ALTER TABLE conductor ADD CONSTRAINT chk_estado_conductor CHECK (estado_conductor IN ('DISPONIBLE', 'EN_RUTA', 'NO_DISPONIBLE', 'ACTIVO', 'INACTIVO', 'SUSPENDIDO'));"))
+                conn.commit()
+        except Exception as e:
+            print(f"[Startup Warning] Error en migración de restricciones: {e}")
 
     # Sembrar roles base y usuario admin por defecto si no existen
     try:
@@ -39,6 +40,7 @@ async def lifespan(app: FastAPI):
         from app.models import Rol, Usuario
         from app.core.security import hash_password
         from uuid import uuid4
+        from sqlalchemy import func
 
         db = SessionLocal()
         try:
@@ -49,35 +51,37 @@ async def lifespan(app: FastAPI):
             ]
             roles_dict = {}
             for role_name, desc in roles_data:
-                rol = db.query(Rol).filter(Rol.nombre_rol == role_name).first()
+                rol = db.query(Rol).filter(func.lower(Rol.nombre_rol) == role_name.lower()).first()
                 if not rol:
                     rol = Rol(id_rol=uuid4(), nombre_rol=role_name, descripcion_rol=desc)
                     db.add(rol)
                     db.commit()
                     db.refresh(rol)
-                roles_dict[role_name] = rol
+                roles_dict[role_name.lower()] = rol
 
             # Sembrar admin por defecto
             admin_email = "admin@vextor.com"
-            admin_user = db.query(Usuario).filter(Usuario.correo_usuario == admin_email).first()
+            admin_user = db.query(Usuario).filter(func.lower(Usuario.correo_usuario) == admin_email.lower()).first()
             if not admin_user:
-                admin_user = Usuario(
-                    id_usuario=uuid4(),
-                    id_rol=roles_dict["Administrador"].id_rol,
-                    nombres_usuario="Administrador",
-                    apellidos_usuario="Sistema",
-                    correo_usuario=admin_email,
-                    contrasenia_usuario=hash_password("Admin123!"),
-                    telefono_usuario="3000000000",
-                    estado_usuario="ACTIVO",
-                )
-                db.add(admin_user)
-                db.commit()
-                print(f"Usuario semilla admin creado: {admin_email}")
+                admin_rol = roles_dict.get("administrador") or db.query(Rol).filter(func.lower(Rol.nombre_rol) == "administrador").first()
+                if admin_rol:
+                    admin_user = Usuario(
+                        id_usuario=uuid4(),
+                        id_rol=admin_rol.id_rol,
+                        nombres_usuario="Administrador",
+                        apellidos_usuario="Sistema",
+                        correo_usuario=admin_email,
+                        contrasenia_usuario=hash_password("Admin123!"),
+                        telefono_usuario="3000000000",
+                        estado_usuario="ACTIVO",
+                    )
+                    db.add(admin_user)
+                    db.commit()
+                    print(f"Usuario semilla admin creado: {admin_email}")
         finally:
             db.close()
     except Exception as e:
-        print("Seed data note:", e)
+        print(f"[Startup Warning] Error en la siembra de datos iniciales: {e}")
 
     yield
 

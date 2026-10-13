@@ -8,6 +8,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Tuple, Optional
 from uuid import UUID, uuid4
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from fastapi import HTTPException, status, Request
 
 from app.core.config import settings
@@ -62,9 +63,9 @@ class AuthService:
             )
 
         # Obtener rol predeterminado 'Usuario' o fallback a 'Administrador'
-        rol = db.query(Rol).filter(Rol.nombre_rol == "Usuario").first()
+        rol = db.query(Rol).filter(func.lower(Rol.nombre_rol) == "usuario").first()
         if not rol:
-            rol = db.query(Rol).filter(Rol.nombre_rol == "Administrador").first()
+            rol = db.query(Rol).filter(func.lower(Rol.nombre_rol) == "administrador").first()
         if not rol:
             rol = Rol(
                 id_rol=uuid4(),
