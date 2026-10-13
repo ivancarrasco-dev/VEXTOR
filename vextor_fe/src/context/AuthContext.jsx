@@ -62,7 +62,14 @@ export const AuthProvider = ({ children }) => {
       return data.user;
     } catch (error) {
       setIsLoading(false);
-      const message = error.response?.data?.detail || 'Error al iniciar sesión.';
+      let message = error.response?.data?.detail;
+      if (!message) {
+        if (error.code === 'ERR_NETWORK' || !error.response) {
+          message = 'No se pudo conectar con el servidor. Verifica que el backend esté en ejecución.';
+        } else {
+          message = 'Error al iniciar sesión. Por favor verifica tus credenciales.';
+        }
+      }
       throw new Error(message);
     }
   };
@@ -82,7 +89,14 @@ export const AuthProvider = ({ children }) => {
       return loggedUser;
     } catch (error) {
       setIsLoading(false);
-      const message = error.response?.data?.detail || 'Error al crear la cuenta.';
+      let message = error.response?.data?.detail;
+      if (!message) {
+        if (error.code === 'ERR_NETWORK' || !error.response) {
+          message = 'No se pudo conectar con el servidor. Verifica que el backend esté en ejecución.';
+        } else {
+          message = 'Error al crear la cuenta. Por favor verifica los datos ingresados.';
+        }
+      }
       throw new Error(message);
     }
   };
