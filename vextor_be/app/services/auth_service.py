@@ -134,21 +134,10 @@ class AuthService:
         # Crear sesión en BD
         ua_str = request.headers.get("user-agent", "")
         device_info = parse_user_agent(ua_str)
-        session_id = uuid4()
-
-        # Crear JWT con session ID
-        token = create_access_token(
-            data={
-                "sub": user.correo_usuario,
-                "role": role_name,
-                "sid": str(session_id),
-            }
-        )
 
         new_session = SesionUsuario(
-            id_sesion=session_id,
+            id_sesion=uuid4(),
             id_usuario=user.id_usuario,
-            token=token,
             ip_origen=client_ip,
             dispositivo=device_info,
             user_agent=ua_str,
@@ -159,6 +148,15 @@ class AuthService:
         db.add(new_session)
         db.commit()
         db.refresh(new_session)
+
+        # Crear JWT con session ID
+        token = create_access_token(
+            data={
+                "sub": user.correo_usuario,
+                "role": role_name,
+                "sid": str(new_session.id_sesion),
+            }
+        )
 
         # Generar avatar
         avatar = generate_avatar_initials(user.nombres_usuario, user.apellidos_usuario)
