@@ -67,19 +67,46 @@ class AuditService:
         db: Session,
         titulo: str,
         descripcion: str,
-        tipo: str,
+        tipo: str = "general",
         id_usuario = None,
     ) -> Notificacion:
-        """Crea una notificación"""
-        user_uuid = AuditService._coerce_uuid(id_usuario)
-        notification = Notificacion(
-            id_usuario=user_uuid,
-            titulo=titulo,
-            descripcion=descripcion,
-            tipo=tipo,
-            leido=False,
-        )
-        db.add(notification)
-        db.commit()
-        db.refresh(notification)
-        return notification
+        """Crea una notificación de forma defensiva reconociendo restricciones de base de datos"""
+        try:
+            user_uuid = AuditService._coerce_uuid(id_usuario)
+            if user_uuid is None:
+                from app.models import Usuario, Rol
+                from sqlalchemy import func
+                admin_user = (
+                    db.query(Usuario)
+                    .join(Rol)
+                    .filter(func.lower(Rol.nombre_rol) == "administrador")
+                    .first()
+                )
+                if admin_user:
+                    user_uuid = admin_user.id_usuario
+                else:
+                    any_user = db.query(Usuario).first()
+                    if any_user:
+                        user_uuid = any_user.id_usuario
+
+            if user_uuid is None:
+                return None
+
+            kwargs = {
+                "id_usuario": user_uuid,
+                "titulo": titulo,
+                "descripcion": descripcion,
+                "leido": False,
+            }
+            if hasattr(Notificacion, "__table__") and "tipo" in Notificacion.__table__.c:
+                kwargs["tipo"] = tipo
+
+            notification = Notificacion(**kwargs)
+            db.add(notification)
+            db.commit()
+            db.refresh(notification)
+            return notification
+        except Exception as e:
+            db.rollback()
+            print(f"Advertencia: No se pudo crear la notificación: {e}")
+            return None

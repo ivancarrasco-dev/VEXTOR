@@ -106,6 +106,9 @@ def sync_system_notifications(db: Session, user_id: UUID):
     Genera notificaciones automáticas en tiempo real para eventos del sistema
     (mantenimientos próximos/vencidos o alertas de flota) sin duplicar títulos idénticos recientes.
     """
+    if not user_id:
+        return
+
     today = date.today()
 
     maintenances = db.query(Mantenimiento).filter(
@@ -122,19 +125,22 @@ def sync_system_notifications(db: Session, user_id: UUID):
                 NotificacionModel.leido == False
             ).first()
             if not existing:
-                notif = NotificacionModel(
-                    id_usuario=user_id,
-                    titulo=title,
-                    descripcion=desc_text,
-                    tipo="mantenimiento",
-                    leido=False
-                )
+                kwargs = {
+                    "id_usuario": user_id,
+                    "titulo": title,
+                    "descripcion": desc_text,
+                    "leido": False,
+                }
+                if hasattr(NotificacionModel, "__table__") and "tipo" in NotificacionModel.__table__.c:
+                    kwargs["tipo"] = "mantenimiento"
+                notif = NotificacionModel(**kwargs)
                 db.add(notif)
 
     try:
         db.commit()
     except Exception as e:
         db.rollback()
+        print(f"Advertencia: No se pudieron sincronizar notificaciones del sistema: {e}")
 
 
 @router.get("/api/notifications", response_model=List[Notificacion])
