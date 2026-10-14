@@ -25,13 +25,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print("Table creation note:", e)
 
-    try:
-        with engine.connect() as conn:
-            conn.execute(text("ALTER TABLE conductor DROP CONSTRAINT IF EXISTS chk_estado_conductor;"))
-            conn.execute(text("ALTER TABLE conductor ADD CONSTRAINT chk_estado_conductor CHECK (estado_conductor IN ('DISPONIBLE', 'EN_RUTA', 'NO_DISPONIBLE', 'ACTIVO', 'INACTIVO', 'SUSPENDIDO'));"))
-            conn.commit()
-    except Exception as e:
-        print("Constraint migration note:", e)
+    if engine.dialect.name == "postgresql":
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE conductor DROP CONSTRAINT IF EXISTS chk_estado_conductor;"))
+                conn.execute(text("ALTER TABLE conductor ADD CONSTRAINT chk_estado_conductor CHECK (estado_conductor IN ('DISPONIBLE', 'EN_RUTA', 'EN_VIAJE', 'NO_DISPONIBLE', 'ACTIVO', 'INACTIVO', 'LICENCIA_VENCIDA', 'SUSPENDIDO'));"))
+                conn.commit()
+        except Exception as e:
+            print("Constraint migration note:", e)
 
     # Sembrar roles base y usuario admin por defecto si no existen
     try:
