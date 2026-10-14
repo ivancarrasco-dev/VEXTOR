@@ -7,14 +7,16 @@ from app.core.config import settings
 
 connect_args = {}
 if settings.DATABASE_URL.startswith("postgresql"):
-    connect_args["connect_timeout"] = 10
+    connect_args["connect_timeout"] = 15
 elif settings.DATABASE_URL.startswith("sqlite"):
     connect_args["check_same_thread"] = False
 
-# Crear engine
+# Crear engine con parámetros robustos para Supabase Pooler
 engine = create_engine(
     settings.DATABASE_URL,
-    connect_args=connect_args
+    connect_args=connect_args,
+    pool_pre_ping=True,      # Valida que la conexión esté viva antes de cada consulta
+    pool_recycle=300,        # Recicla las conexiones para evitar bloqueos por inactividad
 )
 
 # Crear SessionLocal factory
