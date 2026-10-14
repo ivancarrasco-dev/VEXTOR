@@ -104,9 +104,11 @@ def test_rbac_restrictions(test_db_security):
 
 
 def test_rate_limiting_login(test_db_security):
-    """Verifica que el rate limiter bloquee tras 5 intentos seguidos"""
+    """Verifica que el rate limiter bloquee tras superar el límite de intentos seguidos"""
+    from app.core.rate_limiter import auth_rate_limiter
     client = TestClient(app)
-    for _ in range(5):
+    limit = auth_rate_limiter.max_requests
+    for _ in range(limit):
         res = client.post("/api/auth/login", json={"email": "wrong@vextor.com", "password": "WrongPassword1!"})
 
     res = client.post("/api/auth/login", json={"email": "wrong@vextor.com", "password": "WrongPassword1!"})

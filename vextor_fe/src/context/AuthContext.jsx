@@ -47,6 +47,20 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
+  const parseErrorMessage = (error, defaultMsg) => {
+    const detail = error.response?.data?.detail;
+    if (typeof detail === 'string') {
+      return detail;
+    }
+    if (Array.isArray(detail) && detail.length > 0) {
+      return detail.map(item => item.msg || JSON.stringify(item)).join(' ');
+    }
+    if (detail && typeof detail === 'object') {
+      return detail.msg || JSON.stringify(detail);
+    }
+    return defaultMsg;
+  };
+
   const login = async (email, password) => {
     setIsLoading(true);
     try {
@@ -62,7 +76,7 @@ export const AuthProvider = ({ children }) => {
       return data.user;
     } catch (error) {
       setIsLoading(false);
-      const message = error.response?.data?.detail || 'Error al iniciar sesión.';
+      const message = parseErrorMessage(error, 'Error al iniciar sesión.');
       throw new Error(message);
     }
   };
@@ -82,7 +96,7 @@ export const AuthProvider = ({ children }) => {
       return loggedUser;
     } catch (error) {
       setIsLoading(false);
-      const message = error.response?.data?.detail || 'Error al crear la cuenta.';
+      const message = parseErrorMessage(error, 'Error al crear la cuenta.');
       throw new Error(message);
     }
   };
