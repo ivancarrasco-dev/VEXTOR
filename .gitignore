@@ -2,6 +2,7 @@
 .env
 .env*
 !.env.example
+README_CORRECCIONES_VEXTOR.md
 
 # Datos pesados de OSRM y mapas (PBF y grafos procesados .osrm.*)
 infra/osrm/data/*

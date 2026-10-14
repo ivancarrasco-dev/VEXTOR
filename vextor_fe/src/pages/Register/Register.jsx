@@ -82,12 +82,19 @@ const Register = () => {
     setIsLoading(true);
 
     try {
-      await register({
+      const user = await register({
         fullName: formData.fullName,
         email: formData.email,
         password: formData.password
       });
-      navigate('/dashboard');
+      const roleLower = (user?.role || '').toLowerCase();
+      if (roleLower.includes('conductor')) {
+        navigate('/driver/my-routes');
+      } else if (roleLower.includes('usuario') || roleLower.includes('cliente') || roleLower.includes('user') || roleLower.includes('invitado')) {
+        navigate('/user/home');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setErrors({ form: err.message || 'Error al crear la cuenta.' });
     } finally {

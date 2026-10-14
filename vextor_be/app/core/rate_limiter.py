@@ -27,4 +27,4 @@ class InMemoryRateLimiter:
 
         self.requests[key].append(now)
 
-auth_rate_limiter = InMemoryRateLimiter(max_requests=5, window_seconds=900)
+auth_rate_limiter = InMemoryRateLimiter(max_requests=30, window_seconds=900)
