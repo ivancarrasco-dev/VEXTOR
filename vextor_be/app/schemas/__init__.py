@@ -59,6 +59,8 @@ class UsuarioBase(BaseModel):
     telefono_usuario: Optional[str] = Field(None, max_length=20)
     estado_usuario: str = Field("ACTIVO", max_length=20)
     foto_perfil: Optional[str] = None
+    id_empresa: Optional[UUID] = None
+    requiere_cambio_clave: Optional[bool] = False
 
 
 class UsuarioCreate(UsuarioBase):
@@ -68,12 +70,14 @@ class UsuarioCreate(UsuarioBase):
 
 class UsuarioUpdate(BaseModel):
     id_rol: Optional[UUID] = None
+    id_empresa: Optional[UUID] = None
     nombres_usuario: Optional[str] = Field(None, max_length=100)
     apellidos_usuario: Optional[str] = Field(None, max_length=100)
     correo_usuario: Optional[EmailStr] = None
     telefono_usuario: Optional[str] = Field(None, max_length=20)
     estado_usuario: Optional[str] = Field(None, max_length=20)
     foto_perfil: Optional[str] = None
+    requiere_cambio_clave: Optional[bool] = None
 
 
 class Usuario(UsuarioBase):
@@ -89,6 +93,7 @@ class SesionUsuarioOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id_sesion: UUID
     id_usuario: UUID
+    token: Optional[str] = ""
     ip_origen: Optional[str] = None
     dispositivo: Optional[str] = None
     user_agent: Optional[str] = None
@@ -110,10 +115,13 @@ class ConductorBase(BaseModel):
     apellido_conductor: str = Field(..., max_length=100)
     cedula_conductor: str = Field(..., max_length=20)
     telefono_conductor: Optional[str] = Field(None, max_length=20)
-    correo_conductor: Optional[EmailStr] = None  # NUEVO: Correo vinculado al Usuario
+    correo_conductor: Optional[EmailStr] = None
     licencia: str = Field(..., max_length=50)
+    categoria_licencia: Optional[str] = Field(None, max_length=10)
+    fecha_vencimiento_licencia: Optional[date] = None
     estado_conductor: str = Field("DISPONIBLE", max_length=20)
     fecha_ingreso: date
+    id_empresa: Optional[UUID] = None
 
 
 class ConductorCreate(ConductorBase):
@@ -125,16 +133,41 @@ class ConductorUpdate(BaseModel):
     apellido_conductor: Optional[str] = Field(None, max_length=100)
     cedula_conductor: Optional[str] = Field(None, max_length=20)
     telefono_conductor: Optional[str] = Field(None, max_length=20)
-    correo_conductor: Optional[EmailStr] = None  # NUEVO
+    correo_conductor: Optional[EmailStr] = None
     licencia: Optional[str] = Field(None, max_length=50)
+    categoria_licencia: Optional[str] = Field(None, max_length=10)
+    fecha_vencimiento_licencia: Optional[date] = None
     estado_conductor: Optional[str] = Field(None, max_length=20)
     fecha_ingreso: Optional[date] = None
+    id_empresa: Optional[UUID] = None
 
 
 class Conductor(ConductorBase):
     model_config = ConfigDict(from_attributes=True)
     id_conductor: UUID
     id_usuario: UUID
+
+
+# ========== MARCA Y MODELO SCHEMAS ==========
+
+class MarcaBase(BaseModel):
+    nombre_marca: str = Field(..., max_length=50)
+
+
+class Marca(MarcaBase):
+    model_config = ConfigDict(from_attributes=True)
+    id_marca: UUID
+
+
+class ModeloBase(BaseModel):
+    id_marca: UUID
+    nombre_modelo: str = Field(..., max_length=50)
+    anio: int = 2024
+
+
+class Modelo(ModeloBase):
+    model_config = ConfigDict(from_attributes=True)
+    id_modelo: UUID
 
 
 # ========== VEHICULO SCHEMAS ==========
@@ -144,11 +177,13 @@ class VehiculoBase(BaseModel):
     marca: str = Field(..., max_length=50)
     modelo: str = Field(..., max_length=50)
     anio: int
+    id_modelo: Optional[UUID] = None
+    id_empresa: Optional[UUID] = None
     color: Optional[str] = Field(None, max_length=30)
-    tipo_vehiculo: str = Field(..., max_length=50)
-    capacidad_pasajeros: int
+    tipo_vehiculo: str = Field("Automóvil", max_length=50)
+    capacidad_pasajeros: int = 5
     kilometraje_actual: int = 0
-    kilometraje_limite_mantenimiento: int
+    kilometraje_limite_mantenimiento: int = 10000
     estado_vehiculo: str = Field("DISPONIBLE", max_length=20)
     documentacion_vehiculo: Optional[str] = Field(None, max_length=255)
 
@@ -162,6 +197,8 @@ class VehiculoUpdate(BaseModel):
     marca: Optional[str] = Field(None, max_length=50)
     modelo: Optional[str] = Field(None, max_length=50)
     anio: Optional[int] = None
+    id_modelo: Optional[UUID] = None
+    id_empresa: Optional[UUID] = None
     color: Optional[str] = Field(None, max_length=30)
     tipo_vehiculo: Optional[str] = Field(None, max_length=50)
     capacidad_pasajeros: Optional[int] = None
@@ -174,6 +211,60 @@ class VehiculoUpdate(BaseModel):
 class Vehiculo(VehiculoBase):
     model_config = ConfigDict(from_attributes=True)
     id_vehiculo: UUID
+
+
+# ========== DOCUMENTO VEHICULO SCHEMAS ==========
+
+class DocumentoVehiculoBase(BaseModel):
+    id_vehiculo: UUID
+    tipo_documento: str = Field(..., max_length=40)
+    numero_documento: Optional[str] = Field(None, max_length=50)
+    entidad_emisora: Optional[str] = Field(None, max_length=100)
+    fecha_emision: Optional[date] = None
+    fecha_vencimiento: Optional[date] = None
+    descripcion: Optional[str] = None
+    estado_vigencia: str = Field("VIGENTE", max_length=20)
+
+
+class DocumentoVehiculoCreate(DocumentoVehiculoBase):
+    pass
+
+
+class DocumentoVehiculo(DocumentoVehiculoBase):
+    model_config = ConfigDict(from_attributes=True)
+    id_documento_vehiculo: UUID
+
+
+# ========== RUTA DEFINICION Y VIAJE SCHEMAS ==========
+
+class RutaDefinicionBase(BaseModel):
+    codigo_ruta: str = Field(..., max_length=30)
+    nombre_ruta: str = Field(..., max_length=100)
+    origen_predeterminado: str = Field(..., max_length=150)
+    destino_predeterminado: str = Field(..., max_length=150)
+    distancia_estimada_km: Optional[float] = None
+    duracion_estimada_minutos: Optional[int] = None
+    estado: str = Field("ACTIVA", max_length=20)
+
+
+class RutaDefinicion(RutaDefinicionBase):
+    model_config = ConfigDict(from_attributes=True)
+    id_ruta_definicion: UUID
+
+
+class ViajeBase(BaseModel):
+    codigo_viaje: str = Field(..., max_length=30)
+    origen: str = Field(..., max_length=150)
+    destino: str = Field(..., max_length=150)
+    fecha_hora_salida_programada: datetime
+    fecha_hora_llegada_programada: datetime
+    estado_viaje: str = Field("PROGRAMADO", max_length=20)
+    id_ruta_definicion: Optional[UUID] = None
+
+
+class Viaje(ViajeBase):
+    model_config = ConfigDict(from_attributes=True)
+    id_viaje: UUID
 
 
 # ========== RUTA SCHEMAS ==========
@@ -218,15 +309,16 @@ class Ruta(RutaBase):
     id_vehiculo: Optional[UUID] = None
 
 
-# ========== MANTENIMIENTO SCHEMAS ==========
+# ========== MANTENIMIENTO E INSPECCION SCHEMAS ==========
 
 class MantenimientoBase(BaseModel):
     id_vehiculo: UUID
     tipo_mantenimiento: str = Field(..., max_length=50)
-    descripcion_mantenimiento: str
+    descripcion_mantenimiento: Optional[str] = None
+    descripcion: Optional[str] = None
     fecha_mantenimiento: date
     costo_mantenimiento: float
-    kilometraje_mantenimiento: int
+    kilometraje_mantenimiento: Optional[int] = 0
     estado_mantenimiento: str = Field("PROGRAMADO", max_length=20)
 
 
@@ -238,6 +330,7 @@ class MantenimientoUpdate(BaseModel):
     id_vehiculo: Optional[UUID] = None
     tipo_mantenimiento: Optional[str] = Field(None, max_length=50)
     descripcion_mantenimiento: Optional[str] = None
+    descripcion: Optional[str] = None
     fecha_mantenimiento: Optional[date] = None
     costo_mantenimiento: Optional[float] = None
     kilometraje_mantenimiento: Optional[int] = None
@@ -249,6 +342,23 @@ class Mantenimiento(MantenimientoBase):
     id_mantenimiento: UUID
 
 
+class InspeccionUnidadBase(BaseModel):
+    id_vehiculo: UUID
+    id_usuario: UUID
+    fecha_inspeccion: datetime
+    resultado: str = Field("APROBADO", max_length=30)
+    observaciones: Optional[str] = None
+
+
+class InspeccionUnidadCreate(InspeccionUnidadBase):
+    pass
+
+
+class InspeccionUnidad(InspeccionUnidadBase):
+    model_config = ConfigDict(from_attributes=True)
+    id_inspeccion: UUID
+
+
 # ========== EMPRESA SCHEMAS ==========
 
 class EmpresaBase(BaseModel):
@@ -258,6 +368,7 @@ class EmpresaBase(BaseModel):
     city: Optional[str] = Field(None, max_length=100)
     email: Optional[EmailStr] = None
     phone: Optional[str] = Field(None, max_length=50)
+    estado: Optional[str] = Field("ACTIVO", max_length=20)
     retention_days: Optional[int] = 30
 
 
@@ -272,6 +383,7 @@ class EmpresaUpdate(BaseModel):
     city: Optional[str] = Field(None, max_length=100)
     email: Optional[EmailStr] = None
     phone: Optional[str] = Field(None, max_length=50)
+    estado: Optional[str] = Field(None, max_length=20)
     retention_days: Optional[int] = None
 
 
@@ -322,6 +434,21 @@ class Notificacion(NotificacionBase):
     id_usuario: Optional[UUID] = None
     fecha_hora: datetime
     leido: bool
+
+
+class NotificacionEnvioBase(BaseModel):
+    tipo_evento: str = Field(..., max_length=50)
+    correo_destino: EmailStr
+    asunto: str = Field(..., max_length=200)
+    resumen_cuerpo: str
+    canal: str = Field("EMAIL", max_length=20)
+    estado_envio: str = Field("PENDIENTE", max_length=20)
+
+
+class NotificacionEnvio(NotificacionEnvioBase):
+    model_config = ConfigDict(from_attributes=True)
+    id_notificacion_envio: UUID
+    fecha_creacion: datetime
 
 
 # ========== UBICACION / TRACKING SCHEMAS ==========
