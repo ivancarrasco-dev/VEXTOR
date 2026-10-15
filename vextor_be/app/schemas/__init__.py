@@ -117,11 +117,8 @@ class ConductorBase(BaseModel):
     telefono_conductor: Optional[str] = Field(None, max_length=20)
     correo_conductor: Optional[EmailStr] = None
     licencia: str = Field(..., max_length=50)
-    categoria_licencia: Optional[str] = Field(None, max_length=10)
-    fecha_vencimiento_licencia: Optional[date] = None
     estado_conductor: str = Field("DISPONIBLE", max_length=20)
     fecha_ingreso: date
-    id_empresa: Optional[UUID] = None
 
 
 class ConductorCreate(ConductorBase):
@@ -135,11 +132,8 @@ class ConductorUpdate(BaseModel):
     telefono_conductor: Optional[str] = Field(None, max_length=20)
     correo_conductor: Optional[EmailStr] = None
     licencia: Optional[str] = Field(None, max_length=50)
-    categoria_licencia: Optional[str] = Field(None, max_length=10)
-    fecha_vencimiento_licencia: Optional[date] = None
     estado_conductor: Optional[str] = Field(None, max_length=20)
     fecha_ingreso: Optional[date] = None
-    id_empresa: Optional[UUID] = None
 
 
 class Conductor(ConductorBase):

@@ -10,15 +10,12 @@ from app.database.connection import Base
 class Conductor(Base):
     __tablename__ = "conductor"
     id_conductor = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    id_empresa = Column(UUID(as_uuid=True), ForeignKey("empresa.id_empresa", ondelete="SET NULL"), nullable=True)
     id_usuario = Column(UUID(as_uuid=True), ForeignKey("usuario.id_usuario", ondelete="RESTRICT", onupdate="CASCADE"), nullable=False, unique=True)
     nombre_conductor = Column(String(100), nullable=False)
     apellido_conductor = Column(String(100), nullable=False)
     cedula_conductor = Column(String(20), nullable=False, unique=True)
     telefono_conductor = Column(String(20), nullable=True)
     licencia = Column(String(50), nullable=False)
-    categoria_licencia = Column(String(10), nullable=True)
-    fecha_vencimiento_licencia = Column(Date, nullable=True)
     estado_conductor = Column(String(20), nullable=False, default="DISPONIBLE")
     fecha_ingreso = Column(Date, nullable=False, default=date.today)
 
@@ -27,5 +24,5 @@ class Conductor(Base):
     novedades = relationship("Novedad", back_populates="conductor")
 
     __table_args__ = (
-        CheckConstraint("estado_conductor IN ('DISPONIBLE', 'EN_RUTA', 'EN_VIAJE', 'NO_DISPONIBLE', 'ACTIVO', 'INACTIVO', 'LICENCIA_VENCIDA', 'SUSPENDIDO')", name="chk_estado_conductor"),
+        CheckConstraint("estado_conductor IN ('DISPONIBLE', 'EN_RUTA', 'NO_DISPONIBLE', 'ACTIVO', 'INACTIVO', 'SUSPENDIDO')", name="chk_estado_conductor"),
     )
