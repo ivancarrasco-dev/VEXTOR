@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session, selectinload, joinedload
 
 from app.database import get_db
-from app.models import Vehiculo, Conductor, Ruta, Mantenimiento, Usuario, Reporte, AsignacionConductor, AsignacionVehiculo
+from app.models import Vehiculo, Marca, Modelo, Conductor, Ruta, Mantenimiento, Usuario, Reporte, AsignacionConductor, AsignacionVehiculo
 from app.api.routes.auth import get_current_user
 from app.services.audit_service import AuditService
 
@@ -88,7 +88,7 @@ def export_report_file(
     if file_format in ["xlsx", "excel"]:
         is_admin = (
             current_user.id_rol == ADMIN_ROLE_ID or
-            (current_user.rol and current_user.rol.nombre_rol == "Administrador")
+            (current_user.rol and "admin" in (current_user.rol.nombre_rol or "").strip().lower())
         )
         if not is_admin:
             raise HTTPException(
@@ -207,17 +207,19 @@ def fetch_filtered_report_data(
     data = []
 
     if report_type == "vehicles":
-        query = db.query(Vehiculo)
+        query = db.query(Vehiculo).options(
+            joinedload(Vehiculo.modelo_rel).joinedload(Modelo.marca_rel)
+        )
         if status:
             query = query.filter(Vehiculo.estado_vehiculo == status)
         if type_filter:
             query = query.filter(Vehiculo.tipo_vehiculo == type_filter)
         if search and search.strip():
             s = f"%{search.strip()}%"
-            query = query.filter(
+            query = query.outerjoin(Vehiculo.modelo_rel).outerjoin(Modelo.marca_rel).filter(
                 (Vehiculo.placa.ilike(s)) |
-                (Vehiculo.marca.ilike(s)) |
-                (Vehiculo.modelo.ilike(s)) |
+                (Marca.nombre_marca.ilike(s)) |
+                (Modelo.nombre_modelo.ilike(s)) |
                 (Vehiculo.tipo_vehiculo.ilike(s))
             )
         vehicles = query.all()

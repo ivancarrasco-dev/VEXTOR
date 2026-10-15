@@ -126,7 +126,8 @@ def start_route(
         AsignacionConductor.id_ruta == id_ruta,
         AsignacionConductor.id_conductor == driver.id_conductor
     ).first()
-    if not asig and getattr(getattr(current_user, 'rol', None), 'nombre_rol', None) != "Administrador":
+    is_admin = "admin" in (getattr(getattr(current_user, 'rol', None), 'nombre_rol', '') or '').strip().lower()
+    if not asig and not is_admin:
         raise HTTPException(status_code=403, detail="No estás asignado a esta ruta.")
 
     if ruta.estado_ruta == "COMPLETADA":
@@ -217,7 +218,7 @@ def pause_route(
         AsignacionConductor.id_ruta == id_ruta,
         AsignacionConductor.id_conductor == driver.id_conductor
     ).first()
-    if not asig and getattr(getattr(current_user, 'rol', None), 'nombre_rol', None) != "Administrador":
+    if not asig and not is_admin:
         raise HTTPException(status_code=403, detail="No estás asignado a esta ruta.")
 
     if ruta.estado_ruta not in ("EN_PROCESO", "EN_RUTA"):
@@ -274,7 +275,7 @@ def finish_route(
         AsignacionConductor.id_ruta == id_ruta,
         AsignacionConductor.id_conductor == driver.id_conductor
     ).first()
-    if not asig and getattr(getattr(current_user, 'rol', None), 'nombre_rol', None) != "Administrador":
+    if not asig and not is_admin:
         raise HTTPException(status_code=403, detail="No estás asignado a esta ruta.")
 
     ruta.estado_ruta = "COMPLETADA"
