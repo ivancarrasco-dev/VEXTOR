@@ -117,7 +117,11 @@ class VehicleService:
         if existing:
             raise HTTPException(status_code=400, detail="La placa ya existe")
 
-        vehicle = Vehiculo(**vehicle_data)
+        # Filtrar campos que no pertenecen a la tabla Vehiculo (como id_modelo, id_empresa)
+        valid_cols = {c.name for c in Vehiculo.__table__.columns}
+        filtered_data = {k: v for k, v in vehicle_data.items() if k in valid_cols}
+
+        vehicle = Vehiculo(**filtered_data)
         vehicle.placa = vehicle.placa.upper()
         db.add(vehicle)
         db.commit()
@@ -148,8 +152,9 @@ class VehicleService:
                     detail="No se puede cambiar el estado a DISPONIBLE mientras el vehículo tenga una ruta activa o asignada."
                 )
 
+        valid_cols = {c.name for c in Vehiculo.__table__.columns}
         for key, value in vehicle_data.items():
-            if value is not None:
+            if value is not None and key in valid_cols:
                 if key == "placa":
                     value = value.upper()
                 setattr(vehicle, key, value)

@@ -123,14 +123,19 @@ def get_drivers(
     current_user = Depends(get_current_user),
 ):
     """
-    ACTUALIZADO: Obtiene conductores incluyendo el correo del usuario asociado
+    Obtiene conductores incluyendo el correo del usuario asociado mediante DB-level pagination.
     """
-    from app.models import Conductor as ConductorModel, Usuario as UsuarioModel
+    from app.models import Conductor as ConductorModel
+    from sqlalchemy.orm import joinedload
     
-    query = db.query(ConductorModel).join(UsuarioModel).join(RolModel, UsuarioModel.id_rol == RolModel.id_rol).filter(func.lower(RolModel.nombre_rol) == "conductor").offset(skip).limit(min(limit, 100))
-    conductores = query.all()
+    conductores = (
+        db.query(ConductorModel)
+        .options(joinedload(ConductorModel.usuario))
+        .offset(skip)
+        .limit(min(limit, 100))
+        .all()
+    )
     
-    # Enriquecer con correo del usuario
     result = []
     for cond in conductores:
         cond_dict = {
@@ -140,7 +145,7 @@ def get_drivers(
             'apellido_conductor': cond.apellido_conductor,
             'cedula_conductor': cond.cedula_conductor,
             'telefono_conductor': cond.telefono_conductor,
-            'correo_conductor': cond.usuario.correo_usuario if cond.usuario else None,
+            'correo_conductor': cond.usuario.correo_usuario if getattr(cond, 'usuario', None) else None,
             'licencia': cond.licencia,
             'estado_conductor': cond.estado_conductor,
             'fecha_ingreso': cond.fecha_ingreso,
