@@ -42,3 +42,15 @@ class HistorialUbicacion(Base):
 
     seguimiento = relationship("SeguimientoRuta")
     ruta = relationship("Ruta")
+
+
+class HistorialUbicacionViaje(Base):
+    __tablename__ = "historial_ubicacion_viaje"
+    id_historial = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id_viaje = Column(UUID(as_uuid=True), ForeignKey("viaje.id_viaje"), nullable=False)
+    latitud = Column(Numeric(10, 6), nullable=False)
+    longitud = Column(Numeric(10, 6), nullable=False)
+    velocidad = Column(Numeric(5, 2), nullable=True)
+    fecha_hora = Column(DateTime, nullable=False, server_default=func.now())
+
+    viaje = relationship("Viaje")
