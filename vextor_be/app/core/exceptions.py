@@ -119,6 +119,9 @@ def setup_exception_handlers(app):
 
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception):
+        import traceback
+        import logging
+        logging.error(f"Unhandled Exception on {request.url.path}: {exc}\n{traceback.format_exc()}")
         return JSONResponse(
             status_code=500,
             content={
