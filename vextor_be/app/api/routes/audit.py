@@ -281,7 +281,7 @@ def restore_backup(
     """Ejecuta la restauración de la base de datos a partir de un archivo de backup"""
     from app.models import Rol as RolModel
     rol = db.query(RolModel).filter(RolModel.id_rol == current_user.id_rol).first()
-    if not rol or rol.nombre_rol != "Administrador":
+    if not rol or "admin" not in (rol.nombre_rol or "").strip().lower():
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Acceso denegado: Se requiere rol de Administrador",
