@@ -1,11 +1,41 @@
-"""Modelos de Ruta, Asignaciones y Novedades"""
+"""Modelos de Ruta, RutaDefinicion, Viaje y Novedad"""
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, ForeignKey, Text, CheckConstraint
+from sqlalchemy import Column, String, DateTime, Text, ForeignKey, CheckConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.database.connection import Base
+
+
+class RutaDefinicion(Base):
+    __tablename__ = "ruta_definicion"
+    id_ruta = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    codigo_ruta = Column(String(50), nullable=False, unique=True)
+    nombre_ruta = Column(String(100), nullable=False)
+    origen = Column(String(150), nullable=False)
+    destino = Column(String(150), nullable=False)
+
+    viajes = relationship("Viaje", back_populates="ruta_definicion")
+
+
+class Viaje(Base):
+    __tablename__ = "viaje"
+    id_viaje = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id_conductor = Column(UUID(as_uuid=True), ForeignKey("conductor.id_conductor"), nullable=False)
+    id_vehiculo = Column(UUID(as_uuid=True), ForeignKey("vehiculo.id_vehiculo"), nullable=False)
+    id_ruta = Column(UUID(as_uuid=True), ForeignKey("ruta_definicion.id_ruta"), nullable=True)
+    estado_viaje = Column(String(20), nullable=False, default="PROGRAMADO")
+    fecha_hora_salida_programada = Column(DateTime, nullable=False)
+    fecha_hora_llegada_programada = Column(DateTime, nullable=False)
+
+    conductor = relationship("Conductor")
+    vehiculo = relationship("Vehiculo")
+    ruta_definicion = relationship("RutaDefinicion", back_populates="viajes")
+
+    __table_args__ = (
+        CheckConstraint("estado_viaje IN ('PROGRAMADO', 'EN_PROCESO', 'FINALIZADO', 'CANCELADO')", name="chk_estado_viaje"),
+    )
 
 
 class Ruta(Base):
@@ -24,7 +54,6 @@ class Ruta(Base):
 
     asignaciones_conductor = relationship("AsignacionConductor", back_populates="ruta")
     asignaciones_vehiculo = relationship("AsignacionVehiculo", back_populates="ruta")
-    novedades = relationship("Novedad", back_populates="ruta")
 
     __table_args__ = (
         CheckConstraint("estado_ruta IN ('PROGRAMADA', 'EN_PROCESO', 'COMPLETADA', 'SUSPENDIDA', 'CANCELADA')", name="chk_estado_ruta"),
@@ -68,7 +97,9 @@ class Novedad(Base):
     __tablename__ = "novedad"
     id_novedad = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     id_conductor = Column(UUID(as_uuid=True), ForeignKey("conductor.id_conductor", ondelete="RESTRICT", onupdate="CASCADE"), nullable=False)
-    id_ruta = Column(UUID(as_uuid=True), ForeignKey("ruta.id_ruta", ondelete="SET NULL", onupdate="CASCADE"), nullable=True)
+    id_viaje = Column(UUID(as_uuid=True), ForeignKey("viaje.id_viaje"), nullable=True)
+    id_vehiculo = Column(UUID(as_uuid=True), ForeignKey("vehiculo.id_vehiculo"), nullable=True)
+    id_usuario = Column(UUID(as_uuid=True), ForeignKey("usuario.id_usuario"), nullable=True)
     tipo_novedad = Column(String(50), nullable=False)
     descripcion_novedad = Column(Text, nullable=False)
     fecha_hora_reporte = Column(DateTime, nullable=False, server_default=func.now())
@@ -76,7 +107,9 @@ class Novedad(Base):
     estado_novedad = Column(String(20), nullable=False, default="PENDIENTE")
 
     conductor = relationship("Conductor", back_populates="novedades")
-    ruta = relationship("Ruta", back_populates="novedades")
+    viaje = relationship("Viaje")
+    vehiculo = relationship("Vehiculo")
+    usuario = relationship("Usuario")
 
     __table_args__ = (
         CheckConstraint("estado_novedad IN ('PENDIENTE', 'EN_REVISION', 'RESUELTA', 'RECHAZADA')", name="chk_estado_novedad"),

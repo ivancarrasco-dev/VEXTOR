@@ -123,6 +123,15 @@ class VehicleService:
 
         vehicle = Vehiculo(**filtered_data)
         vehicle.placa = vehicle.placa.upper()
+
+        # Setters para propiedades fallback
+        if "marca" in vehicle_data and vehicle_data["marca"]:
+            vehicle.marca = vehicle_data["marca"]
+        if "modelo" in vehicle_data and vehicle_data["modelo"]:
+            vehicle.modelo = vehicle_data["modelo"]
+        if "anio" in vehicle_data and vehicle_data["anio"]:
+            vehicle.anio = vehicle_data["anio"]
+
         db.add(vehicle)
         db.commit()
         db.refresh(vehicle)
@@ -154,10 +163,13 @@ class VehicleService:
 
         valid_cols = {c.name for c in Vehiculo.__table__.columns}
         for key, value in vehicle_data.items():
-            if value is not None and key in valid_cols:
-                if key == "placa":
-                    value = value.upper()
-                setattr(vehicle, key, value)
+            if value is not None:
+                if key in valid_cols:
+                    if key == "placa":
+                        value = value.upper()
+                    setattr(vehicle, key, value)
+                elif key in ("marca", "modelo", "anio"):
+                    setattr(vehicle, key, value)
 
         db.commit()
         db.refresh(vehicle)
@@ -212,7 +224,9 @@ class DriverService:
 
     @staticmethod
     def create(driver_data: dict, db: Session):
-        conductor = Conductor(**driver_data)
+        valid_cols = {c.name for c in Conductor.__table__.columns}
+        filtered_data = {k: v for k, v in driver_data.items() if k in valid_cols}
+        conductor = Conductor(**filtered_data)
         db.add(conductor)
         db.commit()
         db.refresh(conductor)
@@ -242,8 +256,9 @@ class DriverService:
                     detail="No se puede cambiar el estado a DISPONIBLE mientras el conductor tenga una ruta activa o asignada."
                 )
 
+        valid_cols = {c.name for c in Conductor.__table__.columns}
         for key, value in driver_data.items():
-            if value is not None:
+            if value is not None and key in valid_cols:
                 setattr(conductor, key, value)
 
         db.commit()
@@ -333,7 +348,10 @@ class RouteService:
                     detail="El conductor seleccionado ya está asignado a una ruta activa."
                 )
 
-        ruta = Ruta(**route_data)
+        valid_cols = {c.name for c in Ruta.__table__.columns}
+        filtered_data = {k: v for k, v in route_data.items() if k in valid_cols}
+
+        ruta = Ruta(**filtered_data)
         db.add(ruta)
         db.commit()
         db.refresh(ruta)
@@ -434,8 +452,9 @@ class RouteService:
                     detail="El conductor seleccionado ya está asignado a otra ruta activa."
                 )
 
+        valid_cols = {c.name for c in Ruta.__table__.columns}
         for key, value in route_data.items():
-            if value is not None:
+            if value is not None and key in valid_cols:
                 setattr(ruta, key, value)
 
         if conductor_id is not None:
@@ -521,7 +540,10 @@ class MaintenanceService:
 
     @staticmethod
     def create(maintenance_data: dict, db: Session):
-        mantenimiento = Mantenimiento(**maintenance_data)
+        valid_cols = {c.name for c in Mantenimiento.__table__.columns}
+        filtered_data = {k: v for k, v in maintenance_data.items() if k in valid_cols}
+
+        mantenimiento = Mantenimiento(**filtered_data)
         db.add(mantenimiento)
         db.commit()
         db.refresh(mantenimiento)
@@ -536,8 +558,9 @@ class MaintenanceService:
             raise HTTPException(status_code=404, detail="Mantenimiento no encontrado")
 
         old_status = mantenimiento.estado_mantenimiento
+        valid_cols = {c.name for c in Mantenimiento.__table__.columns}
         for key, value in maintenance_data.items():
-            if value is not None:
+            if value is not None and key in valid_cols:
                 setattr(mantenimiento, key, value)
 
         db.commit()
@@ -617,7 +640,10 @@ class UserService:
         if "id_usuario" not in user_data or not user_data["id_usuario"]:
             user_data["id_usuario"] = uuid.uuid4()
 
-        usuario = Usuario(**user_data)
+        valid_cols = {c.name for c in Usuario.__table__.columns}
+        filtered_data = {k: v for k, v in user_data.items() if k in valid_cols}
+
+        usuario = Usuario(**filtered_data)
         db.add(usuario)
         db.commit()
         db.refresh(usuario)
@@ -635,8 +661,9 @@ class UserService:
             if not rol:
                 raise HTTPException(status_code=400, detail="El rol especificado no existe.")
 
+        valid_cols = {c.name for c in Usuario.__table__.columns}
         for key, value in user_data.items():
-            if value is not None:
+            if value is not None and key in valid_cols:
                 setattr(usuario, key, value)
 
         db.commit()
@@ -667,7 +694,10 @@ class CompanyService:
 
     @staticmethod
     def create(company_data: dict, db: Session):
-        empresa = Empresa(**company_data)
+        valid_cols = {c.name for c in Empresa.__table__.columns}
+        filtered_data = {k: v for k, v in company_data.items() if k in valid_cols}
+
+        empresa = Empresa(**filtered_data)
         db.add(empresa)
         db.commit()
         db.refresh(empresa)
@@ -679,8 +709,9 @@ class CompanyService:
         if not empresa:
             raise HTTPException(status_code=404, detail="Empresa no encontrada")
 
+        valid_cols = {c.name for c in Empresa.__table__.columns}
         for key, value in company_data.items():
-            if value is not None:
+            if value is not None and key in valid_cols:
                 setattr(empresa, key, value)
 
         db.commit()
