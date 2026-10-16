@@ -206,7 +206,7 @@ const ResetPassword = () => {
               />
 
               <Input
-                label="Confirmar nueva contraseña"
+                label="Repetir nueva contraseña"
                 name="confirmPassword"
                 type={showPassword ? 'text' : 'password'}
                 placeholder="••••••••"
@@ -236,7 +236,7 @@ const ResetPassword = () => {
               </div>
 
               <Button type="submit" className="w-full" isLoading={isLoading} disabled={!allRequirementsMet}>
-                Actualizar contraseña <ArrowRight size={18} className="ml-2" />
+                Cambiar contraseña <ArrowRight size={18} className="ml-2" />
               </Button>
             </form>
           )}
