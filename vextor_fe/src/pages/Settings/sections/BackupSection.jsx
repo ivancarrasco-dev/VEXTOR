@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RefreshCw, AlertTriangle, Database, X } from 'lucide-react';
+import { RefreshCw, AlertTriangle, Database, X, Upload } from 'lucide-react';
 import axios from 'axios';
 import { Button } from '../../../components/ui/Button';
 import { API_BASE_URL } from '../../../config/api';
@@ -16,20 +16,40 @@ const BackupSection = ({
   showToast
 }) => {
   const [selectedBackupToRestore, setSelectedBackupToRestore] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
   const [isRestoring, setIsRestoring] = useState(false);
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.name.toLowerCase().endsWith('.sql')) {
+        showToast('Solamente se permiten archivos con extensión .sql');
+        return;
+      }
+      setSelectedFile(file);
+      setSelectedBackupToRestore({ filename: file.name, fileObj: file });
+    }
+  };
 
   const handleExecuteRestore = async () => {
     if (!selectedBackupToRestore) return;
     setIsRestoring(true);
     try {
-      const res = await axios.post(`${API_BASE_URL}/api/backup/restore`, {
-        filename: selectedBackupToRestore.filename
-      });
+      const formData = new FormData();
+      if (selectedBackupToRestore.fileObj) {
+        formData.append('file', selectedBackupToRestore.fileObj);
+      } else {
+        formData.append('filename', selectedBackupToRestore.filename);
+      }
+
+      const res = await axios.post(`${API_BASE_URL}/api/backup/restore`, formData);
       showToast(res.data.message || '¡Sistema y base de datos restaurados con éxito!');
       setSelectedBackupToRestore(null);
+      setSelectedFile(null);
     } catch (err) {
       console.error('Error during restore:', err);
-      showToast(err.response?.data?.detail || 'Error al ejecutar la restauración.');
+      const detail = err.response?.data?.detail || err.response?.data?.error?.message;
+      showToast(detail || 'Error al ejecutar la restauración.');
     } finally {
       setIsRestoring(false);
     }
@@ -63,20 +83,39 @@ const BackupSection = ({
         </button>
       </div>
 
-      {/* On demand backup actions */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-v-dark/10 border border-v-dark-border/40 rounded-xl gap-4">
-        <div>
-          <h4 className="font-bold text-v-white text-sm">Respaldo Manual</h4>
-          <p className="text-xs text-v-gray mt-0.5">Genere una descarga instantánea de la base de datos de Vextor.</p>
+      {/* On demand backup actions and Upload Restore */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="flex flex-col justify-between p-4 bg-v-dark/10 border border-v-dark-border/40 rounded-xl gap-4">
+          <div>
+            <h4 className="font-bold text-v-white text-sm">Respaldo Manual</h4>
+            <p className="text-xs text-v-gray mt-0.5">Genere una descarga instantánea de la base de datos de Vextor.</p>
+          </div>
+          <Button
+            variant="primary"
+            onClick={handleCreateBackup}
+            isLoading={isBackingUp}
+            className="w-full font-semibold cursor-pointer"
+          >
+            Crear Respaldo
+          </Button>
         </div>
-        <Button
-          variant="primary"
-          onClick={handleCreateBackup}
-          isLoading={isBackingUp}
-          className="w-full sm:w-auto font-semibold cursor-pointer"
-        >
-          Crear Respaldo
-        </Button>
+
+        <div className="flex flex-col justify-between p-4 bg-v-dark/10 border border-v-dark-border/40 rounded-xl gap-4">
+          <div>
+            <h4 className="font-bold text-v-white text-sm">Restaurar desde Archivo Local</h4>
+            <p className="text-xs text-v-gray mt-0.5">Suba un archivo de copia de seguridad (.sql) para restaurar la base de datos.</p>
+          </div>
+          <label className="cursor-pointer inline-flex items-center justify-center gap-2 px-4 py-2 bg-v-dark border border-v-dark-border hover:border-primary/50 text-v-white text-xs font-semibold rounded-lg transition-colors">
+            <Upload size={16} className="text-primary" />
+            <span>{selectedFile ? selectedFile.name : "Seleccionar archivo .sql"}</span>
+            <input
+              type="file"
+              accept=".sql"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+          </label>
+        </div>
       </div>
 
       {/* Backups List */}
@@ -149,7 +188,10 @@ const BackupSection = ({
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={() => setSelectedBackupToRestore(null)}
+                  onClick={() => {
+                    setSelectedBackupToRestore(null);
+                    setSelectedFile(null);
+                  }}
                   disabled={isRestoring}
                   className="cursor-pointer"
                 >
