@@ -6,6 +6,7 @@ Maneja envío de emails, templates HTML, y recuperación
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.utils import parseaddr, formataddr
 from typing import Tuple, Optional
 
 from app.core.config import settings
@@ -14,6 +15,26 @@ from app.core.exceptions import EmailError
 
 class EmailService:
     """Servicio para enviar emails"""
+
+    @staticmethod
+    def _parse_sender_address(raw_from: str) -> Tuple[str, str]:
+        """
+        Parses raw_from to extract display_name and email_address.
+        Ejemplos:
+        - "noreply@vextor.com" -> ("VEXTOR Fleet Management", "noreply@vextor.com")
+        - "VEXTOR Fleet <noreply@vextor.com>" -> ("VEXTOR Fleet", "noreply@vextor.com")
+        """
+        if not raw_from or not raw_from.strip():
+            raw_from = "noreply@vextor.com"
+
+        display_name, email_addr = parseaddr(raw_from)
+        if not email_addr:
+            email_addr = raw_from.strip()
+            display_name = "VEXTOR Fleet Management"
+        elif not display_name:
+            display_name = "VEXTOR Fleet Management"
+
+        return display_name, email_addr
 
     @staticmethod
     def send_email(
@@ -27,19 +48,23 @@ class EmailService:
         port = settings.MAIL_PORT
         username = settings.MAIL_USERNAME
         password = settings.MAIL_PASSWORD
-        from_email = settings.MAIL_FROM
+        raw_from = settings.MAIL_FROM
 
-        # Si no hay credenciales, log y retorna True (no falla)
+        # Si no hay credenciales, log y retorna False
         if not host or not username or not password:
+            err_msg = "SMTP no configurado (MAIL_HOST, MAIL_USERNAME o MAIL_PASSWORD ausentes)."
             print(
-                f"[EMAIL SERVICE NOTICE] SMTP no configurado. Email a '{to_email}' no será enviado."
+                f"[EMAIL SERVICE NOTICE] {err_msg} Email a '{to_email}' no será enviado."
             )
-            return False, "SMTP no configurado"
+            return False, err_msg
 
+        display_name, sender_email = EmailService._parse_sender_address(raw_from)
+
+        server = None
         try:
             msg = MIMEMultipart("alternative")
             msg["Subject"] = subject
-            msg["From"] = f"VEXTOR Fleet Management <{from_email}>"
+            msg["From"] = formataddr((display_name, sender_email))
             msg["To"] = to_email
 
             if text_content:
@@ -54,15 +79,31 @@ class EmailService:
                 server.starttls()
 
             server.login(username, password)
-            server.sendmail(from_email, [to_email], msg.as_string())
-            server.quit()
+            server.sendmail(sender_email, [to_email], msg.as_string())
 
             print(f"[EMAIL SUCCESS] '{subject}' enviado a {to_email}")
             return True, None
-        except Exception as e:
-            error_msg = f"[EMAIL ERROR] Fallo al enviar a {to_email}: {str(e)}"
+        except smtplib.SMTPAuthenticationError as e:
+            error_msg = f"[EMAIL ERROR] Error de autenticación SMTP al enviar a {to_email}: {e.smtp_code} {e.smtp_error.decode('utf-8', errors='ignore') if isinstance(e.smtp_error, bytes) else e.smtp_error}"
             print(error_msg)
-            return False, str(e)
+            return False, error_msg
+        except smtplib.SMTPException as e:
+            error_msg = f"[EMAIL ERROR] Error SMTP al enviar a {to_email}: {str(e)}"
+            print(error_msg)
+            return False, error_msg
+        except Exception as e:
+            error_msg = f"[EMAIL ERROR] Fallo inesperado al enviar a {to_email}: {str(e)}"
+            print(error_msg)
+            return False, error_msg
+        finally:
+            if server:
+                try:
+                    server.quit()
+                except Exception:
+                    try:
+                        server.close()
+                    except Exception:
+                        pass
 
     @staticmethod
     def send_password_reset_email(to_email: str, raw_token: str) -> Tuple[bool, Optional[str]]:

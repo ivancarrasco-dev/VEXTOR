@@ -119,6 +119,9 @@ def login(req: LoginRequest, request: Request, response: Response, db: Session =
 def forgot_password(req: ForgotPasswordRequest, request: Request, db: Session = Depends(get_db)):
     auth_rate_limiter.check(request, "forgot_password")
     """Solicita reseteo de contraseña"""
+    generic_response = {
+        "message": "Si existe una cuenta asociada a este correo, recibirás instrucciones para restablecer tu contraseña."
+    }
     try:
         success, raw_token = AuthService.request_password_reset(req.email, db)
         
@@ -126,17 +129,17 @@ def forgot_password(req: ForgotPasswordRequest, request: Request, db: Session = 
             # Enviar email
             sent, err = EmailService.send_password_reset_email(req.email, raw_token)
             if not sent:
-                print(f"[AUTH RECOVERY WARN] No se pudo enviar correo de recuperación: {err}")
+                print(f"[AUTH RECOVERY ERROR] Fallo el envío de correo de recuperación a '{req.email}': {err}")
+            else:
+                print(f"[AUTH RECOVERY SUCCESS] Correo de recuperación enviado correctamente a '{req.email}'")
+        else:
+            print(f"[AUTH RECOVERY NOTICE] Solicitud de recuperación procesada para correo no existente o inactivo.")
         
         # Siempre responder lo mismo para evitar enumeración
-        return {
-            "message": "Si existe una cuenta asociada a este correo, recibirás instrucciones para restablecer tu contraseña."
-        }
+        return generic_response
     except Exception as e:
-        print(f"[AUTH RECOVERY ERROR] Error en forgot-password: {e}")
-        return {
-            "message": "Si existe una cuenta asociada a este correo, recibirás instrucciones para restablecer tu contraseña."
-        }
+        print(f"[AUTH RECOVERY EXCEPTION] Error procesando forgot-password para '{req.email}': {e}")
+        return generic_response
 
 
 @router.post("/verify-reset-token")
