@@ -124,13 +124,16 @@ def forgot_password(req: ForgotPasswordRequest, request: Request, db: Session = 
         
         if success and raw_token:
             # Enviar email
-            EmailService.send_password_reset_email(req.email, raw_token)
+            sent, err = EmailService.send_password_reset_email(req.email, raw_token)
+            if not sent:
+                print(f"[AUTH RECOVERY WARN] No se pudo enviar correo de recuperación: {err}")
         
         # Siempre responder lo mismo para evitar enumeración
         return {
             "message": "Si existe una cuenta asociada a este correo, recibirás instrucciones para restablecer tu contraseña."
         }
     except Exception as e:
+        print(f"[AUTH RECOVERY ERROR] Error en forgot-password: {e}")
         return {
             "message": "Si existe una cuenta asociada a este correo, recibirás instrucciones para restablecer tu contraseña."
         }
@@ -147,10 +150,30 @@ def verify_reset_token(req: VerifyResetTokenRequest, db: Session = Depends(get_d
 
 
 @router.post("/reset-password")
-def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
+def reset_password(req: ResetPasswordRequest, request: Request, db: Session = Depends(get_db)):
     """Cambia la contraseña usando token"""
     try:
-        AuthService.reset_password(req.token, req.newPassword, db)
+        email = AuthService.reset_password(req.token, req.newPassword, db)
+
+        # Auditoría
+        if email:
+            from app.models import Usuario
+            user = db.query(Usuario).filter(Usuario.correo_usuario == email).first()
+            if user:
+                try:
+                    AuditService.record_activity(
+                        db,
+                        id_usuario=user.id_usuario,
+                        nombres_usuario=f"{user.nombres_usuario} {user.apellidos_usuario}".strip(),
+                        tipo_accion="CAMBIO_CONTRASENIA",
+                        modulo="Autenticación",
+                        descripcion="Restablecimiento de contraseña mediante token de recuperación",
+                        ip_origen=get_client_ip(request),
+                        resultado="EXITOSO",
+                    )
+                except Exception as audit_err:
+                    print(f"Error registrando auditoría de restablecimiento: {audit_err}")
+
         return {"message": "Su contraseña ha sido actualizada correctamente. Inicie sesión con su nueva clave."}
     except HTTPException:
         raise

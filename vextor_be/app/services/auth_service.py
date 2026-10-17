@@ -208,22 +208,22 @@ class AuthService:
         token_hash = hashlib.sha256(token.strip().encode("utf-8")).hexdigest()
 
         # Buscar usuario con ese token
-        users = db.query(Usuario).filter(Usuario.token_recuperacion.isnot(None)).all()
-        user = None
-        exp_iso = None
-        for u in users:
-            if u.token_recuperacion and u.token_recuperacion.startswith(f"{token_hash}|"):
-                user = u
-                parts = u.token_recuperacion.split("|", 1)
-                if len(parts) == 2:
-                    exp_iso = parts[1]
-                break
+        user = db.query(Usuario).filter(Usuario.token_recuperacion.like(f"{token_hash}|%")).first()
 
-        if not user or not exp_iso:
+        if not user or not user.token_recuperacion:
             raise HTTPException(
                 status_code=400,
                 detail="El enlace de recuperación es inválido o ya ha sido utilizado.",
             )
+
+        parts = user.token_recuperacion.split("|", 1)
+        if len(parts) != 2:
+            raise HTTPException(
+                status_code=400,
+                detail="El enlace de recuperación es inválido o ya ha sido utilizado.",
+            )
+
+        exp_iso = parts[1]
 
         # Verificar expiración
         try:
@@ -244,8 +244,8 @@ class AuthService:
         return user.correo_usuario
 
     @staticmethod
-    def reset_password(token: str, new_password: str, db: Session) -> bool:
-        """Cambia la contraseña usando un token de recuperación"""
+    def reset_password(token: str, new_password: str, db: Session) -> str:
+        """Cambia la contraseña usando un token de recuperación y retorna el correo del usuario"""
         if not token or not token.strip():
             raise HTTPException(
                 status_code=400,
@@ -260,22 +260,22 @@ class AuthService:
         token_hash = hashlib.sha256(token.strip().encode("utf-8")).hexdigest()
 
         # Buscar usuario
-        users = db.query(Usuario).filter(Usuario.token_recuperacion.isnot(None)).all()
-        user = None
-        exp_iso = None
-        for u in users:
-            if u.token_recuperacion and u.token_recuperacion.startswith(f"{token_hash}|"):
-                user = u
-                parts = u.token_recuperacion.split("|", 1)
-                if len(parts) == 2:
-                    exp_iso = parts[1]
-                break
+        user = db.query(Usuario).filter(Usuario.token_recuperacion.like(f"{token_hash}|%")).first()
 
-        if not user or not exp_iso:
+        if not user or not user.token_recuperacion:
             raise HTTPException(
                 status_code=400,
                 detail="El enlace de recuperación es inválido o ya ha sido utilizado.",
             )
+
+        parts = user.token_recuperacion.split("|", 1)
+        if len(parts) != 2:
+            raise HTTPException(
+                status_code=400,
+                detail="El enlace de recuperación es inválido o ya ha sido utilizado.",
+            )
+
+        exp_iso = parts[1]
 
         # Verificar expiración
         try:
@@ -293,7 +293,9 @@ class AuthService:
                 detail="El enlace de recuperación es inválido.",
             )
 
-        # Actualizar contraseña y limpiar token
+        email = user.correo_usuario
+
+        # Actualizar contraseña y limpiar token (un solo uso)
         user.contrasenia_usuario = hash_password(new_password)
         user.token_recuperacion = None
 
@@ -304,7 +306,7 @@ class AuthService:
         ).update({"estado_sesion": "REVOCADA"}, synchronize_session=False)
 
         db.commit()
-        return True
+        return email
 
     @staticmethod
     def get_current_user(token: str, db: Session, request: Optional[Request] = None) -> Usuario:
