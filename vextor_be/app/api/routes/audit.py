@@ -24,8 +24,15 @@ from app.core.security import hash_password, verify_password
 from app.utils import get_client_ip
 from pydantic import BaseModel
 
-class BackupRestoreRequest(BaseModel):
-    filename: str
+import os
+import shutil
+import tempfile
+import subprocess
+import logging
+from urllib.parse import urlparse
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Request
+from sqlalchemy import text
+from app.services.audit_service import AuditService
 
 router = APIRouter(tags=["Audit & Security"])
 
@@ -272,13 +279,17 @@ def change_password(
 
 # ========== RESPALDOS Y RESTAURACIÓN ==========
 
+MAX_BACKUP_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
+
 @router.post("/api/backup/restore")
-def restore_backup(
-    req: BackupRestoreRequest,
+async def restore_backup(
+    request: Request,
+    file: Optional[UploadFile] = File(None),
+    filename: Optional[str] = Form(None),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
 ):
-    """Ejecuta la restauración de la base de datos a partir de un archivo de backup"""
+    """Ejecuta la restauración de la base de datos a partir de un archivo de backup SQL"""
     from app.models import Rol as RolModel
     rol = db.query(RolModel).filter(RolModel.id_rol == current_user.id_rol).first()
     if not rol or "admin" not in (rol.nombre_rol or "").strip().lower():
@@ -287,14 +298,210 @@ def restore_backup(
             detail="Acceso denegado: Se requiere rol de Administrador",
         )
 
+    # Fallback JSON parsing if no form fields provided
+    if file is None and not filename:
+        content_type = request.headers.get("content-type", "")
+        if "application/json" in content_type:
+            try:
+                body = await request.json()
+                filename = body.get("filename")
+            except Exception:
+                pass
+
+    sql_content = ""
+    source_label = ""
+
+    if file is not None:
+        fname = file.filename or "backup.sql"
+        if not fname.lower().endswith(".sql"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Formato de archivo no permitido. Debe ser un archivo .sql",
+            )
+
+        contents = await file.read()
+        if len(contents) > MAX_BACKUP_SIZE_BYTES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El archivo excede el tamaño máximo permitido (50MB).",
+            )
+
+        try:
+            sql_content = contents.decode("utf-8")
+        except UnicodeDecodeError:
+            try:
+                sql_content = contents.decode("latin-1")
+            except Exception:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="El archivo no tiene una codificación de texto válida.",
+                )
+        source_label = fname
+
+    elif filename:
+        fname = filename.strip()
+        if not fname.lower().endswith(".sql"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Nombre de archivo inválido. Debe terminar en .sql",
+            )
+
+        # Buscar en carpetas conocidas si el archivo existe físicamente en el servidor
+        possible_paths = [
+            os.path.join(os.getcwd(), fname),
+            os.path.join(os.getcwd(), "backups", fname),
+            os.path.join("/tmp", fname),
+        ]
+        found_path = None
+        for p in possible_paths:
+            if os.path.exists(p) and os.path.isfile(p):
+                found_path = p
+                break
+
+        if found_path:
+            if os.path.getsize(found_path) > MAX_BACKUP_SIZE_BYTES:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="El archivo excede el tamaño máximo permitido (50MB).",
+                )
+            with open(found_path, "r", encoding="utf-8", errors="replace") as f:
+                sql_content = f.read()
+            source_label = fname
+        else:
+            # Si no existe en disco local y tampoco se subió un archivo, requerir la subida
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"No se encontró el archivo '{fname}' en el servidor. Por favor, adjunte el archivo SQL directamente.",
+            )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Debe proporcionar un archivo SQL para restaurar.",
+        )
+
+    # Validar que el contenido SQL sea válido y no esté vacío
+    stripped_sql = sql_content.strip()
+    if not stripped_sql:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El archivo SQL está vacío.",
+        )
+
+    # Verificación básica de sintaxis SQL
+    sql_keywords = ["CREATE", "INSERT", "ALTER", "DROP", "UPDATE", "DELETE", "BEGIN", "COMMIT", "SELECT", "SET"]
+    if not any(kw in stripped_sql.upper() for kw in sql_keywords):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El archivo proporcionado no parece ser un script SQL válido.",
+        )
+
+    # Ejecución de la restauración
+    psql_path = shutil.which("psql")
+    from app.core.config import settings
+
+    database_url = settings.DATABASE_URL
+    restored_successfully = False
+
+    if database_url.startswith("sqlite"):
+        # Restauración en SQLite (principalmente entornos de prueba o desarrollo ligero)
+        try:
+            # Ejecutar script sobre la conexión SQLAlchemy
+            connection = db.connection().connection
+            connection.executescript(stripped_sql)
+            db.commit()
+            restored_successfully = True
+        except Exception as sq_err:
+            db.rollback()
+            logging.error(f"[RESTORE ERROR SQLite] {sq_err}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Error al ejecutar la restauración en la base de datos SQLite.",
+            )
+    else:
+        # PostgreSQL restore
+        if psql_path:
+            # Si psql está disponible en el entorno
+            parsed = urlparse(database_url.replace("postgresql+psycopg://", "postgresql://").replace("postgres://", "postgresql://"))
+            db_host = parsed.hostname or "localhost"
+            db_port = str(parsed.port or 5432)
+            db_user = parsed.username or "postgres"
+            db_pass = parsed.password or ""
+            db_name = parsed.path.lstrip("/") or "vextor"
+
+            tmp_file = None
+            try:
+                with tempfile.NamedTemporaryFile("w", suffix=".sql", delete=False, encoding="utf-8") as tf:
+                    tf.write(stripped_sql)
+                    tmp_file = tf.name
+
+                env = os.environ.copy()
+                if db_pass:
+                    env["PGPASSWORD"] = db_pass
+
+                cmd = [
+                    psql_path,
+                    "-h", db_host,
+                    "-p", db_port,
+                    "-U", db_user,
+                    "-d", db_name,
+                    "-f", tmp_file,
+                ]
+
+                proc = subprocess.run(
+                    cmd,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                )
+
+                if proc.returncode == 0:
+                    restored_successfully = True
+                else:
+                    logging.error(f"[RESTORE ERROR psql] {proc.stderr}")
+                    # Reintento con fallback interno por si psql falló por argumentos o SSL
+                    restored_successfully = False
+            except Exception as proc_err:
+                logging.error(f"[RESTORE EXCEPTION psql] {proc_err}")
+                restored_successfully = False
+            finally:
+                if tmp_file and os.path.exists(tmp_file):
+                    try:
+                        os.remove(tmp_file)
+                    except Exception:
+                        pass
+
+        if not restored_successfully:
+            # Fallback a ejecución via cursor de conexión SQLAlchemy / Psycopg
+            try:
+                raw_conn = db.get_bind().raw_connection()
+                cursor = raw_conn.cursor()
+                cursor.execute(stripped_sql)
+                raw_conn.commit()
+                restored_successfully = True
+            except Exception as pg_err:
+                db.rollback()
+                logging.error(f"[RESTORE ERROR DB CURSOR] {pg_err}")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Error interno al ejecutar la restauración en la base de datos PostgreSQL.",
+                )
+
     user_name = f"{current_user.nombres_usuario} {current_user.apellidos_usuario}".strip()
-    AuditService.record_activity(
-        db,
-        id_usuario=current_user.id_usuario,
-        nombres_usuario=user_name,
-        tipo_accion="RESTAURACION",
-        modulo="Configuración",
-        descripcion=f"Restauración de base de datos ejecutada desde la copia: {req.filename}",
-        resultado="EXITOSO",
-    )
-    return {"status": "success", "message": f"Sistema y base de datos restaurados exitosamente desde {req.filename}"}
+    try:
+        AuditService.record_activity(
+            db,
+            id_usuario=current_user.id_usuario,
+            nombres_usuario=user_name,
+            tipo_accion="RESTAURACION",
+            modulo="Configuración",
+            descripcion=f"Restauración de base de datos ejecutada desde la copia: {source_label}",
+            resultado="EXITOSO",
+        )
+    except Exception as audit_err:
+        logging.warning(f"No se pudo registrar auditoría de restauración: {audit_err}")
+
+    return {
+        "status": "success",
+        "message": f"Sistema y base de datos restaurados exitosamente desde {source_label}",
+    }
