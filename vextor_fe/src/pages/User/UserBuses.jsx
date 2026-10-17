@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Truck, Search, Eye, RefreshCw } from 'lucide-react';
+import { Truck, Search, Eye, RefreshCw, AlertTriangle } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE_URL } from '../../config/api';
 import { Input } from '../../components/ui/Input';
@@ -11,6 +11,7 @@ import BusDetailModal from '../../components/modals/BusDetailModal';
 export const UserBuses = () => {
   const [buses, setBuses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('TODOS');
   const [brandFilter, setBrandFilter] = useState('TODAS');
@@ -19,10 +20,13 @@ export const UserBuses = () => {
   const fetchBuses = async () => {
     try {
       setLoading(true);
+      setError(null);
       const res = await axios.get(`${API_BASE_URL}/api/vehicles`);
       setBuses(res.data || []);
     } catch (err) {
       console.error('Error fetching buses:', err);
+      const message = err.response?.data?.detail || err.response?.data?.error?.message || err.message || 'Error al conectar con el servidor para obtener los vehículos.';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -104,7 +108,25 @@ export const UserBuses = () => {
 
       {/* Buses Catalog Grid */}
       {loading ? (
-        <div className="p-12 text-center text-v-gray">Cargando flota de buses...</div>
+        <div className="flex flex-col items-center justify-center p-12 bg-v-dark-soft border border-v-dark-border rounded-3xl text-v-gray space-y-3">
+          <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs font-medium">Cargando flota de buses...</p>
+        </div>
+      ) : error ? (
+        <div className="p-8 text-center bg-red-500/10 border border-red-500/20 rounded-3xl text-red-400 space-y-4">
+          <AlertTriangle size={36} className="mx-auto text-red-400" />
+          <div className="space-y-1">
+            <p className="text-sm font-bold text-v-white">Error al cargar la flota de vehículos</p>
+            <p className="text-xs text-v-gray">{error}</p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={fetchBuses}
+            className="border-red-500/30 text-red-400 hover:bg-red-500/20 cursor-pointer text-xs font-bold"
+          >
+            <RefreshCw size={14} className="mr-2" /> Reintentar
+          </Button>
+        </div>
       ) : filteredBuses.length === 0 ? (
         <div className="p-12 text-center bg-v-dark-soft border border-v-dark-border rounded-3xl text-v-gray space-y-2">
           <Truck size={36} className="mx-auto text-v-gray opacity-50" />

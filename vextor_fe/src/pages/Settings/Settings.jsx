@@ -65,6 +65,7 @@ const Settings = () => {
   const navigate = useNavigate();
 
   const roleLower = (user?.role || '').toLowerCase();
+  const isAdmin = roleLower.includes('administrador') || roleLower.includes('admin');
   const isConductor = roleLower.includes('conductor');
   const isUsuario = roleLower.includes('usuario') || roleLower.includes('cliente') || roleLower.includes('user') || roleLower.includes('invitado');
 
@@ -230,9 +231,11 @@ const Settings = () => {
   };
 
   useEffect(() => {
-    fetchRoles();
-    fetchUsers();
-  }, []);
+    if (isAdmin && activeCategory === 'users') {
+      fetchRoles();
+      fetchUsers();
+    }
+  }, [isAdmin, activeCategory]);
 
   const handleUserToggleStatus = async (usr) => {
     try {

@@ -12,79 +12,100 @@ from app.models import AsignacionConductor, AsignacionVehiculo
 from app.utils import validate_colombian_plate
 
 
-def sync_driver_status(driver_id: UUID, db: Session):
+def sync_driver_status(driver_id: UUID, db: Session, auto_commit: bool = True) -> bool:
     """
     Sincroniza el estado del conductor según sus asignaciones a rutas en proceso.
     """
-    driver = db.query(Conductor).filter(Conductor.id_conductor == driver_id).first()
-    if not driver:
-        return
+    try:
+        driver = db.query(Conductor).filter(Conductor.id_conductor == driver_id).first()
+        if not driver:
+            return False
 
-    active_assignment = (
-        db.query(AsignacionConductor)
-        .join(Ruta, AsignacionConductor.id_ruta == Ruta.id_ruta)
-        .filter(
-            AsignacionConductor.id_conductor == driver_id,
-            Ruta.estado_ruta.in_(["EN_PROCESO", "EN_RUTA"])
+        active_assignment = (
+            db.query(AsignacionConductor)
+            .join(Ruta, AsignacionConductor.id_ruta == Ruta.id_ruta)
+            .filter(
+                AsignacionConductor.id_conductor == driver_id,
+                Ruta.estado_ruta.in_(["EN_PROCESO", "EN_RUTA"])
+            )
+            .first()
         )
-        .first()
-    )
 
-    if active_assignment:
-        if driver.estado_conductor != "EN_RUTA":
-            driver.estado_conductor = "EN_RUTA"
-            db.commit()
-            db.refresh(driver)
-    else:
-        if driver.estado_conductor in ("EN_RUTA", "NO_DISPONIBLE"):
-            driver.estado_conductor = "DISPONIBLE"
-            db.commit()
-            db.refresh(driver)
+        changed = False
+        if active_assignment:
+            if driver.estado_conductor != "EN_RUTA":
+                driver.estado_conductor = "EN_RUTA"
+                changed = True
+        else:
+            if driver.estado_conductor in ("EN_RUTA", "NO_DISPONIBLE"):
+                driver.estado_conductor = "DISPONIBLE"
+                changed = True
+
+        if changed:
+            if auto_commit:
+                db.commit()
+                db.refresh(driver)
+            else:
+                db.flush()
+        return changed
+    except Exception as e:
+        print(f"Advertencia: No se pudo sincronizar el estado del conductor {driver_id}: {e}")
+        return False
 
 
-def sync_vehicle_status(vehicle_id: UUID, db: Session):
+def sync_vehicle_status(vehicle_id: UUID, db: Session, auto_commit: bool = True) -> bool:
     """
     Sincroniza el estado del vehículo según sus asignaciones a rutas activas
     y mantenimientos en proceso.
     """
-    vehicle = db.query(Vehiculo).filter(Vehiculo.id_vehiculo == vehicle_id).first()
-    if not vehicle:
-        return
+    try:
+        vehicle = db.query(Vehiculo).filter(Vehiculo.id_vehiculo == vehicle_id).first()
+        if not vehicle:
+            return False
 
-    active_route = (
-        db.query(AsignacionVehiculo)
-        .join(Ruta, AsignacionVehiculo.id_ruta == Ruta.id_ruta)
-        .filter(
-            AsignacionVehiculo.id_vehiculo == vehicle_id,
-            Ruta.estado_ruta.in_(["PROGRAMADA", "EN_PROCESO"])
+        active_route = (
+            db.query(AsignacionVehiculo)
+            .join(Ruta, AsignacionVehiculo.id_ruta == Ruta.id_ruta)
+            .filter(
+                AsignacionVehiculo.id_vehiculo == vehicle_id,
+                Ruta.estado_ruta.in_(["PROGRAMADA", "EN_PROCESO"])
+            )
+            .first()
         )
-        .first()
-    )
 
-    active_maintenance = (
-        db.query(Mantenimiento)
-        .filter(
-            Mantenimiento.id_vehiculo == vehicle_id,
-            Mantenimiento.estado_mantenimiento == "EN_PROCESO"
+        active_maintenance = (
+            db.query(Mantenimiento)
+            .filter(
+                Mantenimiento.id_vehiculo == vehicle_id,
+                Mantenimiento.estado_mantenimiento == "EN_PROCESO"
+            )
+            .first()
         )
-        .first()
-    )
 
-    if active_route:
-        if vehicle.estado_vehiculo != "EN_RUTA":
-            vehicle.estado_vehiculo = "EN_RUTA"
-            db.commit()
-            db.refresh(vehicle)
-    elif active_maintenance:
-        if vehicle.estado_vehiculo != "MANTENIMIENTO":
-            vehicle.estado_vehiculo = "MANTENIMIENTO"
-            db.commit()
-            db.refresh(vehicle)
-    else:
-        if vehicle.estado_vehiculo == "EN_RUTA":
-            vehicle.estado_vehiculo = "DISPONIBLE"
-            db.commit()
-            db.refresh(vehicle)
+        changed = False
+        if active_route:
+            if vehicle.estado_vehiculo != "EN_RUTA":
+                vehicle.estado_vehiculo = "EN_RUTA"
+                changed = True
+        elif active_maintenance:
+            if vehicle.estado_vehiculo != "MANTENIMIENTO":
+                vehicle.estado_vehiculo = "MANTENIMIENTO"
+                changed = True
+        else:
+            if vehicle.estado_vehiculo == "EN_RUTA":
+                vehicle.estado_vehiculo = "DISPONIBLE"
+                changed = True
+
+        if changed:
+            if auto_commit:
+                db.commit()
+                db.refresh(vehicle)
+            else:
+                db.flush()
+        return changed
+    except Exception as e:
+        print(f"Advertencia: No se pudo sincronizar el estado del vehículo {vehicle_id}: {e}")
+        return False
 
 
 class VehicleService:
@@ -96,8 +117,16 @@ class VehicleService:
         vehicles = db.query(Vehiculo).options(
             joinedload(Vehiculo.modelo_rel).joinedload(Modelo.marca_rel)
         ).all()
+        any_changed = False
         for v in vehicles:
-            sync_vehicle_status(v.id_vehiculo, db)
+            if sync_vehicle_status(v.id_vehiculo, db, auto_commit=False):
+                any_changed = True
+        if any_changed:
+            try:
+                db.commit()
+            except Exception as e:
+                db.rollback()
+                print(f"Advertencia: Falló el commit de actualización de estados de vehículos: {e}")
         return vehicles
 
     @staticmethod
@@ -107,7 +136,7 @@ class VehicleService:
             joinedload(Vehiculo.modelo_rel).joinedload(Modelo.marca_rel)
         ).filter(Vehiculo.id_vehiculo == vehicle_id).first()
         if vehicle:
-            sync_vehicle_status(vehicle.id_vehiculo, db)
+            sync_vehicle_status(vehicle.id_vehiculo, db, auto_commit=True)
         return vehicle
 
     @staticmethod
@@ -286,8 +315,16 @@ class DriverService:
     @staticmethod
     def get_all(db: Session):
         drivers = db.query(Conductor).options(joinedload(Conductor.usuario)).all()
+        any_changed = False
         for d in drivers:
-            sync_driver_status(d.id_conductor, db)
+            if sync_driver_status(d.id_conductor, db, auto_commit=False):
+                any_changed = True
+        if any_changed:
+            try:
+                db.commit()
+            except Exception as e:
+                db.rollback()
+                print(f"Advertencia: Falló el commit de actualización de estados de conductores: {e}")
         return drivers
 
     @staticmethod
