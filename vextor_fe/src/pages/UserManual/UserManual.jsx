@@ -39,7 +39,7 @@ const UserManual = () => {
           </div>
           <div className="overflow-hidden rounded-2xl border border-v-dark-border bg-white shadow-xl">
             <iframe title="Vista previa del Manual de usuario de VEXTOR"
-              src={MANUAL_URL + '#toolbar=1&navpanes=0&view=FitH'}
+              src={`https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(MANUAL_URL)}`}
               className="h-[65vh] min-h-[480px] w-full sm:h-[78vh]" />
           </div>
           <p className="mt-4 text-center text-xs text-v-gray">
