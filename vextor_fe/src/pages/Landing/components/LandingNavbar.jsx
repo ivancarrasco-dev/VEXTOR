@@ -6,7 +6,6 @@ import { Button } from '../../../components/ui/Button';
 import { Logo } from '../../../components/ui/Logo';
 import { ThemeToggle } from '../../../components/ui/ThemeToggle';
 
-const USER_MANUAL_URL = 'https://raw.githubusercontent.com/ivancarrasco-dev/VEXTOR/main/docs/VEXTOR%20Manual%20de%20usuario.pdf';
 
 /**
  * LandingNavbar Component
@@ -75,11 +74,6 @@ const LandingNavbar = () => {
         {/* DERECHA: Acciones (ThemeToggle, Login, Crear Cuenta) */}
         <div className="hidden md:flex items-center gap-3">
           <ThemeToggle />
-          <a href={USER_MANUAL_URL} target="_blank" rel="noopener noreferrer">
-            <Button variant="secondary" className="text-sm font-semibold px-3.5">
-              Manual de usuario
-            </Button>
-          </a>
           <Link to="/login">
             <Button variant="ghost" className="text-sm font-semibold px-3.5">
               Iniciar Sesión
@@ -136,15 +130,6 @@ const LandingNavbar = () => {
                   </a>
                 )
               ))}
-              <a
-                href={USER_MANUAL_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm font-semibold text-v-white hover:text-[#A6C98F] transition-colors py-1"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Manual de usuario
-              </a>
               <hr className="border-v-dark-border my-1" />
               <div className="flex flex-col gap-2.5">
                 <Link to="/register" onClick={() => setIsMobileMenuOpen(false)}>
