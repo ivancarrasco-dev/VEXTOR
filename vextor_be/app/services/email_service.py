@@ -50,15 +50,19 @@ class EmailService:
         password = settings.MAIL_PASSWORD
         raw_from = settings.MAIL_FROM
 
-        # Si no hay credenciales, log y retorna False
-        if not host or not username or not password:
-            err_msg = "SMTP no configurado (MAIL_HOST, MAIL_USERNAME o MAIL_PASSWORD ausentes)."
+        # Si no hay credenciales o están deshabilitadas/con placeholders
+        if not host or not username or not password or "disabled" in username.lower() or "tu-correo" in username.lower():
+            err_msg = "SMTP no configurado (MAIL_HOST, MAIL_USERNAME o MAIL_PASSWORD ausentes o con valores por defecto deshabilitados)."
             print(
                 f"[EMAIL SERVICE NOTICE] {err_msg} Email a '{to_email}' no será enviado."
             )
             return False, err_msg
 
         display_name, sender_email = EmailService._parse_sender_address(raw_from)
+
+        # Para Gmail, el remitente SMTP debe coincidir con la cuenta autenticada (username)
+        if host and "gmail" in host.lower() and username:
+            sender_email = username
 
         server = None
         try:

@@ -39,6 +39,18 @@ def test_send_email_missing_configuration():
         assert "SMTP no configurado" in err
 
 
+def test_send_email_disabled_credentials():
+    """Verifica que si MAIL_USERNAME contiene 'disabled' o 'tu-correo', el envío se cancele de forma segura"""
+    with patch.object(settings, "MAIL_HOST", "smtp.gmail.com"), \
+         patch.object(settings, "MAIL_PORT", 587), \
+         patch.object(settings, "MAIL_USERNAME", "disabled@example.com"), \
+         patch.object(settings, "MAIL_PASSWORD", "disabled"), \
+         patch.object(settings, "MAIL_FROM", "noreply@vextor.com"):
+        success, err = EmailService.send_email("test@example.com", "Test", "<p>Test</p>")
+        assert success is False
+        assert "deshabilitados" in err
+
+
 def test_send_email_smtp_auth_error():
     """Verifica la captura de errores de autenticación SMTP"""
     with patch.object(settings, "MAIL_HOST", "smtp.gmail.com"), \

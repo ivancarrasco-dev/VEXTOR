@@ -117,29 +117,20 @@ if (-not $envMap.ContainsKey("JWT_SECRET_KEY") -or [string]::IsNullOrWhiteSpace(
     Write-Host " JWT_SECRET_KEY generada y guardada en .env" -ForegroundColor Green
 }
 
-# --- AUTO-CONFIGURAR SMTP SI ESTA VACIO O CON PLACEHOLDERS ---
-$smtpKeys = @("MAIL_HOST", "MAIL_PORT", "MAIL_USERNAME", "MAIL_PASSWORD", "MAIL_FROM")
-$needsSmtpUpdate = $false
-foreach ($key in $smtpKeys) {
-    if (-not $envMap.ContainsKey($key) -or [string]::IsNullOrWhiteSpace($envMap[$key]) -or $envMap[$key].Contains("tu-") -or $envMap[$key].Contains("reemplaza")) {
-        $needsSmtpUpdate = $true
-        break
-    }
+# --- VERIFICACION Y CONFIGURACION DE SMTP ---
+$smtpDefaults = @{
+    "MAIL_HOST" = "smtp.gmail.com"
+    "MAIL_PORT" = "587"
+    "MAIL_USERNAME" = "tu-correo@gmail.com"
+    "MAIL_PASSWORD" = "abcd-efgh-ijkl-mnop"
+    "MAIL_FROM" = "VEXTOR Fleet Management <tu-correo@gmail.com>"
 }
 
-if ($needsSmtpUpdate) {
-    Write-Host " Configurando SMTP con valores por defecto (deshabilitado)..." -ForegroundColor Yellow
-    $envContent = Get-Content $EnvFile -Raw
-    
-    $smtpDefaults = @{
-        "MAIL_HOST" = "smtp.gmail.com"
-        "MAIL_PORT" = "587"
-        "MAIL_USERNAME" = "disabled@example.com"
-        "MAIL_PASSWORD" = "disabled"
-        "MAIL_FROM" = "VEXTOR Fleet <noreply@vextor.local>"
-    }
-    
-    foreach ($smtpKey in $smtpDefaults.Keys) {
+$envContent = Get-Content $EnvFile -Raw
+$envModified = $false
+
+foreach ($smtpKey in $smtpDefaults.Keys) {
+    if (-not $envMap.ContainsKey($smtpKey) -or [string]::IsNullOrWhiteSpace($envMap[$smtpKey])) {
         $smtpValue = $smtpDefaults[$smtpKey]
         if ($envContent -match "$smtpKey=") {
             $envContent = $envContent -replace "$smtpKey=.*", "$smtpKey=$smtpValue"
@@ -147,10 +138,31 @@ if ($needsSmtpUpdate) {
             $envContent += "`n$smtpKey=$smtpValue"
         }
         $envMap[$smtpKey] = $smtpValue
+        $envModified = $true
     }
+}
+
+if ($envModified) {
     Set-Content $EnvFile $envContent
-    Write-Host " SMTP configurado con valores por defecto (correos deshabilitados)." -ForegroundColor Green
-    Write-Host " Nota: Para habilitar correos, edita .env con credenciales reales de SMTP/Gmail." -ForegroundColor DarkYellow
+}
+
+$mailUser = $envMap["MAIL_USERNAME"]
+$mailPass = $envMap["MAIL_PASSWORD"]
+$isSmtpDisabled = [string]::IsNullOrWhiteSpace($mailUser) -or
+                  [string]::IsNullOrWhiteSpace($mailPass) -or
+                  $mailUser.Contains("disabled") -or
+                  $mailUser.Contains("tu-correo") -or
+                  $mailPass.Contains("disabled") -or
+                  $mailPass.Contains("abcd-efgh")
+
+if ($isSmtpDisabled) {
+    Write-Host " NOTA SMTP: El envio de correos reales no esta configurado en .env." -ForegroundColor DarkYellow
+    Write-Host "  Para habilitar recuperacion de contrasena via Gmail, configura en .env:" -ForegroundColor DarkYellow
+    Write-Host "  MAIL_HOST=smtp.gmail.com | MAIL_PORT=587" -ForegroundColor DarkGray
+    Write-Host "  MAIL_USERNAME=tu_cuenta@gmail.com" -ForegroundColor DarkGray
+    Write-Host "  MAIL_PASSWORD=contrasena_de_aplicacion_16_caracteres" -ForegroundColor DarkGray
+} else {
+    Write-Host " SMTP configurado para envio de correos reales ($mailUser)." -ForegroundColor Green
 }
 
 # --- VERIFICACION INFORMATIVA DE VITE_TOMTOM_API_KEY ---
