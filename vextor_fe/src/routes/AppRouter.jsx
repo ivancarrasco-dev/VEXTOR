@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Landing from '../pages/Landing/Landing';
 import Contact from '../pages/Contact/Contact';
+import UserManual from '../pages/UserManual/UserManual';
 import Login from '../pages/Login/Login';
 import Register from '../pages/Register/Register';
 import ForgotPassword from '../pages/ForgotPassword/ForgotPassword';
@@ -44,6 +45,7 @@ const AppRouter = () => {
       {/* Public Landing Page */}
       <Route path="/" element={<Landing />} />
       <Route path="/contacto" element={<Contact />} />
+      <Route path="/manual-usuario" element={<UserManual />} />
 
       {/* Public Auth Routes */}
       <Route path="/login" element={<Login />} />
