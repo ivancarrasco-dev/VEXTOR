@@ -174,7 +174,7 @@ class AuthService:
         return token, user_info
 
     @staticmethod
-    def request_password_reset(email: str, db: Session) -> bool:
+    def request_password_reset(email: str, db: Session) -> Tuple[bool, Optional[str]]:
         """Solicita un reset de contraseña"""
         email_clean = email.strip().lower()
         user = db.query(Usuario).filter(Usuario.correo_usuario == email_clean).first()

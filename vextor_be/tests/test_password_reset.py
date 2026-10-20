@@ -52,6 +52,30 @@ def test_db():
     app.dependency_overrides.clear()
 
 
+from unittest.mock import patch
+from app.services.email_service import EmailService
+
+
+def test_forgot_password_smtp_failure_handling(test_db):
+    """Verifica que si el envío SMTP falla, la API mantiene la respuesta genérica anti-enumeración y genera el token"""
+    client = TestClient(app)
+
+    reg_res = client.post("/api/auth/register", json={
+        "email": "smtpfail@vextor.com",
+        "password": "Password123!",
+        "fullName": "SMTP Fail"
+    })
+    assert reg_res.status_code == 200
+
+    with patch.object(EmailService, "send_password_reset_email", return_value=(False, "Connection refused")):
+        res = client.post("/api/auth/forgot-password", json={"email": "smtpfail@vextor.com"})
+        assert res.status_code == 200
+        assert "Si existe una cuenta asociada a este correo" in res.json()["message"]
+
+        user = test_db.query(Usuario).filter(Usuario.correo_usuario == "smtpfail@vextor.com").first()
+        assert user.token_recuperacion is not None
+
+
 def test_forgot_password_generic_response(test_db):
     """Verifica respuesta genérica al solicitar recuperación tanto para email existente como no existente"""
     client = TestClient(app)
