@@ -1,4 +1,4 @@
-import { Mail, Phone, MapPin } from 'lucide-react';
+import { Mail, Phone, MapPin, BookOpen } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Logo } from '../../../components/ui/Logo';
 
@@ -77,6 +77,12 @@ const LandingFooter = () => {
                 <a href="#demo" className="text-v-gray hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors font-medium">
                   Demostración en Vivo
                 </a>
+              </li>
+              <li>
+                <Link to="/manual-usuario" className="inline-flex items-center gap-2 text-v-gray hover:text-[#124A2F] dark:hover:text-[#A6C98F] transition-colors font-medium">
+                  <BookOpen className="w-4 h-4" />
+                  Manual de usuario
+                </Link>
               </li>
             </ul>
           </div>
