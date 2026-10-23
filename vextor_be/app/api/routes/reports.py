@@ -381,7 +381,16 @@ def fetch_filtered_report_data(
         )
         if start_bound:
             r_query = r_query.filter(Ruta.fecha_programada >= start_bound)
-        for r in r_query.all():
+        if status:
+            r_query = r_query.filter(Ruta.estado_ruta == status)
+        if search and search.strip():
+            s = f"%{search.strip()}%"
+            r_query = r_query.filter(
+                (Ruta.codigo_ruta.ilike(s)) |
+                (Ruta.nombre_ruta.ilike(s))
+            )
+        routes = r_query.all()
+        for r in routes:
             cond_str = "Sin asignar"
             if r.asignaciones_conductor and r.asignaciones_conductor[0].conductor:
                 c = r.asignaciones_conductor[0].conductor
@@ -398,7 +407,16 @@ def fetch_filtered_report_data(
         m_query = db.query(Mantenimiento)
         if start_bound:
             m_query = m_query.filter(Mantenimiento.fecha_mantenimiento >= start_bound.date())
-        for m in m_query.all():
+        if status:
+            m_query = m_query.filter(Mantenimiento.estado_mantenimiento == status)
+        if search and search.strip():
+            s = f"%{search.strip()}%"
+            m_query = m_query.filter(
+                (Mantenimiento.tipo_mantenimiento.ilike(s)) |
+                (Mantenimiento.descripcion_mantenimiento.ilike(s))
+            )
+        maints = m_query.all()
+        for m in maints:
             data.append({
                 "Módulo": "Mantenimientos",
                 "Detalle": f"Mantenimiento {m.tipo_mantenimiento}: {m.descripcion_mantenimiento}",
@@ -411,7 +429,17 @@ def fetch_filtered_report_data(
         d_query = db.query(Conductor)
         if start_bound:
             d_query = d_query.filter(Conductor.fecha_ingreso >= start_bound.date())
-        for d in d_query.all():
+        if status:
+            d_query = d_query.filter(Conductor.estado_conductor == status)
+        if search and search.strip():
+            s = f"%{search.strip()}%"
+            d_query = d_query.filter(
+                (Conductor.nombre_conductor.ilike(s)) |
+                (Conductor.apellido_conductor.ilike(s)) |
+                (Conductor.cedula_conductor.ilike(s))
+            )
+        drivers = d_query.all()
+        for d in drivers:
             data.append({
                 "Módulo": "Conductores",
                 "Detalle": f"Ingreso Conductor: {d.nombre_conductor} {d.apellido_conductor}",
@@ -419,12 +447,6 @@ def fetch_filtered_report_data(
                 "Responsable": "Recursos Humanos",
                 "Estado": d.estado_conductor
             })
-
-        if status:
-            data = [i for i in data if i.get("Estado") == status]
-        if search and search.strip():
-            s = search.strip().lower()
-            data = [i for i in data if any(s in str(val).lower() for val in i.values())]
 
     return data
 

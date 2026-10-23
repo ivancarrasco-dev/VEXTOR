@@ -57,7 +57,7 @@ def get_vehicles(
     current_user = Depends(get_current_user),
 ):
     limit = min(limit, 100)
-    return VehicleService.get_all(db)[skip : skip + limit]
+    return VehicleService.get_all(db, skip=skip, limit=limit)
 
 
 @vehicles_router.post("", response_model=Vehiculo)
@@ -326,7 +326,7 @@ def get_routes(
     current_user = Depends(get_current_user),
 ):
     limit = min(limit, 100)
-    return RouteService.get_all(db)[skip : skip + limit]
+    return RouteService.get_all(db, skip=skip, limit=limit)
 
 
 @routes_router.post("", response_model=Ruta)
@@ -410,7 +410,7 @@ def get_maintenance(
     current_user = Depends(get_current_user),
 ):
     limit = min(limit, 100)
-    return MaintenanceService.get_all(db)[skip : skip + limit]
+    return MaintenanceService.get_all(db, skip=skip, limit=limit)
 
 
 @maintenance_router.post("", response_model=Mantenimiento)
@@ -490,7 +490,7 @@ def get_users(
     current_user = Depends(require_admin),
 ):
     limit = min(limit, 100)
-    return UserService.get_all(db)[skip : skip + limit]
+    return UserService.get_all(db, skip=skip, limit=limit)
 
 
 @users_router.post("", response_model=Usuario)

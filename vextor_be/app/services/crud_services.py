@@ -112,11 +112,11 @@ class VehicleService:
     """CRUD de vehículos"""
 
     @staticmethod
-    def get_all(db: Session):
+    def get_all(db: Session, skip: int = 0, limit: int = 50):
         from app.models import Marca, Modelo
         vehicles = db.query(Vehiculo).options(
             joinedload(Vehiculo.modelo_rel).joinedload(Modelo.marca_rel)
-        ).all()
+        ).offset(skip).limit(limit).all()
         any_changed = False
         for v in vehicles:
             if sync_vehicle_status(v.id_vehiculo, db, auto_commit=False):
@@ -393,11 +393,11 @@ class RouteService:
     """CRUD de rutas"""
 
     @staticmethod
-    def get_all(db: Session):
+    def get_all(db: Session, skip: int = 0, limit: int = 50):
         routes = db.query(Ruta).options(
             selectinload(Ruta.asignaciones_conductor),
             selectinload(Ruta.asignaciones_vehiculo)
-        ).all()
+        ).offset(skip).limit(limit).all()
         for r in routes:
             asig_c = next(
                 (a for a in r.asignaciones_conductor if a.estado_asignacion == "ACTIVA"),
@@ -641,8 +641,10 @@ class MaintenanceService:
     """CRUD de mantenimiento"""
 
     @staticmethod
-    def get_all(db: Session):
-        return db.query(Mantenimiento).all()
+    def get_all(db: Session, skip: int = 0, limit: int = 50):
+        return db.query(Mantenimiento).options(
+            joinedload(Mantenimiento.vehiculo)
+        ).offset(skip).limit(limit).all()
 
     @staticmethod
     def get_by_id(maintenance_id: UUID, db: Session):
@@ -724,8 +726,8 @@ class UserService:
     """CRUD de usuarios"""
 
     @staticmethod
-    def get_all(db: Session):
-        return db.query(Usuario).options(joinedload(Usuario.rol)).all()
+    def get_all(db: Session, skip: int = 0, limit: int = 50):
+        return db.query(Usuario).options(joinedload(Usuario.rol)).offset(skip).limit(limit).all()
 
     @staticmethod
     def get_by_id(user_id: UUID, db: Session):
