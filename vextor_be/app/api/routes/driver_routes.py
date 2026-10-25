@@ -218,6 +218,7 @@ def pause_route(
         AsignacionConductor.id_ruta == id_ruta,
         AsignacionConductor.id_conductor == driver.id_conductor
     ).first()
+    is_admin = "admin" in (getattr(getattr(current_user, 'rol', None), 'nombre_rol', '') or '').strip().lower()
     if not asig and not is_admin:
         raise HTTPException(status_code=403, detail="No estás asignado a esta ruta.")
 

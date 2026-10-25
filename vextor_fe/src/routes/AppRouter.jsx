@@ -1,5 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { isNativePlatform } from '../utils/platform';
 
 // Public Pages
 const Landing = lazy(() => import('../pages/Landing/Landing'));
@@ -44,18 +46,61 @@ const PageLoader = () => (
   </div>
 );
 
+const RootRedirect = () => {
+  const { isAuthenticated, user } = useAuth();
+  const isNative = isNativePlatform();
+
+  if (isNative) {
+    if (isAuthenticated) {
+      const roleLower = (user?.role || '').toLowerCase();
+      if (roleLower.includes('conductor')) {
+        return <Navigate to="/driver/my-routes" replace />;
+      }
+    }
+    return <Navigate to="/login" replace />;
+  }
+
+  // En la web, si está autenticado redirige según rol
+  if (isAuthenticated) {
+    const roleLower = (user?.role || '').toLowerCase();
+    if (roleLower.includes('conductor')) {
+      return <Navigate to="/driver/my-routes" replace />;
+    } else if (roleLower.includes('usuario')) {
+      return <Navigate to="/user/home" replace />;
+    } else {
+      return <Navigate to="/dashboard" replace />;
+    }
+  }
+
+  return <Landing />;
+};
+
+const WildcardRedirect = () => {
+  const { isAuthenticated } = useAuth();
+  const isNative = isNativePlatform();
+
+  if (isNative) {
+    if (isAuthenticated) {
+      return <Navigate to="/driver/my-routes" replace />;
+    }
+    return <Navigate to="/login" replace />;
+  }
+  return <Navigate to="/" replace />;
+};
+
 /**
  * AppRouter Component
  *
  * Responsabilidad:
  * Centralizar la lógica de enrutamiento con carga diferida (lazy loading).
+ * En la APK móvil nativa, enfocar el flujo directamente hacia la experiencia del conductor.
  */
 const AppRouter = () => {
   return (
     <Suspense fallback={<PageLoader />}>
       <Routes>
-        {/* Public Landing Page */}
-        <Route path="/" element={<Landing />} />
+        {/* Public Landing Page & Root Routing */}
+        <Route path="/" element={<RootRedirect />} />
         <Route path="/contacto" element={<Contact />} />
         <Route path="/manual-usuario" element={<UserManual />} />
 
@@ -101,7 +146,7 @@ const AppRouter = () => {
         </Route>
 
         {/* Redirects */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<WildcardRedirect />} />
       </Routes>
     </Suspense>
   );
