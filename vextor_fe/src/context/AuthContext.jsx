@@ -7,6 +7,21 @@ const AuthContext = createContext(undefined);
 // Axios Global Configuration
 axios.defaults.withCredentials = true; // Support HTTP-only cookies
 
+// Request Interceptor to attach Authorization header if token exists
+axios.interceptors.request.use((config) => {
+  const token = localStorage.getItem('vextor_token');
+  if (token && !config.headers['Authorization']) {
+    config.headers['Authorization'] = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
+
+export const getStoredToken = () => {
+  return localStorage.getItem('vextor_token') || '';
+};
+
 /**
  * AuthProvider Component
  *
@@ -24,7 +39,7 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Verificación real de sesión al cargar mediante cookie HttpOnly y endpoint /me
+  // Verificación real de sesión al cargar mediante cookie HttpOnly o Bearer token
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -37,6 +52,7 @@ export const AuthProvider = ({ children }) => {
         if (error.response?.status !== 401) {
           console.warn('Error verificando sesión:', error.response?.data?.detail || error.message);
         }
+        localStorage.removeItem('vextor_token');
         setUser(null);
         setIsAuthenticated(false);
       } finally {
@@ -69,6 +85,10 @@ export const AuthProvider = ({ children }) => {
         password
       });
       const data = response.data;
+
+      if (data.token) {
+        localStorage.setItem('vextor_token', data.token);
+      }
 
       setUser(data.user);
       setIsAuthenticated(true);
@@ -107,6 +127,7 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Error logging out on backend:', error);
     } finally {
+      localStorage.removeItem('vextor_token');
       setUser(null);
       setIsAuthenticated(false);
       // Requerimiento: El tema no debe mantenerse después de cerrar sesión

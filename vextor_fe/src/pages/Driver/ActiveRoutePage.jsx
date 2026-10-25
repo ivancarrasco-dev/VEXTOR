@@ -2,6 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL, WS_BASE_URL } from '../../config/api';
+import { Geolocation } from '@capacitor/geolocation';
+import { isNativePlatform } from '../../utils/platform';
+import { getStoredToken } from '../../context/AuthContext';
 import {
   MapPin,
   Clock,
@@ -62,6 +65,7 @@ const ActiveRoutePage = () => {
   const wsRef = useRef(null);
   const watchIdRef = useRef(null);
   const updateIntervalRef = useRef(null);
+  const lastCoordsRef = useRef(null);
 
   // Fetch active or assigned route details
   const fetchActiveRoute = async () => {
@@ -124,11 +128,15 @@ const ActiveRoutePage = () => {
       return;
     }
 
+    const token = getStoredToken();
+    const wsUrl = token
+      ? `${WS_BASE_URL}/ws/tracking?token=${encodeURIComponent(token)}`
+      : `${WS_BASE_URL}/ws/tracking`;
+
     try {
-      const wsUrl = `${WS_BASE_URL}/ws/tracking`;
       const ws = new WebSocket(wsUrl);
       ws.onopen = () => {
-        console.log('Tracking WebSocket connected');
+        console.log('Tracking WebSocket connected for driver');
       };
       ws.onerror = (err) => {
         console.warn('Tracking WebSocket error:', err);
@@ -138,73 +146,133 @@ const ActiveRoutePage = () => {
       console.warn('Failed to establish WebSocket connection:', err);
     }
 
-    if ('geolocation' in navigator) {
+    const processCoords = (latitude, longitude, speed = 0, heading = 0) => {
+      const lat = parseFloat(latitude.toFixed(6));
+      const lng = parseFloat(longitude.toFixed(6));
+
+      // Evitar envíos duplicados si las coordenadas no han variado significativamente
+      if (
+        lastCoordsRef.current &&
+        Math.abs(lastCoordsRef.current.lat - lat) < 0.00001 &&
+        Math.abs(lastCoordsRef.current.lng - lng) < 0.00001
+      ) {
+        return;
+      }
+
+      const posObj = { lat, lng, speed: speed || 0, heading: heading || 0 };
+      lastCoordsRef.current = posObj;
+      setCurrentPosition(posObj);
+      setLastGpsUpdate(new Date());
+
+      const payload = {
+        type: 'location_update',
+        id_ruta: activeRoute.id_ruta,
+        latitud: lat,
+        longitud: lng,
+        velocidad: speed || 0.0,
+        heading: heading || 0.0
+      };
+
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify(payload));
+      } else {
+        axios.post(`${API_BASE_URL}/api/routes/${activeRoute.id_ruta}/location`, payload)
+          .catch((err) => console.warn('HTTP location fallback failed:', err));
+      }
+    };
+
+    const startGpsTracking = async () => {
       setIsGpsActive(true);
       setGpsError(null);
 
-      const handleLocationSuccess = (position) => {
-        const { latitude, longitude, speed, heading } = position.coords;
-        const lat = parseFloat(latitude.toFixed(6));
-        const lng = parseFloat(longitude.toFixed(6));
-        const posObj = { lat, lng, speed: speed || 0, heading: heading || 0 };
+      if (isNativePlatform()) {
+        try {
+          const perm = await Geolocation.requestPermissions();
+          if (perm.location !== 'granted' && perm.coarseLocation !== 'granted') {
+            setGpsError('Permiso de ubicación denegado en el dispositivo.');
+            setIsGpsActive(false);
+            return;
+          }
 
-        setCurrentPosition(posObj);
-        setLastGpsUpdate(new Date());
+          // Obtener primera posición nativa
+          const current = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 10000 });
+          if (current?.coords) {
+            processCoords(
+              current.coords.latitude,
+              current.coords.longitude,
+              current.coords.speed || 0,
+              current.coords.heading || 0
+            );
+          }
 
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-          wsRef.current.send(JSON.stringify({
-            type: 'location_update',
-            id_ruta: activeRoute.id_ruta,
-            latitud: lat,
-            longitud: lng,
-            velocidad: speed || 0.0,
-            heading: heading || 0.0
-          }));
-        } else {
-          axios.post(`${API_BASE_URL}/api/routes/${activeRoute.id_ruta}/location`, {
-            id_ruta: activeRoute.id_ruta,
-            latitud: lat,
-            longitud: lng,
-            velocidad: speed || 0.0,
-            heading: heading || 0.0
-          }).catch((err) => console.warn('HTTP location fallback failed:', err));
+          // Iniciar watcher nativo
+          watchIdRef.current = await Geolocation.watchPosition(
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 3000 },
+            (position, err) => {
+              if (err) {
+                console.warn('Native GPS Watcher error:', err);
+                return;
+              }
+              if (position?.coords) {
+                processCoords(
+                  position.coords.latitude,
+                  position.coords.longitude,
+                  position.coords.speed || 0,
+                  position.coords.heading || 0
+                );
+              }
+            }
+          );
+        } catch (err) {
+          console.warn('Error starting native Geolocation:', err);
+          setGpsError('Error iniciando sensor GPS nativo.');
         }
-      };
+      } else if ('geolocation' in navigator) {
+        const handleLocationSuccess = (position) => {
+          const { latitude, longitude, speed, heading } = position.coords;
+          processCoords(latitude, longitude, speed || 0, heading || 0);
+        };
 
-      const handleLocationError = (error) => {
-        console.warn('GPS location error:', error);
-        let msg = 'No pudimos acceder a tu ubicación. Activa los permisos de ubicación para iniciar el seguimiento.';
-        if (error.code === error.PERMISSION_DENIED) {
-          msg = 'Permiso de ubicación denegado por el navegador. Habilítalo en los ajustes para compartir tu posición.';
-        } else if (error.code === error.POSITION_UNAVAILABLE) {
-          msg = 'Señales GPS no disponibles temporalmente.';
-        }
-        setGpsError(msg);
-        setIsGpsActive(false);
-      };
+        const handleLocationError = (error) => {
+          console.warn('GPS location error:', error);
+          let msg = 'No pudimos acceder a tu ubicación. Activa los permisos de ubicación.';
+          if (error.code === error.PERMISSION_DENIED) {
+            msg = 'Permiso de ubicación denegado por el navegador.';
+          } else if (error.code === error.POSITION_UNAVAILABLE) {
+            msg = 'Señales GPS no disponibles temporalmente.';
+          }
+          setGpsError(msg);
+          setIsGpsActive(false);
+        };
 
-      watchIdRef.current = navigator.geolocation.watchPosition(
-        handleLocationSuccess,
-        handleLocationError,
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
-      );
-
-      updateIntervalRef.current = setInterval(() => {
-        navigator.geolocation.getCurrentPosition(
+        watchIdRef.current = navigator.geolocation.watchPosition(
           handleLocationSuccess,
-          () => {},
-          { enableHighAccuracy: true, timeout: 8000 }
+          handleLocationError,
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
         );
-      }, 10000);
 
-    } else {
-      setGpsError('La geolocalización no está disponible en este dispositivo.');
-      setIsGpsActive(false);
-    }
+        updateIntervalRef.current = setInterval(() => {
+          navigator.geolocation.getCurrentPosition(
+            handleLocationSuccess,
+            () => {},
+            { enableHighAccuracy: true, timeout: 8000 }
+          );
+        }, 10000);
+      } else {
+        setGpsError('La geolocalización no está disponible en este dispositivo.');
+        setIsGpsActive(false);
+      }
+    };
+
+    startGpsTracking();
 
     return () => {
       if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
+        if (isNativePlatform()) {
+          Geolocation.clearWatch({ id: watchIdRef.current }).catch(() => {});
+        } else {
+          navigator.geolocation.clearWatch(watchIdRef.current);
+        }
       }
       if (updateIntervalRef.current) {
         clearInterval(updateIntervalRef.current);
@@ -279,7 +347,11 @@ const ActiveRoutePage = () => {
       await axios.post(`${API_BASE_URL}/api/routes/${activeRoute.id_ruta}/finish`);
 
       if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
+        if (isNativePlatform()) {
+          Geolocation.clearWatch({ id: watchIdRef.current }).catch(() => {});
+        } else {
+          navigator.geolocation.clearWatch(watchIdRef.current);
+        }
       }
       if (wsRef.current) {
         wsRef.current.close();
@@ -311,26 +383,26 @@ const ActiveRoutePage = () => {
       case 'EN_PROCESO':
       case 'EN_RUTA':
         return (
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/30 flex items-center gap-1.5">
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/30 flex items-center gap-1.5 shrink-0">
             <span className="h-2 w-2 rounded-full bg-blue-500 animate-ping" />
             EN RUTA
           </span>
         );
       case 'SUSPENDIDA':
         return (
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 shrink-0">
             PAUSADA
           </span>
         );
       case 'PROGRAMADA':
         return (
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shrink-0">
             PROGRAMADA
           </span>
         );
       default:
         return (
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-v-gray-dark text-v-gray border border-v-dark-border">
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-v-gray-dark text-v-gray border border-v-dark-border shrink-0">
             {status || 'PROGRAMADA'}
           </span>
         );
@@ -339,7 +411,7 @@ const ActiveRoutePage = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="flex items-center justify-center min-h-[60vh] p-4">
         <div className="flex flex-col items-center gap-3">
           <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
           <p className="text-v-gray text-sm font-medium">Cargando detalles de navegación de la ruta...</p>
@@ -350,7 +422,7 @@ const ActiveRoutePage = () => {
 
   if (!activeRoute) {
     return (
-      <div className="max-w-xl mx-auto py-12 text-center space-y-6">
+      <div className="max-w-xl mx-auto py-12 px-4 text-center space-y-6">
         <div className="p-8 bg-v-dark-soft border border-v-dark-border rounded-3xl space-y-4 shadow-xl">
           <AlertCircle size={48} className="mx-auto text-amber-500" />
           <h2 className="text-xl font-bold text-v-white">No se encontró la ruta solicitada</h2>
@@ -359,7 +431,7 @@ const ActiveRoutePage = () => {
           </p>
           <Button
             onClick={() => navigate('/driver/my-routes')}
-            className="w-full justify-center cursor-pointer"
+            className="w-full justify-center min-h-[48px] text-sm font-bold cursor-pointer"
           >
             <ArrowLeft size={18} className="mr-2" />
             Volver a Mis Rutas
@@ -372,57 +444,57 @@ const ActiveRoutePage = () => {
   const isRouteActive = activeRoute.estado_ruta === 'EN_PROCESO' || activeRoute.estado_ruta === 'EN_RUTA';
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12 text-left">
+    <div className="space-y-4 max-w-7xl mx-auto pb-16 text-left px-2 sm:px-4">
       {/* Top Banner Navigation & Action Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-v-dark-soft border border-v-dark-border p-4 sm:p-6 rounded-3xl shadow-xl">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/driver/my-routes')}
-            className="p-3 rounded-2xl bg-v-dark hover:bg-v-dark-border text-v-gray hover:text-v-white transition-colors cursor-pointer border border-v-dark-border"
+            className="p-3 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-2xl bg-v-dark hover:bg-v-dark-border text-v-gray hover:text-v-white transition-colors cursor-pointer border border-v-dark-border shrink-0"
             title="Volver"
           >
             <ArrowLeft size={20} />
           </button>
-          <div>
+          <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="px-2.5 py-0.5 rounded-md bg-primary/20 text-primary font-extrabold text-xs border border-primary/30">
                 {activeRoute.codigo_ruta}
               </span>
-              <h1 className="text-xl font-bold text-v-white">{activeRoute.nombre_ruta}</h1>
+              <h1 className="text-lg sm:text-xl font-bold text-v-white truncate">{activeRoute.nombre_ruta}</h1>
               {getRouteStatusBadge(activeRoute.estado_ruta)}
             </div>
-            <p className="text-xs text-v-gray mt-1">
+            <p className="text-xs text-v-gray mt-1 truncate">
               Vehículo: <strong className="text-v-white">{activeRoute.vehiculo?.placa || 'Asignado'}</strong>
             </p>
           </div>
         </div>
 
-        {/* Dynamic Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2.5 self-end sm:self-auto">
+        {/* Dynamic Mobile Touch-friendly Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <Button
             variant="ghost"
             onClick={() => setIsPassengerModalOpen(true)}
-            className="bg-v-dark hover:bg-v-dark-border text-v-white text-xs font-bold py-2.5 px-3.5 rounded-2xl border border-v-dark-border flex items-center gap-1.5 cursor-pointer"
+            className="flex-1 sm:flex-none min-h-[48px] bg-v-dark hover:bg-v-dark-border text-v-white text-xs font-bold px-3.5 rounded-2xl border border-v-dark-border flex items-center justify-center gap-1.5 cursor-pointer"
           >
-            <Users size={15} className="text-teal-500" />
+            <Users size={16} className="text-teal-500" />
             Pasajeros
           </Button>
 
           <Button
             variant="ghost"
             onClick={() => setIsIncidentModalOpen(true)}
-            className="bg-amber-600/10 hover:bg-amber-600/20 text-amber-600 dark:text-amber-400 text-xs font-bold py-2.5 px-3.5 rounded-2xl border border-amber-500/30 flex items-center gap-1.5 cursor-pointer"
+            className="flex-1 sm:flex-none min-h-[48px] bg-amber-600/10 hover:bg-amber-600/20 text-amber-600 dark:text-amber-400 text-xs font-bold px-3.5 rounded-2xl border border-amber-500/30 flex items-center justify-center gap-1.5 cursor-pointer"
           >
-            <AlertTriangle size={15} />
+            <AlertTriangle size={16} />
             Novedad
           </Button>
 
           {activeRoute.estado_ruta === 'PROGRAMADA' && (
             <Button
               onClick={handleStartRoute}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-5 rounded-2xl text-xs flex items-center gap-2 shadow-md cursor-pointer border-none"
+              className="w-full sm:w-auto min-h-[48px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-5 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-md cursor-pointer border-none"
             >
-              <Play size={16} />
+              <Play size={18} />
               Iniciar Ruta
             </Button>
           )}
@@ -431,16 +503,16 @@ const ActiveRoutePage = () => {
             <>
               <Button
                 onClick={handlePauseRoute}
-                className="bg-amber-600 hover:bg-amber-500 text-white font-bold py-2.5 px-4 rounded-2xl text-xs flex items-center gap-1.5 shadow-md cursor-pointer border-none"
+                className="flex-1 sm:flex-none min-h-[48px] bg-amber-600 hover:bg-amber-500 text-white font-bold px-4 rounded-2xl text-xs flex items-center justify-center gap-1.5 shadow-md cursor-pointer border-none"
               >
-                <Pause size={16} />
+                <Pause size={18} />
                 Pausar
               </Button>
               <Button
                 onClick={handleFinishRoute}
-                className="bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 px-4 rounded-2xl text-xs flex items-center gap-1.5 shadow-md cursor-pointer border-none"
+                className="flex-1 sm:flex-none min-h-[48px] bg-red-600 hover:bg-red-500 text-white font-bold px-4 rounded-2xl text-xs flex items-center justify-center gap-1.5 shadow-md cursor-pointer border-none"
               >
-                <Square size={16} fill="white" />
+                <Square size={18} fill="white" />
                 Finalizar
               </Button>
             </>
@@ -450,16 +522,16 @@ const ActiveRoutePage = () => {
             <>
               <Button
                 onClick={handleStartRoute}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-2xl text-xs flex items-center gap-1.5 shadow-md cursor-pointer border-none"
+                className="flex-1 sm:flex-none min-h-[48px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 rounded-2xl text-xs flex items-center justify-center gap-1.5 shadow-md cursor-pointer border-none"
               >
-                <Play size={16} />
+                <Play size={18} />
                 Reanudar
               </Button>
               <Button
                 onClick={handleFinishRoute}
-                className="bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 px-4 rounded-2xl text-xs flex items-center gap-1.5 shadow-md cursor-pointer border-none"
+                className="flex-1 sm:flex-none min-h-[48px] bg-red-600 hover:bg-red-500 text-white font-bold px-4 rounded-2xl text-xs flex items-center justify-center gap-1.5 shadow-md cursor-pointer border-none"
               >
-                <Square size={16} fill="white" />
+                <Square size={18} fill="white" />
                 Finalizar
               </Button>
             </>
@@ -477,10 +549,10 @@ const ActiveRoutePage = () => {
             </div>
             <div>
               <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
-                Seguimiento GPS en Tiempo Real Activo
+                Seguimiento GPS Nativo en Tiempo Real Activo
               </div>
               <p className="text-[11px] text-v-gray">
-                Tu ubicación exacta se transmite a la central mientras dure esta ruta.
+                Transmisión continua de coordenadas GPS hacia la central VEXTOR.
               </p>
             </div>
           </div>
@@ -547,7 +619,7 @@ const ActiveRoutePage = () => {
       {/* Main Grid: Map & Navigation Metrics */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* Map Container (Takes 2 Columns) */}
-        <div className="lg:col-span-2 h-[380px] sm:h-[500px] lg:h-[650px] relative rounded-3xl overflow-hidden border border-v-dark-border shadow-2xl">
+        <div className="lg:col-span-2 h-[340px] sm:h-[480px] lg:h-[650px] relative rounded-3xl overflow-hidden border border-v-dark-border shadow-2xl">
           <MapComponent
             routes={EMPTY_ROUTES}
             activeRoute={activeRoute}
@@ -559,7 +631,7 @@ const ActiveRoutePage = () => {
 
         {/* Live Route Info & Stops List Card (1 Column) */}
         <div className="space-y-4">
-          <div className="p-6 bg-v-dark-soft border border-v-dark-border rounded-3xl space-y-6 shadow-xl">
+          <div className="p-5 sm:p-6 bg-v-dark-soft border border-v-dark-border rounded-3xl space-y-6 shadow-xl">
             <div className="flex items-center justify-between pb-4 border-b border-v-dark-border">
               <span className="text-xs font-bold uppercase tracking-wider text-v-gray">Detalles del Recorrido</span>
               {getRouteStatusBadge(activeRoute.estado_ruta)}
@@ -569,11 +641,11 @@ const ActiveRoutePage = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 rounded-2xl bg-v-dark border border-v-dark-border space-y-1">
                 <span className="text-[11px] text-v-gray">Distancia Est.</span>
-                <div className="text-2xl font-extrabold text-v-white">{routeMetrics.distance} km</div>
+                <div className="text-xl sm:text-2xl font-extrabold text-v-white">{routeMetrics.distance} km</div>
               </div>
               <div className="p-4 rounded-2xl bg-v-dark border border-v-dark-border space-y-1">
                 <span className="text-[11px] text-v-gray">Tiempo Est.</span>
-                <div className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">{routeMetrics.duration} min</div>
+                <div className="text-xl sm:text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">{routeMetrics.duration} min</div>
               </div>
             </div>
 
@@ -581,26 +653,26 @@ const ActiveRoutePage = () => {
             <div className="space-y-4 pt-2">
               <div className="flex items-start gap-3">
                 <MapPin size={18} className="text-emerald-500 mt-0.5 shrink-0" />
-                <div className="text-xs space-y-0.5">
+                <div className="text-xs space-y-0.5 min-w-0">
                   <span className="text-v-gray block font-semibold uppercase text-[10px] tracking-wider">Punto A - Origen:</span>
-                  <strong className="text-v-white text-sm block leading-snug">{originAddress || activeRoute.origen}</strong>
+                  <strong className="text-v-white text-sm block leading-snug break-words">{originAddress || activeRoute.origen}</strong>
                 </div>
               </div>
 
               <div className="flex items-start gap-3">
                 <MapPin size={18} className="text-red-500 mt-0.5 shrink-0" />
-                <div className="text-xs space-y-0.5">
+                <div className="text-xs space-y-0.5 min-w-0">
                   <span className="text-v-gray block font-semibold uppercase text-[10px] tracking-wider">Punto B - Destino:</span>
-                  <strong className="text-v-white text-sm block leading-snug">{destAddress || activeRoute.destino}</strong>
+                  <strong className="text-v-white text-sm block leading-snug break-words">{destAddress || activeRoute.destino}</strong>
                 </div>
               </div>
 
               {activeRoute.vehiculo && (
                 <div className="flex items-start gap-3 pt-3 border-t border-v-dark-border">
                   <Truck size={18} className="text-primary mt-0.5 shrink-0" />
-                  <div className="text-xs">
+                  <div className="text-xs min-w-0">
                     <span className="text-v-gray block font-semibold uppercase text-[10px] tracking-wider">Vehículo Asignado:</span>
-                    <strong className="text-v-white text-sm">{activeRoute.vehiculo.placa} ({activeRoute.vehiculo.marca} {activeRoute.vehiculo.modelo})</strong>
+                    <strong className="text-v-white text-sm block truncate">{activeRoute.vehiculo.placa} ({activeRoute.vehiculo.marca} {activeRoute.vehiculo.modelo})</strong>
                   </div>
                 </div>
               )}
@@ -611,10 +683,10 @@ const ActiveRoutePage = () => {
               <div className="pt-4 border-t border-v-dark-border space-y-3">
                 <button
                   onClick={() => setShowInstructions(!showInstructions)}
-                  className="w-full flex items-center justify-between p-3 rounded-xl bg-v-dark hover:bg-v-dark-border border border-v-dark-border text-xs font-bold text-v-white transition-all cursor-pointer"
+                  className="w-full flex items-center justify-between p-3.5 rounded-xl bg-v-dark hover:bg-v-dark-border border border-v-dark-border text-xs font-bold text-v-white transition-all cursor-pointer min-h-[44px]"
                 >
                   <span className="flex items-center gap-2">
-                    <ListOrdered size={15} className="text-primary" />
+                    <ListOrdered size={16} className="text-primary" />
                     Lista de Indicaciones ({routeMetrics.instructions.length})
                   </span>
                   {showInstructions ? <ChevronUp size={16} /> : <ChevronDown size={16} />}

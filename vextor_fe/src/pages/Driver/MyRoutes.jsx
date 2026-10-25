@@ -25,7 +25,6 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
-import { Badge } from '../../components/ui/Badge';
 import { showConfirm, showAlert } from '../../utils/sweetalert';
 import { useAuth } from '../../context/AuthContext';
 import IncidentReportModal from '../../components/modals/IncidentReportModal';
@@ -49,7 +48,6 @@ const MyRoutes = () => {
 
   // Driver Duty Status State
   const [dutyStatus, setDutyStatus] = useState('DISPONIBLE');
-  const [isPreOpChecked, setIsPreOpChecked] = useState(true);
 
   // Modals state
   const [isIncidentModalOpen, setIsIncidentModalOpen] = useState(false);
@@ -176,7 +174,6 @@ const MyRoutes = () => {
       'Frenos, presión de neumáticos, luces, fluidos y equipo de emergencia verificados correctamente. Vehículo listo para operar.',
       'success'
     );
-    setIsPreOpChecked(true);
   };
 
   const handleOpenPassengersModal = (route) => {
@@ -218,7 +215,7 @@ const MyRoutes = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="flex items-center justify-center min-h-[60vh] p-4">
         <div className="flex flex-col items-center gap-3">
           <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
           <p className="text-v-gray text-sm font-medium">Cargando panel de conductor y rutas asignadas...</p>
@@ -230,43 +227,38 @@ const MyRoutes = () => {
   const { conductor, active_route, assigned_routes, history_routes } = data;
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto pb-12 text-left">
+    <div className="space-y-6 max-w-7xl mx-auto pb-16 text-left px-2 sm:px-4">
       {/* Header Banner for Driver */}
-      <div className="relative overflow-hidden rounded-3xl bg-v-dark-soft border border-v-dark-border p-6 sm:p-8 shadow-xl">
+      <div className="relative overflow-hidden rounded-3xl bg-v-dark-soft border border-v-dark-border p-5 sm:p-8 shadow-xl">
         <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
           <Radio size={200} className="text-primary" />
         </div>
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex items-center gap-5">
-            <div className="h-16 w-16 rounded-2xl bg-primary/10 border-2 border-primary/30 flex items-center justify-center text-primary font-bold text-2xl shadow-inner shrink-0">
-              {conductor?.nombre_conductor ? conductor.nombre_conductor.charAt(0).toUpperCase() : <User size={32} />}
+          <div className="flex items-center gap-4 sm:gap-5">
+            <div className="h-14 w-14 sm:h-16 sm:w-16 rounded-2xl bg-primary/10 border-2 border-primary/30 flex items-center justify-center text-primary font-bold text-xl sm:text-2xl shadow-inner shrink-0">
+              {conductor?.nombre_conductor ? conductor.nombre_conductor.charAt(0).toUpperCase() : <User size={30} />}
             </div>
-            <div className="space-y-1">
-              <div className="flex flex-wrap items-center gap-3">
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-v-white tracking-tight">
+            <div className="space-y-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <h1 className="text-xl sm:text-2xl font-extrabold text-v-white tracking-tight truncate">
                   Hola, {conductor?.nombre_conductor || user?.name || 'Conductor'}
                 </h1>
                 {getStatusBadge(dutyStatus)}
-                <span className="px-2.5 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20 text-[11px] font-mono font-bold">
-                  ROL CONDUCTOR VEXTOR
-                </span>
               </div>
-              <p className="text-xs text-v-gray flex flex-wrap items-center gap-2">
-                <ShieldCheck size={16} className="text-primary shrink-0" />
-                Cédula: <span className="text-v-white font-medium">{conductor?.cedula || '1020394857'}</span>
+              <p className="text-xs text-v-gray flex flex-wrap items-center gap-2 pt-0.5">
+                <ShieldCheck size={15} className="text-primary shrink-0" />
+                Cédula: <span className="text-v-white font-medium">{conductor?.cedula || 'N/A'}</span>
                 <span className="text-v-dark-border">|</span>
-                Licencia: <span className="text-v-white font-medium">{conductor?.licencia || 'C2-849201'}</span>
-                <span className="text-v-dark-border">|</span>
-                Calificación: <span className="text-amber-500 font-bold flex items-center gap-1">★ 4.9</span>
+                Licencia: <span className="text-v-white font-medium">{conductor?.licencia || 'C2'}</span>
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 self-start md:self-auto">
+          <div className="flex items-center gap-2.5 self-start md:self-auto w-full md:w-auto">
             <button
               onClick={handleToggleDutyStatus}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all border cursor-pointer shadow-md flex items-center gap-2 ${
+              className={`flex-1 md:flex-none min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-bold transition-all border cursor-pointer shadow-md flex items-center justify-center gap-2 ${
                 dutyStatus === 'DISPONIBLE'
                   ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20'
                   : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
@@ -278,78 +270,78 @@ const MyRoutes = () => {
 
             <button
               onClick={fetchMyRoutes}
-              className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-v-dark hover:bg-v-dark-border text-v-gray hover:text-v-white text-xs font-semibold transition-all border border-v-dark-border cursor-pointer"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-v-dark hover:bg-v-dark-border text-v-gray hover:text-v-white text-xs font-semibold transition-all border border-v-dark-border cursor-pointer shrink-0"
               title="Actualizar datos"
             >
-              <RotateCcw size={14} />
+              <RotateCcw size={16} />
             </button>
           </div>
         </div>
 
         {/* Operational Quick Metrics */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-v-dark-border">
-          <div className="p-3.5 rounded-2xl bg-v-dark/50 border border-v-dark-border">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-v-dark-border">
+          <div className="p-3 rounded-2xl bg-v-dark/50 border border-v-dark-border">
             <span className="text-[10px] uppercase font-mono font-bold text-v-gray block">Ruta Actual</span>
-            <span className="text-sm font-extrabold text-v-white mt-0.5 block truncate">
+            <span className="text-xs sm:text-sm font-extrabold text-v-white mt-0.5 block truncate">
               {active_route ? active_route.codigo_ruta : 'Sin servicio activo'}
             </span>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-v-dark/50 border border-v-dark-border">
+          <div className="p-3 rounded-2xl bg-v-dark/50 border border-v-dark-border">
             <span className="text-[10px] uppercase font-mono font-bold text-v-gray block">Programadas</span>
-            <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5 block">
+            <span className="text-xs sm:text-sm font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5 block">
               {assigned_routes.length} Rutas Listas
             </span>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-v-dark/50 border border-v-dark-border">
+          <div className="p-3 rounded-2xl bg-v-dark/50 border border-v-dark-border">
             <span className="text-[10px] uppercase font-mono font-bold text-v-gray block">Viajes Realizados</span>
-            <span className="text-sm font-extrabold text-v-white mt-0.5 block">
-              {history_routes.length + 12} Recorridos
+            <span className="text-xs sm:text-sm font-extrabold text-v-white mt-0.5 block">
+              {history_routes.length} Recorridos
             </span>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-v-dark/50 border border-v-dark-border">
+          <div className="p-3 rounded-2xl bg-v-dark/50 border border-v-dark-border">
             <span className="text-[10px] uppercase font-mono font-bold text-v-gray block">Inspección Cabina</span>
-            <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5 block flex items-center gap-1">
-              <CheckCircle2 size={14} /> Aprobado 100%
+            <span className="text-xs sm:text-sm font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5 flex items-center gap-1">
+              <CheckCircle2 size={13} /> Aprobado 100%
             </span>
           </div>
         </div>
       </div>
 
-      {/* Driver Actions Toolbar */}
-      <div className="p-4 bg-v-dark-soft border border-v-dark-border rounded-2xl shadow-lg flex flex-wrap items-center justify-between gap-3">
+      {/* Driver Actions Toolbar - Touch Friendly */}
+      <div className="p-4 bg-v-dark-soft border border-v-dark-border rounded-2xl shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Award size={18} className="text-primary shrink-0" />
           <span className="text-xs font-bold text-v-white">Herramientas Rápidas de Conducción:</span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full sm:w-auto">
           <Button
             variant="ghost"
             onClick={handlePreOpInspection}
-            className="text-xs font-bold bg-v-dark hover:bg-v-dark-border text-v-white border border-v-dark-border rounded-xl cursor-pointer"
+            className="min-h-[44px] text-xs font-bold bg-v-dark hover:bg-v-dark-border text-v-white border border-v-dark-border rounded-xl cursor-pointer flex items-center justify-center"
           >
-            <ClipboardCheck size={15} className="text-emerald-500 mr-1.5" />
-            Checklist Pre-operacional
+            <ClipboardCheck size={16} className="text-emerald-500 mr-1.5" />
+            Checklist Pre-op
           </Button>
 
           <Button
             variant="ghost"
             onClick={() => handleOpenPassengersModal(active_route || assigned_routes[0])}
-            className="text-xs font-bold bg-v-dark hover:bg-v-dark-border text-v-white border border-v-dark-border rounded-xl cursor-pointer"
+            className="min-h-[44px] text-xs font-bold bg-v-dark hover:bg-v-dark-border text-v-white border border-v-dark-border rounded-xl cursor-pointer flex items-center justify-center"
           >
-            <Users size={15} className="text-teal-500 mr-1.5" />
-            Manifiesto de Pasajeros
+            <Users size={16} className="text-teal-500 mr-1.5" />
+            Pasajeros
           </Button>
 
           <Button
             variant="primary"
             onClick={() => setIsIncidentModalOpen(true)}
-            className="text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white border-none rounded-xl cursor-pointer shadow-md"
+            className="min-h-[44px] text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white border-none rounded-xl cursor-pointer shadow-md flex items-center justify-center"
           >
-            <AlertTriangle size={15} className="mr-1.5" />
+            <AlertTriangle size={16} className="mr-1.5" />
             Reportar Novedad
           </Button>
         </div>
@@ -359,7 +351,7 @@ const MyRoutes = () => {
       {active_route && (
         <div className="space-y-4 animate-in fade-in duration-300">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-v-white flex items-center gap-2">
+            <h2 className="text-base sm:text-lg font-bold text-v-white flex items-center gap-2">
               <span className={`h-3 w-3 rounded-full ${active_route.estado_ruta === 'SUSPENDIDA' ? 'bg-amber-400' : 'bg-blue-500 animate-ping'}`} />
               {active_route.estado_ruta === 'SUSPENDIDA' ? 'Ruta Pausada / Suspendida' : 'Ruta Activa en Curso'}
             </h2>
@@ -368,68 +360,68 @@ const MyRoutes = () => {
             </span>
           </div>
 
-          <div className={`p-6 sm:p-8 bg-v-dark-soft border-2 shadow-xl relative overflow-hidden rounded-3xl ${active_route.estado_ruta === 'SUSPENDIDA' ? 'border-amber-500/40' : 'border-blue-500/40'}`}>
+          <div className={`p-5 sm:p-8 bg-v-dark-soft border-2 shadow-xl relative overflow-hidden rounded-3xl ${active_route.estado_ruta === 'SUSPENDIDA' ? 'border-amber-500/40' : 'border-blue-500/40'}`}>
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-              <div className="space-y-4">
+              <div className="space-y-4 min-w-0">
                 <div className="flex items-center gap-3">
-                  <span className={`px-3 py-1 rounded-lg font-extrabold text-sm border ${active_route.estado_ruta === 'SUSPENDIDA' ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30' : 'bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30'}`}>
+                  <span className={`px-3 py-1 rounded-lg font-extrabold text-sm border shrink-0 ${active_route.estado_ruta === 'SUSPENDIDA' ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30' : 'bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30'}`}>
                     {active_route.codigo_ruta}
                   </span>
-                  <h3 className="text-xl font-bold text-v-white">{active_route.nombre_ruta}</h3>
+                  <h3 className="text-lg sm:text-xl font-bold text-v-white truncate">{active_route.nombre_ruta}</h3>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-v-gray">
-                  <div className="flex items-center gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm text-v-gray">
+                  <div className="flex items-center gap-2 min-w-0">
                     <MapPin size={16} className="text-emerald-500 shrink-0" />
-                    <span>Origen: <strong className="text-v-white">{getAddress(active_route.origen)}</strong></span>
+                    <span className="truncate">Origen: <strong className="text-v-white">{getAddress(active_route.origen)}</strong></span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
                     <MapPin size={16} className="text-red-500 shrink-0" />
-                    <span>Destino: <strong className="text-v-white">{getAddress(active_route.destino)}</strong></span>
+                    <span className="truncate">Destino: <strong className="text-v-white">{getAddress(active_route.destino)}</strong></span>
                   </div>
                   {active_route.vehiculo && (
-                    <div className="flex items-center gap-2 sm:col-span-2">
+                    <div className="flex items-center gap-2 sm:col-span-2 min-w-0">
                       <Truck size={16} className="text-primary shrink-0" />
-                      <span>Vehículo Asignado: <strong className="text-v-white">{active_route.vehiculo.placa}</strong> ({active_route.vehiculo.marca} {active_route.vehiculo.modelo})</span>
+                      <span className="truncate">Vehículo Asignado: <strong className="text-v-white">{active_route.vehiculo.placa}</strong> ({active_route.vehiculo.marca})</span>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Action Controls for Active Route */}
-              <div className="flex flex-wrap items-center gap-3 shrink-0">
+              {/* Action Controls for Active Route - Touch Optimized */}
+              <div className="flex flex-wrap items-center gap-2.5 shrink-0 w-full lg:w-auto">
                 <Button
                   onClick={() => navigate(`/driver/active-route/${active_route.id_ruta}`)}
-                  className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-5 rounded-2xl shadow-lg flex items-center gap-2 cursor-pointer text-xs"
+                  className="flex-1 lg:flex-none min-h-[48px] bg-blue-600 hover:bg-blue-500 text-white font-bold px-5 rounded-2xl shadow-lg flex items-center justify-center gap-2 cursor-pointer text-xs"
                 >
-                  <Navigation size={16} />
+                  <Navigation size={18} />
                   Ver Mapa y Navegación
-                  <ArrowRight size={16} />
+                  <ArrowRight size={18} />
                 </Button>
 
                 {active_route.estado_ruta === 'SUSPENDIDA' ? (
                   <Button
                     onClick={() => handleStartRoute(active_route)}
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-2xl text-xs flex items-center gap-1.5 cursor-pointer shadow-md border-none"
+                    className="min-h-[48px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 rounded-2xl text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-md border-none"
                   >
-                    <Play size={15} />
+                    <Play size={16} />
                     Reanudar
                   </Button>
                 ) : (
                   <Button
                     onClick={() => handlePauseRoute(active_route)}
-                    className="bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 px-4 rounded-2xl text-xs flex items-center gap-1.5 cursor-pointer shadow-md border-none"
+                    className="min-h-[48px] bg-amber-600 hover:bg-amber-500 text-white font-bold px-4 rounded-2xl text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-md border-none"
                   >
-                    <Pause size={15} />
+                    <Pause size={16} />
                     Pausar
                   </Button>
                 )}
 
                 <Button
                   onClick={() => handleFinishRoute(active_route)}
-                  className="bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-4 rounded-2xl text-xs flex items-center gap-1.5 cursor-pointer shadow-md border-none"
+                  className="min-h-[48px] bg-red-600 hover:bg-red-500 text-white font-bold px-4 rounded-2xl text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-md border-none"
                 >
-                  <Square size={15} fill="white" />
+                  <Square size={16} fill="white" />
                   Finalizar
                 </Button>
               </div>
@@ -441,7 +433,7 @@ const MyRoutes = () => {
       {/* Assigned Routes Section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-v-white flex items-center gap-2">
+          <h2 className="text-base sm:text-lg font-bold text-v-white flex items-center gap-2">
             <Calendar size={18} className="text-primary" />
             Próximas Rutas Asignadas ({assigned_routes.length})
           </h2>
@@ -460,7 +452,7 @@ const MyRoutes = () => {
             {assigned_routes.map((route) => (
               <div
                 key={route.id_ruta}
-                className="p-6 bg-v-dark-soft border border-v-dark-border rounded-2xl hover:border-primary/50 transition-all flex flex-col justify-between gap-6 group shadow-md"
+                className="p-5 sm:p-6 bg-v-dark-soft border border-v-dark-border rounded-2xl hover:border-primary/50 transition-all flex flex-col justify-between gap-5 group shadow-md"
               >
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
@@ -472,7 +464,7 @@ const MyRoutes = () => {
                     </span>
                   </div>
 
-                  <h3 className="text-base font-bold text-v-white group-hover:text-primary transition-colors">
+                  <h3 className="text-base font-bold text-v-white group-hover:text-primary transition-colors truncate">
                     {route.nombre_ruta}
                   </h3>
 
@@ -494,26 +486,26 @@ const MyRoutes = () => {
                   </div>
                 </div>
 
-                <div className="pt-3 border-t border-v-dark-border flex items-center justify-between gap-3">
+                <div className="pt-3 border-t border-v-dark-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <span className="text-[11px] text-v-gray flex items-center gap-1">
                     <Clock size={13} className="text-primary" />
                     {route.fecha_programada ? new Date(route.fecha_programada).toLocaleString('es-CO') : 'Pendiente'}
                   </span>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
                     <Button
                       onClick={() => navigate(`/driver/active-route/${route.id_ruta}`)}
-                      className="bg-v-dark hover:bg-v-dark-border text-v-white font-semibold py-2 px-3 rounded-xl text-xs flex items-center gap-1 cursor-pointer border border-v-dark-border"
+                      className="flex-1 sm:flex-none min-h-[44px] bg-v-dark hover:bg-v-dark-border text-v-white font-semibold px-3 rounded-xl text-xs flex items-center justify-center gap-1 cursor-pointer border border-v-dark-border"
                     >
-                      <Navigation size={13} />
+                      <Navigation size={14} />
                       Ver Detalle
                     </Button>
 
                     <Button
                       onClick={() => handleStartRoute(route)}
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-md border-none"
+                      className="flex-1 sm:flex-none min-h-[44px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-md border-none"
                     >
-                      <Play size={14} />
+                      <Play size={15} />
                       Iniciar ruta
                     </Button>
                   </div>
@@ -526,7 +518,7 @@ const MyRoutes = () => {
 
       {/* Route History Section */}
       <div className="space-y-4 pt-4">
-        <h2 className="text-lg font-bold text-v-white flex items-center gap-2">
+        <h2 className="text-base sm:text-lg font-bold text-v-white flex items-center gap-2">
           <Clock size={18} className="text-v-gray" />
           Historial de Rutas Recientes
         </h2>

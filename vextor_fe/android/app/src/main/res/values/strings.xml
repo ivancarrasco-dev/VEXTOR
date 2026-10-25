@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">VEXTOR Conductor</string>
+    <string name="title_activity_main">VEXTOR Conductor</string>
+    <string name="package_name">com.vextor.driver</string>
+    <string name="custom_url_scheme">com.vextor.driver</string>
+</resources>
