@@ -59,7 +59,6 @@ class UsuarioBase(BaseModel):
     telefono_usuario: Optional[str] = Field(None, max_length=20)
     estado_usuario: str = Field("ACTIVO", max_length=20)
     foto_perfil: Optional[str] = None
-    id_empresa: Optional[UUID] = None
     requiere_cambio_clave: Optional[bool] = False
 
 
@@ -70,7 +69,6 @@ class UsuarioCreate(UsuarioBase):
 
 class UsuarioUpdate(BaseModel):
     id_rol: Optional[UUID] = None
-    id_empresa: Optional[UUID] = None
     nombres_usuario: Optional[str] = Field(None, max_length=100)
     apellidos_usuario: Optional[str] = Field(None, max_length=100)
     correo_usuario: Optional[EmailStr] = None
@@ -173,7 +171,6 @@ class VehiculoBase(BaseModel):
     modelo: str = Field(..., max_length=50)
     anio: int = 2024
     id_modelo: Optional[UUID] = None
-    id_empresa: Optional[UUID] = None
     color: Optional[str] = Field(None, max_length=30)
     tipo_vehiculo: str = Field("Automóvil", max_length=50)
     capacidad_pasajeros: int = 5
@@ -193,7 +190,6 @@ class VehiculoUpdate(BaseModel):
     modelo: Optional[str] = Field(None, max_length=50)
     anio: Optional[int] = None
     id_modelo: Optional[UUID] = None
-    id_empresa: Optional[UUID] = None
     color: Optional[str] = Field(None, max_length=30)
     tipo_vehiculo: Optional[str] = Field(None, max_length=50)
     capacidad_pasajeros: Optional[int] = None
