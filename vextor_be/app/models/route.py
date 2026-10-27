@@ -99,7 +99,7 @@ class Novedad(Base):
     id_conductor = Column(UUID(as_uuid=True), ForeignKey("conductor.id_conductor", ondelete="RESTRICT", onupdate="CASCADE"), nullable=False)
     id_viaje = Column(UUID(as_uuid=True), ForeignKey("viaje.id_viaje"), nullable=True)
     id_vehiculo = Column(UUID(as_uuid=True), ForeignKey("vehiculo.id_vehiculo"), nullable=True)
-    id_usuario = Column(UUID(as_uuid=True), ForeignKey("usuario.id_usuario"), nullable=True)
+    id_usuario = Column(UUID(as_uuid=True), ForeignKey("usuario.id_usuario"), nullable=False)
     tipo_novedad = Column(String(50), nullable=False)
     descripcion_novedad = Column(Text, nullable=False)
     fecha_hora_reporte = Column(DateTime, nullable=False, server_default=func.now())
