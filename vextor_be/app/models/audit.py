@@ -19,7 +19,7 @@ class Actividad(Base):
     fecha_hora = Column(DateTime, nullable=False, server_default=func.now())
     id_registro_afectado = Column(String(100), nullable=True)
     ip_origen = Column(String(45), nullable=True)
-    resultado = Column(String(20), nullable=False, default="EXITOSO")
+    resultado = Column(String(20), nullable=True, default="EXITOSO")
 
 
 class Notificacion(Base):

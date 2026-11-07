@@ -6,13 +6,17 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load .env from project root
-env_file = Path(__file__).parent.parent.parent / ".env"
-if env_file.exists():
-    load_dotenv(env_file)
+# Carga segura y unificada de variables de entorno (.env en raíz del repo o vextor_be)
+current_path = Path(__file__).resolve()
+repo_root_env = current_path.parents[3] / ".env"
+backend_env = current_path.parents[2] / ".env"
+
+if repo_root_env.exists():
+    load_dotenv(repo_root_env, override=False)
+elif backend_env.exists():
+    load_dotenv(backend_env, override=False)
 else:
-    # Si no existe .env, cargar desde el entorno (útil en Docker)
-    load_dotenv()
+    load_dotenv(override=False)
 
 
 class Settings:
@@ -33,6 +37,8 @@ class Settings:
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 horas
     SECURE_COOKIE: bool = os.getenv("SECURE_COOKIE", "false").lower() in ("true", "1", "yes")
+    ADMIN_EMAIL: str = os.getenv("ADMIN_EMAIL", "admin@vextor.com")
+    INITIAL_ADMIN_PASSWORD: str = os.getenv("INITIAL_ADMIN_PASSWORD", "Admin123!")
 
     # ========== EMAIL / SMTP ==========
     MAIL_HOST: str = os.getenv("MAIL_HOST") or os.getenv("SMTP_HOST")

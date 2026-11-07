@@ -13,6 +13,12 @@ services:
     volumes:
       - ./infra/osrm/data:/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/nearest/v1/driving/-74.0721,4.7110 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   # ---------------------------------------------------------------------------
   # HERRAMIENTAS OSRM PARA PREPARACIÓN DEL GRAFO (PIPELINE MLD)
@@ -40,7 +46,8 @@ services:
       # Dentro de Docker Compose, Backend habla con OSRM a través del nombre de servicio
       - OSRM_URL=http://osrm:5000
     depends_on:
-      - osrm
+      osrm:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/')\" || exit 1"]
@@ -65,5 +72,6 @@ services:
       - "80:80"
       - "5173:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped

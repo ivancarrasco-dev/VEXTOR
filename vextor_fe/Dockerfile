@@ -13,8 +13,8 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 # Copiar archivos de manifest
 COPY package.json pnpm-lock.yaml .pnpmrc ./
 
-# Instalar con --ignore-scripts de esbuild (los correrá igual después en build)
-RUN pnpm install --frozen-lockfile --filter=!esbuild 2>&1 || pnpm install --frozen-lockfile 2>&1 || true
+# Instalar dependencias respetando estrictamente el lockfile
+RUN pnpm install --frozen-lockfile
 
 # Copiar código fuente
 COPY . .
@@ -27,8 +27,8 @@ ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 ENV VITE_WS_BASE_URL=$VITE_WS_BASE_URL
 ENV VITE_TOMTOM_API_KEY=$VITE_TOMTOM_API_KEY
 
-# Compilar - Vite/esbuild compila aunque los pre-build hayan fallado
-RUN pnpm run build || echo "Build intentado"
+# Compilar la aplicación React; detiene el build si ocurre un error
+RUN pnpm run build
 
 # --- Etapa 2: Servidor Web Nginx ---
 FROM nginx:alpine AS runner
