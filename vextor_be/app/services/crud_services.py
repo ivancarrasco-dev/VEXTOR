@@ -744,6 +744,11 @@ class UserService:
         if existing:
             raise HTTPException(status_code=400, detail="El correo electrónico ya se encuentra registrado.")
 
+        if user_data.get("cedula_usuario"):
+            existing_doc = db.query(Usuario).filter(Usuario.cedula_usuario == user_data["cedula_usuario"]).first()
+            if existing_doc:
+                raise HTTPException(status_code=400, detail="El número de documento ya se encuentra registrado.")
+
         if "id_rol" in user_data and user_data["id_rol"]:
             rol = db.query(RolModel).filter(RolModel.id_rol == user_data["id_rol"]).first()
             if not rol:
@@ -772,6 +777,16 @@ class UserService:
             rol = db.query(RolModel).filter(RolModel.id_rol == user_data["id_rol"]).first()
             if not rol:
                 raise HTTPException(status_code=400, detail="El rol especificado no existe.")
+
+        if user_data.get("correo_usuario") and user_data["correo_usuario"] != usuario.correo_usuario:
+            existing = db.query(Usuario).filter(Usuario.correo_usuario == user_data["correo_usuario"]).first()
+            if existing:
+                raise HTTPException(status_code=400, detail="El correo electrónico ya se encuentra registrado.")
+
+        if user_data.get("cedula_usuario") and user_data["cedula_usuario"] != usuario.cedula_usuario:
+            existing_doc = db.query(Usuario).filter(Usuario.cedula_usuario == user_data["cedula_usuario"]).first()
+            if existing_doc:
+                raise HTTPException(status_code=400, detail="El número de documento ya se encuentra registrado.")
 
         valid_cols = {c.name for c in Usuario.__table__.columns}
         for key, value in user_data.items():

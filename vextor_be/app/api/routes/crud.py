@@ -4,7 +4,8 @@ ACTUALIZADO: Soporte para correo de conductores vinculado a Usuario
 """
 from typing import List
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+import os, uuid
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 import sys
@@ -97,6 +98,156 @@ def update_vehicle(
     )
     return res
 
+
+
+@vehicles_router.post("/batch-delete")
+def batch_delete_vehicles(
+    ids: List[UUID],
+    db: Session = Depends(get_db),
+    current_user = Depends(require_admin),
+):
+    from app.models import AsignacionVehiculo, Mantenimiento, Viaje, Novedad
+
+    deleted_count = 0
+    failed_items = []
+
+    for v_id in ids:
+        vehicle = VehicleService.get_by_id(v_id, db)
+        if not vehicle:
+            failed_items.append({"id": str(v_id), "reason": "Vehículo no encontrado"})
+            continue
+
+        asig = db.query(AsignacionVehiculo).filter(AsignacionVehiculo.id_vehiculo == v_id).first()
+        if asig:
+            failed_items.append({"id": str(v_id), "placa": vehicle.placa, "reason": "Tiene rutas o asignaciones asociadas."})
+            continue
+
+        maint = db.query(Mantenimiento).filter(Mantenimiento.id_vehiculo == v_id).first()
+        if maint:
+            failed_items.append({"id": str(v_id), "placa": vehicle.placa, "reason": "Tiene mantenimientos registrados."})
+            continue
+
+        viaje = db.query(Viaje).filter(Viaje.id_vehiculo == v_id).first()
+        if viaje:
+            failed_items.append({"id": str(v_id), "placa": vehicle.placa, "reason": "Tiene viajes históricos asociados."})
+            continue
+
+        nov = db.query(Novedad).filter(Novedad.id_vehiculo == v_id).first()
+        if nov:
+            failed_items.append({"id": str(v_id), "placa": vehicle.placa, "reason": "Tiene novedades reportadas asociadas."})
+            continue
+
+        try:
+            db.delete(vehicle)
+            db.commit()
+            deleted_count += 1
+            AuditService.record_activity(
+                db, current_user.id_usuario,
+                f"{current_user.nombres_usuario} {current_user.apellidos_usuario}".strip(),
+                "ELIMINACION", "Vehículos", f"Vehículo eliminado en masa Placa: {vehicle.placa}"
+            )
+        except Exception as err:
+            db.rollback()
+            failed_items.append({"id": str(v_id), "placa": vehicle.placa, "reason": "Error en la base de datos."})
+
+    return {
+        "deleted_count": deleted_count,
+        "failed_count": len(failed_items),
+        "failed_items": failed_items,
+        "message": f"Se eliminaron {deleted_count} vehículos. {len(failed_items)} no pudieron ser eliminados."
+    }
+
+
+@vehicles_router.post("/{id_vehiculo}/images")
+async def upload_vehicle_images(
+    id_vehiculo: UUID,
+    files: List[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+    current_user = Depends(require_admin),
+):
+    from app.models import ImagenVehiculo as ImagenVehiculoModel
+
+    vehicle = VehicleService.get_by_id(id_vehiculo, db)
+    if not vehicle:
+        raise HTTPException(status_code=404, detail="Vehículo no encontrado")
+
+    upload_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads", "vehicles")
+    os.makedirs(upload_dir, exist_ok=True)
+
+    allowed_types = ["image/jpeg", "image/png", "image/webp", "image/jpg"]
+    max_size = 5 * 1024 * 1024
+
+    uploaded_images = []
+
+    for file in files:
+        if file.content_type not in allowed_types:
+            raise HTTPException(status_code=400, detail=f"Formato no permitido para {file.filename}.")
+
+        contents = await file.read()
+        if len(contents) > max_size:
+            raise HTTPException(status_code=400, detail=f"El archivo {file.filename} excede el límite de 5MB.")
+
+        file_ext = os.path.splitext(file.filename)[1].lower() or ".jpg"
+        unique_filename = f"{id_vehiculo}_{uuid.uuid4().hex[:8]}{file_ext}"
+        file_path = os.path.join(upload_dir, unique_filename)
+
+        with open(file_path, "wb") as f:
+            f.write(contents)
+
+        url_path = f"/uploads/vehicles/{unique_filename}"
+
+        img_record = ImagenVehiculoModel(
+            id_imagen=uuid.uuid4(),
+            id_vehiculo=id_vehiculo,
+            url_imagen=url_path,
+            nombre_archivo=file.filename,
+            es_principal=len(vehicle.imagenes) == 0 and len(uploaded_images) == 0,
+        )
+        db.add(img_record)
+        uploaded_images.append(img_record)
+
+    db.commit()
+    for img in uploaded_images:
+        db.refresh(img)
+
+    return uploaded_images
+
+
+@vehicles_router.delete("/images/{id_imagen}")
+def delete_vehicle_image(
+    id_imagen: UUID,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_admin),
+):
+    from app.models import ImagenVehiculo as ImagenVehiculoModel
+
+    img = db.query(ImagenVehiculoModel).filter(ImagenVehiculoModel.id_imagen == id_imagen).first()
+    if not img:
+        raise HTTPException(status_code=404, detail="Imagen no encontrada")
+
+    if img.url_imagen and img.url_imagen.startswith("/uploads/"):
+        file_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), img.url_imagen.lstrip("/"))
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception:
+                pass
+
+    db.delete(img)
+    db.commit()
+    return {"message": "Imagen eliminada correctamente"}
+
+
+@vehicles_router.get("/{id_vehiculo}", response_model=Vehiculo)
+def get_vehicle_by_id(
+    id_vehiculo: UUID,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
+):
+    vehicle = VehicleService.get_by_id(id_vehiculo, db)
+    if not vehicle:
+        raise HTTPException(status_code=404, detail="Vehículo no encontrado")
+    return vehicle
 
 @vehicles_router.delete("/{id_vehiculo}")
 def delete_vehicle(
@@ -300,6 +451,66 @@ def update_driver(
     }
     return Conductor(**result)
 
+
+
+@drivers_router.post("/batch-delete")
+def batch_delete_drivers(
+    ids: List[UUID],
+    db: Session = Depends(get_db),
+    current_user = Depends(require_admin),
+):
+    from app.models import AsignacionConductor, Viaje, Mantenimiento, Novedad
+
+    deleted_count = 0
+    failed_items = []
+
+    for d_id in ids:
+        driver = DriverService.get_by_id(d_id, db)
+        if not driver:
+            failed_items.append({"id": str(d_id), "reason": "Conductor no encontrado"})
+            continue
+
+        full_name = f"{driver.nombre_conductor} {driver.apellido_conductor}"
+
+        asig = db.query(AsignacionConductor).filter(AsignacionConductor.id_conductor == d_id).first()
+        if asig:
+            failed_items.append({"id": str(d_id), "nombre": full_name, "reason": "Tiene rutas o asignaciones activas/históricas."})
+            continue
+
+        viaje = db.query(Viaje).filter(Viaje.id_conductor == d_id).first()
+        if viaje:
+            failed_items.append({"id": str(d_id), "nombre": full_name, "reason": "Tiene viajes registrados."})
+            continue
+
+        maint = db.query(Mantenimiento).filter(Mantenimiento.id_conductor == d_id).first()
+        if maint:
+            failed_items.append({"id": str(d_id), "nombre": full_name, "reason": "Tiene mantenimientos asociados."})
+            continue
+
+        nov = db.query(Novedad).filter(Novedad.id_conductor == d_id).first()
+        if nov:
+            failed_items.append({"id": str(d_id), "nombre": full_name, "reason": "Tiene novedades reportadas."})
+            continue
+
+        try:
+            db.delete(driver)
+            db.commit()
+            deleted_count += 1
+            AuditService.record_activity(
+                db, current_user.id_usuario,
+                f"{current_user.nombres_usuario} {current_user.apellidos_usuario}".strip(),
+                "ELIMINACION", "Conductores", f"Conductor eliminado en masa: {full_name}"
+            )
+        except Exception as err:
+            db.rollback()
+            failed_items.append({"id": str(d_id), "nombre": full_name, "reason": "Error en la base de datos."})
+
+    return {
+        "deleted_count": deleted_count,
+        "failed_count": len(failed_items),
+        "failed_items": failed_items,
+        "message": f"Se eliminaron {deleted_count} conductores. {len(failed_items)} no pudieron ser eliminados."
+    }
 
 @drivers_router.delete("/{id_conductor}")
 def delete_driver(

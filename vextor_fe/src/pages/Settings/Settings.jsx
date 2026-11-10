@@ -261,6 +261,9 @@ const Settings = () => {
       nombres_usuario: '',
       apellidos_usuario: '',
       correo_usuario: '',
+      telefono_usuario: '',
+      tipo_documento: 'CEDULA_CIUDADANIA',
+      cedula_usuario: '',
       contrasenia_usuario: '',
       id_rol: defaultRoleId,
       estado_usuario: 'ACTIVO'
@@ -270,7 +273,18 @@ const Settings = () => {
 
   const handleOpenEditUser = (u) => {
     setIsEditingUser(true);
-    setUserForm(u);
+    setUserForm({
+      id_usuario: u.id_usuario || '',
+      nombres_usuario: u.nombres_usuario || '',
+      apellidos_usuario: u.apellidos_usuario || '',
+      correo_usuario: u.correo_usuario || '',
+      telefono_usuario: u.telefono_usuario || '',
+      tipo_documento: u.tipo_documento || 'CEDULA_CIUDADANIA',
+      cedula_usuario: u.cedula_usuario || '',
+      contrasenia_usuario: '',
+      id_rol: u.id_rol || (rolesList.length > 0 ? rolesList[0].id_rol : ''),
+      estado_usuario: u.estado_usuario || 'ACTIVO'
+    });
     setUserModalOpen(true);
   };
 
@@ -282,6 +296,9 @@ const Settings = () => {
           nombres_usuario: userForm.nombres_usuario,
           apellidos_usuario: userForm.apellidos_usuario,
           correo_usuario: userForm.correo_usuario,
+          telefono_usuario: userForm.telefono_usuario,
+          tipo_documento: userForm.tipo_documento,
+          cedula_usuario: userForm.cedula_usuario,
           id_rol: userForm.id_rol,
           estado_usuario: userForm.estado_usuario
         });
@@ -291,6 +308,9 @@ const Settings = () => {
           nombres_usuario: userForm.nombres_usuario,
           apellidos_usuario: userForm.apellidos_usuario,
           correo_usuario: userForm.correo_usuario,
+          telefono_usuario: userForm.telefono_usuario,
+          tipo_documento: userForm.tipo_documento,
+          cedula_usuario: userForm.cedula_usuario,
           contrasenia_usuario: userForm.contrasenia_usuario,
           id_rol: userForm.id_rol,
           estado_usuario: userForm.estado_usuario

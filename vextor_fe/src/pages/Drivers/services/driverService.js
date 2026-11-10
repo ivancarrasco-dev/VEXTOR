@@ -43,5 +43,15 @@ export const driverService = {
       const message = error.response?.data?.detail || 'Error al eliminar el conductor.';
       throw new Error(message);
     }
+  },
+
+  async batchDeleteDrivers(ids) {
+    try {
+      const response = await axios.post(`${API_URL}/batch-delete`, ids);
+      return response.data;
+    } catch (error) {
+      const message = error.response?.data?.detail || 'Error en la eliminación masiva de conductores.';
+      throw new Error(message);
+    }
   }
 };

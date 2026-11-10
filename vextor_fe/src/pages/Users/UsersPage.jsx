@@ -25,6 +25,9 @@ export const UsersPage = () => {
     nombres_usuario: '',
     apellidos_usuario: '',
     correo_usuario: '',
+    telefono_usuario: '',
+    tipo_documento: 'CEDULA_CIUDADANIA',
+    cedula_usuario: '',
     contrasenia_usuario: '',
     id_rol: '',
     estado_usuario: 'ACTIVO'
@@ -67,6 +70,9 @@ export const UsersPage = () => {
       nombres_usuario: '',
       apellidos_usuario: '',
       correo_usuario: '',
+      telefono_usuario: '',
+      tipo_documento: 'CEDULA_CIUDADANIA',
+      cedula_usuario: '',
       contrasenia_usuario: '',
       id_rol: defaultRoleId,
       estado_usuario: 'ACTIVO'
@@ -81,6 +87,9 @@ export const UsersPage = () => {
       nombres_usuario: user.nombres_usuario || '',
       apellidos_usuario: user.apellidos_usuario || '',
       correo_usuario: user.correo_usuario || '',
+      telefono_usuario: user.telefono_usuario || '',
+      tipo_documento: user.tipo_documento || 'CEDULA_CIUDADANIA',
+      cedula_usuario: user.cedula_usuario || '',
       contrasenia_usuario: '',
       id_rol: user.id_rol || (rolesList.length > 0 ? rolesList[0].id_rol : ''),
       estado_usuario: user.estado_usuario || 'ACTIVO'
@@ -141,6 +150,9 @@ export const UsersPage = () => {
           nombres_usuario: userForm.nombres_usuario,
           apellidos_usuario: userForm.apellidos_usuario,
           correo_usuario: userForm.correo_usuario,
+          telefono_usuario: userForm.telefono_usuario,
+          tipo_documento: userForm.tipo_documento,
+          cedula_usuario: userForm.cedula_usuario,
           id_rol: userForm.id_rol,
           estado_usuario: userForm.estado_usuario
         };
@@ -151,6 +163,9 @@ export const UsersPage = () => {
           nombres_usuario: userForm.nombres_usuario,
           apellidos_usuario: userForm.apellidos_usuario,
           correo_usuario: userForm.correo_usuario,
+          telefono_usuario: userForm.telefono_usuario,
+          tipo_documento: userForm.tipo_documento,
+          cedula_usuario: userForm.cedula_usuario,
           contrasenia_usuario: userForm.contrasenia_usuario || 'Vextor2026!',
           id_rol: userForm.id_rol,
           estado_usuario: userForm.estado_usuario || 'ACTIVO'
@@ -350,6 +365,29 @@ export const UsersPage = () => {
                   required
                   value={userForm.correo_usuario}
                   onChange={(e) => setUserForm({ ...userForm, correo_usuario: e.target.value })}
+                />
+                <Input
+                  label="Número de Teléfono"
+                  value={userForm.telefono_usuario}
+                  onChange={(e) => setUserForm({ ...userForm, telefono_usuario: e.target.value })}
+                />
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-v-gray font-mono">Tipo de Documento</label>
+                  <Select
+                    value={userForm.tipo_documento}
+                    onChange={(e) => setUserForm({ ...userForm, tipo_documento: e.target.value })}
+                  >
+                    <option value="CEDULA_CIUDADANIA">Cédula de Ciudadanía</option>
+                    <option value="CEDULA_EXTRANJERIA">Cédula de Extranjería</option>
+                    <option value="PASAPORTE">Pasaporte</option>
+                    <option value="PERMISO_ESPECIAL_PERMANENCIA">Permiso Especial de Permanencia</option>
+                    <option value="NIT">NIT</option>
+                  </Select>
+                </div>
+                <Input
+                  label="Número de Documento"
+                  value={userForm.cedula_usuario}
+                  onChange={(e) => setUserForm({ ...userForm, cedula_usuario: e.target.value })}
                 />
                 {!isEditing && (
                   <Input

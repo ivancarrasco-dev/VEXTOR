@@ -48,10 +48,8 @@ const Login = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.email) {
-      newErrors.email = 'El correo es obligatorio';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Correo inválido';
+    if (!formData.email || !formData.email.trim()) {
+      newErrors.email = 'El correo, documento o teléfono es obligatorio';
     }
     if (!formData.password) {
       newErrors.password = 'La contraseña es obligatoria';
@@ -135,10 +133,10 @@ const Login = () => {
               transition={{ delay: 0.1 }}
             >
               <Input
-                label="Correo electrónico"
+                label="Correo, documento o teléfono"
                 name="email"
-                type="email"
-                placeholder="juan@empresa.com"
+                type="text"
+                placeholder="juan@empresa.com / 1020304050 / 3001234567"
                 icon={Mail}
                 value={formData.email}
                 onChange={handleChange}

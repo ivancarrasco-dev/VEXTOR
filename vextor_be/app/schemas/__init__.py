@@ -19,6 +19,9 @@ class RegisterRequest(BaseModel):
     email: str
     password: str
     fullName: str
+    phone: Optional[str] = None
+    documentType: Optional[str] = None
+    documentNumber: Optional[str] = None
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -57,6 +60,8 @@ class UsuarioBase(BaseModel):
     apellidos_usuario: str = Field(..., max_length=100)
     correo_usuario: EmailStr
     telefono_usuario: Optional[str] = Field(None, max_length=20)
+    cedula_usuario: Optional[str] = Field(None, max_length=50)
+    tipo_documento: Optional[str] = Field(None, max_length=50)
     estado_usuario: str = Field("ACTIVO", max_length=20)
     foto_perfil: Optional[str] = None
     id_empresa: Optional[UUID] = None
@@ -75,6 +80,8 @@ class UsuarioUpdate(BaseModel):
     apellidos_usuario: Optional[str] = Field(None, max_length=100)
     correo_usuario: Optional[EmailStr] = None
     telefono_usuario: Optional[str] = Field(None, max_length=20)
+    cedula_usuario: Optional[str] = Field(None, max_length=50)
+    tipo_documento: Optional[str] = Field(None, max_length=50)
     estado_usuario: Optional[str] = Field(None, max_length=20)
     foto_perfil: Optional[str] = None
     requiere_cambio_clave: Optional[bool] = None
@@ -165,6 +172,42 @@ class Modelo(ModeloBase):
     id_modelo: UUID
 
 
+# ========== IMAGEN VEHICULO SCHEMAS ==========
+
+class ImagenVehiculoBase(BaseModel):
+    url_imagen: str
+    nombre_archivo: Optional[str] = None
+    es_principal: bool = False
+
+
+class ImagenVehiculoCreate(ImagenVehiculoBase):
+    id_vehiculo: UUID
+
+
+class ImagenVehiculo(ImagenVehiculoBase):
+    model_config = ConfigDict(from_attributes=True)
+    id_imagen: UUID
+    id_vehiculo: UUID
+    fecha_subida: datetime
+
+
+# ========== DOCUMENTO VEHICULO SCHEMAS ==========
+
+class DocumentoVehiculoBase(BaseModel):
+    id_vehiculo: UUID
+    tipo_documento: str = Field(..., max_length=50)
+    numero_documento: str = Field(..., max_length=50)
+    fecha_vencimiento: date
+
+
+class DocumentoVehiculoCreate(DocumentoVehiculoBase):
+    pass
+
+
+class DocumentoVehiculo(DocumentoVehiculoBase):
+    model_config = ConfigDict(from_attributes=True)
+    id_documento: UUID
+
 # ========== VEHICULO SCHEMAS ==========
 
 class VehiculoBase(BaseModel):
@@ -206,24 +249,8 @@ class VehiculoUpdate(BaseModel):
 class Vehiculo(VehiculoBase):
     model_config = ConfigDict(from_attributes=True)
     id_vehiculo: UUID
-
-
-# ========== DOCUMENTO VEHICULO SCHEMAS ==========
-
-class DocumentoVehiculoBase(BaseModel):
-    id_vehiculo: UUID
-    tipo_documento: str = Field(..., max_length=50)
-    numero_documento: str = Field(..., max_length=50)
-    fecha_vencimiento: date
-
-
-class DocumentoVehiculoCreate(DocumentoVehiculoBase):
-    pass
-
-
-class DocumentoVehiculo(DocumentoVehiculoBase):
-    model_config = ConfigDict(from_attributes=True)
-    id_documento: UUID
+    imagenes: List[ImagenVehiculo] = []
+    documentos: List[DocumentoVehiculo] = []
 
 
 # ========== RUTA DEFINICION Y VIAJE SCHEMAS ==========

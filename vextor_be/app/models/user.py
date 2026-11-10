@@ -25,6 +25,8 @@ class Usuario(Base):
     correo_usuario = Column(String(150), nullable=False, unique=True)
     contrasenia_usuario = Column(String(255), nullable=False)
     telefono_usuario = Column(String(20), nullable=True)
+    cedula_usuario = Column(String(50), nullable=True, unique=True)
+    tipo_documento = Column(String(50), nullable=True)
     estado_usuario = Column(String(20), nullable=False, default="ACTIVO")
     fecha_creacion = Column(DateTime, nullable=False, server_default=func.now())
     token_recuperacion = Column(String(255), nullable=True)
@@ -38,6 +40,7 @@ class Usuario(Base):
 
     __table_args__ = (
         CheckConstraint("estado_usuario IN ('ACTIVO', 'INACTIVO')", name="chk_estado_usuario"),
+        CheckConstraint("tipo_documento IS NULL OR tipo_documento IN ('CEDULA_CIUDADANIA', 'CEDULA_EXTRANJERIA', 'PASAPORTE', 'PERMISO_ESPECIAL_PERMANENCIA', 'NIT')", name="chk_usuario_tipo_documento"),
     )
 
 

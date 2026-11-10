@@ -5,6 +5,8 @@ import {
   User,
   Mail,
   Lock,
+  Phone,
+  CreditCard,
   Eye,
   EyeOff,
   ArrowRight,
@@ -15,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { Select } from '../../components/ui/Select';
 import { Logo } from '../../components/ui/Logo';
 import { HeroMapPanel } from '../../components/ui/HeroMapPanel';
 import { useAuth } from '../../context/AuthContext';
@@ -42,6 +45,9 @@ const Register = () => {
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
+    phone: '',
+    documentType: 'CEDULA_CIUDADANIA',
+    documentNumber: '',
     password: '',
     confirmPassword: ''
   });
@@ -85,6 +91,9 @@ const Register = () => {
       const user = await register({
         fullName: formData.fullName,
         email: formData.email,
+        phone: formData.phone,
+        documentType: formData.documentType,
+        documentNumber: formData.documentNumber,
         password: formData.password
       });
       const roleLower = (user?.role || '').toLowerCase();
@@ -173,6 +182,61 @@ const Register = () => {
                 error={errors.email}
               />
             </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25 }}
+            >
+              <Input
+                label="Teléfono de contacto"
+                name="phone"
+                type="tel"
+                placeholder="3001234567"
+                icon={Phone}
+                value={formData.phone}
+                onChange={handleChange}
+                error={errors.phone}
+              />
+            </motion.div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.28 }}
+                className="space-y-1.5"
+              >
+                <label className="text-xs font-bold uppercase tracking-wider text-v-gray font-mono">Tipo documento</label>
+                <Select
+                  name="documentType"
+                  value={formData.documentType}
+                  onChange={handleChange}
+                >
+                  <option value="CEDULA_CIUDADANIA">Cédula de Ciudadanía</option>
+                  <option value="CEDULA_EXTRANJERIA">Cédula de Extranjería</option>
+                  <option value="PASAPORTE">Pasaporte</option>
+                  <option value="PERMISO_ESPECIAL_PERMANENCIA">PEP</option>
+                  <option value="NIT">NIT</option>
+                </Select>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.29 }}
+              >
+                <Input
+                  label="Número documento"
+                  name="documentNumber"
+                  placeholder="1020304050"
+                  icon={CreditCard}
+                  value={formData.documentNumber}
+                  onChange={handleChange}
+                  error={errors.documentNumber}
+                />
+              </motion.div>
+            </div>
 
             <motion.div
               initial={{ opacity: 0, y: 10 }}

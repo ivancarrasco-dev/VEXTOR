@@ -20,7 +20,9 @@ import {
   Navigation,
   MapPin,
   Truck,
-  Radio
+  Radio,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Select } from '../../components/ui/Select';
@@ -61,6 +63,11 @@ const Drivers = () => {
   const [isTrackingOpen, setIsTrackingOpen] = useState(false);
   const [currentDriver, setCurrentDriver] = useState(null);
   const [driverToDelete, setDriverToDelete] = useState(null);
+  // Batch Selection state
+  const [selectedDriverIds, setSelectedDriverIds] = useState([]);
+  const [isBatchDeleteOpen, setIsBatchDeleteOpen] = useState(false);
+  const [batchDeleteResult, setBatchDeleteResult] = useState(null);
+
   const [trackingDriver, setTrackingDriver] = useState(null);
   const [trackingData, setTrackingData] = useState(null);
   const [isTrackingLoading, setIsTrackingLoading] = useState(false);
@@ -268,7 +275,39 @@ const Drivers = () => {
 
   useEffect(() => {
     setCurrentPage(1);
+    setSelectedDriverIds([]);
   }, [search, statusFilter]);
+
+  const handleSelectAllVisible = () => {
+    const visibleIds = currentItems.map(d => d.id_conductor);
+    const allSelected = visibleIds.every(id => selectedDriverIds.includes(id));
+    if (allSelected) {
+      setSelectedDriverIds(prev => prev.filter(id => !visibleIds.includes(id)));
+    } else {
+      setSelectedDriverIds(prev => Array.from(new Set([...prev, ...visibleIds])));
+    }
+  };
+
+  const handleToggleSelectDriver = (id) => {
+    setSelectedDriverIds(prev =>
+      prev.includes(id) ? prev.filter(dId => dId !== id) : [...prev, id]
+    );
+  };
+
+  const handleConfirmBatchDelete = async () => {
+    setIsSubmitLoading(true);
+    setApiError('');
+    try {
+      const res = await driverService.batchDeleteDrivers(selectedDriverIds);
+      setBatchDeleteResult(res);
+      setSelectedDriverIds([]);
+      loadDrivers();
+    } catch (err) {
+      setApiError(err.message || 'Error en la eliminación masiva.');
+    } finally {
+      setIsSubmitLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -282,13 +321,24 @@ const Drivers = () => {
           </Badge>
         }
         actions={
-          <Button
-            variant="primary"
-            onClick={handleOpenCreate}
-            className="flex items-center gap-2 w-full sm:w-auto cursor-pointer"
-          >
-            <Plus size={18} /> {t('drivers.addBtn', 'Registrar Conductor')}
-          </Button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {selectedDriverIds.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => { setBatchDeleteResult(null); setIsBatchDeleteOpen(true); }}
+                className="bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white border-red-500/20 cursor-pointer flex items-center gap-2"
+              >
+                <Trash2 size={16} /> Eliminar ({selectedDriverIds.length})
+              </Button>
+            )}
+            <Button
+              variant="primary"
+              onClick={handleOpenCreate}
+              className="flex items-center gap-2 cursor-pointer shrink-0"
+            >
+              <Plus size={18} /> {t('drivers.addBtn', 'Registrar Conductor')}
+            </Button>
+          </div>
         }
       />
 
@@ -361,6 +411,20 @@ const Drivers = () => {
             <table className="w-full text-left border-collapse min-w-[650px]">
               <thead>
                 <tr className="border-b border-v-dark-border bg-v-dark/40 text-xs font-bold uppercase text-v-gray font-mono tracking-wider">
+                  <th className="p-4 w-10">
+                    <button
+                      type="button"
+                      onClick={handleSelectAllVisible}
+                      className="text-v-gray hover:text-v-white cursor-pointer"
+                      title="Seleccionar / deseleccionar todos los visibles"
+                    >
+                      {currentItems.length > 0 && currentItems.every(d => selectedDriverIds.includes(d.id_conductor)) ? (
+                        <CheckSquare size={18} className="text-primary" />
+                      ) : (
+                        <Square size={18} />
+                      )}
+                    </button>
+                  </th>
                   <th className="p-4">Cédula</th>
                   <th className="p-4">Conductor</th>
                   <th className="p-4">Contacto</th>
@@ -373,8 +437,22 @@ const Drivers = () => {
               <tbody className="divide-y divide-v-dark-border">
                 {currentItems.map((driver) => {
                   const statusInfo = DRIVER_STATUSES.find(st => st.value === driver.estado_conductor) || { label: driver.estado_conductor, variant: 'neutral' };
+                  const isSelected = selectedDriverIds.includes(driver.id_conductor);
                   return (
-                    <tr key={driver.id_conductor} className="hover:bg-v-dark/30 transition-colors group">
+                    <tr key={driver.id_conductor} className={cn("hover:bg-v-dark/30 transition-colors group", isSelected && "bg-primary/5")}>
+                      <td className="p-4">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleSelectDriver(driver.id_conductor)}
+                          className="text-v-gray hover:text-v-white cursor-pointer"
+                        >
+                          {isSelected ? (
+                            <CheckSquare size={18} className="text-primary" />
+                          ) : (
+                            <Square size={18} />
+                          )}
+                        </button>
+                      </td>
                       <td className="p-4">
                         <span className="font-mono text-xs font-extrabold px-3 py-1.5 bg-v-dark border border-v-dark-border rounded-lg text-primary shadow-sm">
                           {driver.cedula_conductor}
@@ -758,6 +836,85 @@ const Drivers = () => {
                 <Button variant="ghost" onClick={() => setIsTrackingOpen(false)} className="cursor-pointer">
                   Cerrar
                 </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* BATCH DELETE CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {isBatchDeleteOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsBatchDeleteOpen(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-lg bg-v-dark-soft border border-v-dark-border rounded-2xl shadow-2xl p-6 z-10 space-y-5 text-left"
+            >
+              <div className="flex gap-4">
+                <div className="h-12 w-12 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 flex items-center justify-center shrink-0">
+                  <AlertTriangle size={24} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-v-white">¿Eliminar conductores seleccionados?</h3>
+                  <p className="text-xs text-v-gray mt-1 leading-relaxed">
+                    Está a punto de procesar la eliminación masiva de <strong className="text-v-white font-bold">{selectedDriverIds.length}</strong> conductor(es). Los operadores asignados a rutas o con historial en el sistema no serán eliminados.
+                  </p>
+                </div>
+              </div>
+
+              {batchDeleteResult && (
+                <div className="p-4 bg-v-dark border border-v-dark-border rounded-xl space-y-2 text-xs">
+                  <p className="font-bold text-v-white">{batchDeleteResult.message}</p>
+                  {batchDeleteResult.failed_items && batchDeleteResult.failed_items.length > 0 && (
+                    <div className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar pt-2 border-t border-v-dark-border">
+                      <span className="text-red-400 font-bold block">No eliminados ({batchDeleteResult.failed_items.length}):</span>
+                      {batchDeleteResult.failed_items.map((item, idx) => (
+                        <div key={idx} className="text-v-gray flex justify-between gap-2">
+                          <span className="font-bold text-v-white">{item.nombre || item.id}</span>
+                          <span className="text-red-300">{item.reason}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {apiError && (
+                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs font-semibold flex items-start gap-2">
+                  <AlertTriangle className="shrink-0 mt-0.5" size={14} />
+                  <span>{apiError}</span>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-2">
+                <Button
+                  variant="ghost"
+                  onClick={() => setIsBatchDeleteOpen(false)}
+                  disabled={isSubmitLoading}
+                  className="cursor-pointer"
+                >
+                  {batchDeleteResult ? 'Cerrar' : 'Cancelar'}
+                </Button>
+                {!batchDeleteResult && (
+                  <Button
+                    variant="outline"
+                    onClick={handleConfirmBatchDelete}
+                    isLoading={isSubmitLoading}
+                    className="bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white border-red-500/20 cursor-pointer"
+                  >
+                    Confirmar Eliminación Masiva
+                  </Button>
+                )}
               </div>
             </motion.div>
           </div>

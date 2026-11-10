@@ -12,14 +12,20 @@ import {
   Truck,
   ChevronLeft,
   ChevronRight,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Upload,
+  Eye,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Select } from '../../components/ui/Select';
 import { Badge } from '../../components/ui/Badge';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { BusDetailModal } from '../../components/modals/BusDetailModal';
 import { vehicleService } from './services/vehicleService';
+import { API_BASE_URL } from '../../config/api';
 import { cn } from '../../utils/cn';
 import { useTranslation } from 'react-i18next';
 
@@ -49,6 +55,18 @@ const Vehicles = () => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [currentVehicle, setCurrentVehicle] = useState(null);
   const [vehicleToDelete, setVehicleToDelete] = useState(null);
+  // Floating detail modal state
+  const [selectedBusForDetail, setSelectedBusForDetail] = useState(null);
+
+  // Multi-image selection state for create/edit
+  const [selectedImageFiles, setSelectedImageFiles] = useState([]);
+  const [existingImages, setExistingImages] = useState([]);
+
+  // Batch Selection state
+  const [selectedVehicleIds, setSelectedVehicleIds] = useState([]);
+  const [isBatchDeleteOpen, setIsBatchDeleteOpen] = useState(false);
+  const [batchDeleteResult, setBatchDeleteResult] = useState(null);
+
 
   // Form state
   const [formData, setFormData] = useState({
@@ -153,6 +171,8 @@ const Vehicles = () => {
 
   const handleOpenCreate = () => {
     setCurrentVehicle(null);
+    setSelectedImageFiles([]);
+    setExistingImages([]);
     setFormData({
       placa: '',
       marca: '',
@@ -173,6 +193,8 @@ const Vehicles = () => {
 
   const handleOpenEdit = (vehicle) => {
     setCurrentVehicle(vehicle);
+    setSelectedImageFiles([]);
+    setExistingImages(vehicle.imagenes || []);
     setFormData({
       placa: vehicle.placa,
       marca: vehicle.marca,
@@ -191,6 +213,49 @@ const Vehicles = () => {
     setIsFormOpen(true);
   };
 
+  const handleImageFileSelect = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const validFiles = [];
+    let errStr = '';
+
+    files.forEach(file => {
+      if (!['image/jpeg', 'image/png', 'image/webp', 'image/jpg'].includes(file.type)) {
+        errStr = `El archivo ${file.filename || file.name} no es una imagen válida (JPG, PNG, WEBP).`;
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        errStr = `El archivo ${file.name} excede el tamaño máximo de 5MB.`;
+        return;
+      }
+      validFiles.push(file);
+    });
+
+    if (errStr) {
+      setApiError(errStr);
+    } else {
+      setApiError('');
+    }
+
+    if (validFiles.length > 0) {
+      setSelectedImageFiles(prev => [...prev, ...validFiles]);
+    }
+  };
+
+  const handleRemoveSelectedFile = (index) => {
+    setSelectedImageFiles(prev => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handleDeleteExistingImage = async (imgId) => {
+    try {
+      await vehicleService.deleteVehicleImage(imgId);
+      setExistingImages(prev => prev.filter(img => img.id_imagen !== imgId));
+    } catch (err) {
+      setApiError(err.message || 'No se pudo eliminar la imagen.');
+    }
+  };
+
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     const errors = validateForm();
@@ -203,11 +268,19 @@ const Vehicles = () => {
     setApiError('');
 
     try {
+      let targetVehicleId = currentVehicle?.id_vehiculo;
+
       if (currentVehicle) {
-        await vehicleService.updateVehicle(currentVehicle.id_vehiculo, formData);
+        await vehicleService.updateVehicle(targetVehicleId, formData);
       } else {
-        await vehicleService.createVehicle(formData);
+        const created = await vehicleService.createVehicle(formData);
+        targetVehicleId = created.id_vehiculo;
       }
+
+      if (selectedImageFiles.length > 0 && targetVehicleId) {
+        await vehicleService.uploadVehicleImages(targetVehicleId, selectedImageFiles);
+      }
+
       setIsFormOpen(false);
       loadVehicles();
     } catch (err) {
@@ -267,7 +340,39 @@ const Vehicles = () => {
 
   useEffect(() => {
     setCurrentPage(1);
+    setSelectedVehicleIds([]);
   }, [search, statusFilter, typeFilter]);
+
+  const handleSelectAllVisible = () => {
+    const visibleIds = currentItems.map(v => v.id_vehiculo);
+    const allSelected = visibleIds.every(id => selectedVehicleIds.includes(id));
+    if (allSelected) {
+      setSelectedVehicleIds(prev => prev.filter(id => !visibleIds.includes(id)));
+    } else {
+      setSelectedVehicleIds(prev => Array.from(new Set([...prev, ...visibleIds])));
+    }
+  };
+
+  const handleToggleSelectVehicle = (id) => {
+    setSelectedVehicleIds(prev =>
+      prev.includes(id) ? prev.filter(vId => vId !== id) : [...prev, id]
+    );
+  };
+
+  const handleConfirmBatchDelete = async () => {
+    setIsSubmitLoading(true);
+    setApiError('');
+    try {
+      const res = await vehicleService.batchDeleteVehicles(selectedVehicleIds);
+      setBatchDeleteResult(res);
+      setSelectedVehicleIds([]);
+      loadVehicles();
+    } catch (err) {
+      setApiError(err.message || 'Error en la eliminación masiva.');
+    } finally {
+      setIsSubmitLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -281,13 +386,24 @@ const Vehicles = () => {
           </Badge>
         }
         actions={
-          <Button
-            variant="primary"
-            onClick={handleOpenCreate}
-            className="flex items-center gap-2 w-full sm:w-auto cursor-pointer"
-          >
-            <Plus size={18} /> {t('vehicles.addBtn', 'Registrar Vehículo')}
-          </Button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {selectedVehicleIds.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => { setBatchDeleteResult(null); setIsBatchDeleteOpen(true); }}
+                className="bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white border-red-500/20 cursor-pointer flex items-center gap-2"
+              >
+                <Trash2 size={16} /> Eliminar ({selectedVehicleIds.length})
+              </Button>
+            )}
+            <Button
+              variant="primary"
+              onClick={handleOpenCreate}
+              className="flex items-center gap-2 cursor-pointer shrink-0"
+            >
+              <Plus size={18} /> {t('vehicles.addBtn', 'Registrar Vehículo')}
+            </Button>
+          </div>
         }
       />
 
@@ -371,6 +487,20 @@ const Vehicles = () => {
             <table className="w-full text-left border-collapse min-w-[700px]">
               <thead>
                 <tr className="border-b border-v-dark-border bg-v-dark/40 text-xs font-bold uppercase text-v-gray font-mono tracking-wider">
+                  <th className="p-4 w-10">
+                    <button
+                      type="button"
+                      onClick={handleSelectAllVisible}
+                      className="text-v-gray hover:text-v-white cursor-pointer"
+                      title="Seleccionar / deseleccionar todos los visibles"
+                    >
+                      {currentItems.length > 0 && currentItems.every(v => selectedVehicleIds.includes(v.id_vehiculo)) ? (
+                        <CheckSquare size={18} className="text-primary" />
+                      ) : (
+                        <Square size={18} />
+                      )}
+                    </button>
+                  </th>
                   <th className="p-4">Placa</th>
                   <th className="p-4">Vehículo</th>
                   <th className="p-4">Año / Color</th>
@@ -383,10 +513,28 @@ const Vehicles = () => {
               <tbody className="divide-y divide-v-dark-border">
                 {currentItems.map((vehicle) => {
                   const statusInfo = VEHICLE_STATUSES.find(st => st.value === vehicle.estado_vehiculo) || { label: vehicle.estado_vehiculo, variant: 'neutral' };
+                  const isSelected = selectedVehicleIds.includes(vehicle.id_vehiculo);
                   return (
-                    <tr key={vehicle.id_vehiculo} className="hover:bg-v-dark/30 transition-colors group">
+                    <tr key={vehicle.id_vehiculo} className={cn("hover:bg-v-dark/30 transition-colors group", isSelected && "bg-primary/5")}>
                       <td className="p-4">
-                        <span className="font-mono text-xs font-extrabold px-3 py-1.5 bg-v-dark border border-v-dark-border rounded-lg text-primary shadow-sm">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleSelectVehicle(vehicle.id_vehiculo)}
+                          className="text-v-gray hover:text-v-white cursor-pointer"
+                        >
+                          {isSelected ? (
+                            <CheckSquare size={18} className="text-primary" />
+                          ) : (
+                            <Square size={18} />
+                          )}
+                        </button>
+                      </td>
+                      <td className="p-4">
+                        <span
+                          onClick={() => setSelectedBusForDetail(vehicle)}
+                          className="font-mono text-xs font-extrabold px-3 py-1.5 bg-v-dark border border-v-dark-border rounded-lg text-primary shadow-sm hover:border-primary cursor-pointer inline-block"
+                          title="Haz clic para ver detalles del vehículo"
+                        >
                           {vehicle.placa}
                         </span>
                       </td>
@@ -413,6 +561,13 @@ const Vehicles = () => {
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => setSelectedBusForDetail(vehicle)}
+                            className="p-2 hover:bg-v-dark border border-transparent hover:border-v-dark-border rounded-xl text-v-gray hover:text-v-white transition-all cursor-pointer"
+                            title="Ver Ficha Completa"
+                          >
+                            <Eye size={16} />
+                          </button>
                           <button
                             onClick={() => handleOpenEdit(vehicle)}
                             className="p-2 hover:bg-v-dark border border-transparent hover:border-v-dark-border rounded-xl text-v-gray hover:text-v-white transition-all cursor-pointer"
@@ -655,6 +810,69 @@ const Vehicles = () => {
                   </div>
                 </div>
 
+                {/* Images Upload Section */}
+                <div className="space-y-3 pt-2 border-t border-v-dark-border">
+                  <label className="text-xs font-bold uppercase tracking-wider text-v-gray font-mono block">Fotografías del Vehículo</label>
+
+                  {/* File Dropzone */}
+                  <label className="border-2 border-dashed border-v-dark-border hover:border-primary/50 bg-v-dark/50 rounded-2xl p-4 flex flex-col items-center justify-center cursor-pointer transition-colors text-center">
+                    <Upload size={24} className="text-v-gray mb-1" />
+                    <span className="text-xs font-bold text-v-white">Haz clic o arrastra imágenes aquí</span>
+                    <span className="text-[10px] text-v-gray mt-0.5">Formatos permitidos: JPG, PNG, WEBP (Máx. 5MB cada una)</span>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/jpeg,image/png,image/webp,image/jpg"
+                      onChange={handleImageFileSelect}
+                      className="hidden"
+                    />
+                  </label>
+
+                  {/* Existing Saved Images Preview */}
+                  {existingImages.length > 0 && (
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] font-mono text-v-gray uppercase font-bold">Imágenes Guardadas</span>
+                      <div className="flex gap-2.5 overflow-x-auto pb-1 custom-scrollbar">
+                        {existingImages.map((img) => (
+                          <div key={img.id_imagen} className="relative h-16 w-20 rounded-xl overflow-hidden border border-v-dark-border group shrink-0">
+                            <img src={img.url_imagen.startsWith('http') ? img.url_imagen : `${API_BASE_URL}${img.url_imagen}`} alt="" className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteExistingImage(img.id_imagen)}
+                              className="absolute top-1 right-1 p-1 bg-red-500/80 hover:bg-red-600 text-white rounded-md transition-colors cursor-pointer"
+                              title="Eliminar imagen"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Selected Local Files Preview */}
+                  {selectedImageFiles.length > 0 && (
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] font-mono text-v-gray uppercase font-bold">Imágenes Seleccionadas a Subir</span>
+                      <div className="flex gap-2.5 overflow-x-auto pb-1 custom-scrollbar">
+                        {selectedImageFiles.map((file, index) => (
+                          <div key={index} className="relative h-16 w-20 rounded-xl overflow-hidden border border-primary/50 group shrink-0">
+                            <img src={URL.createObjectURL(file)} alt="" className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveSelectedFile(index)}
+                              className="absolute top-1 right-1 p-1 bg-red-500/80 hover:bg-red-600 text-white rounded-md transition-colors cursor-pointer"
+                              title="Quitar"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold uppercase tracking-wider text-v-gray font-mono">Estado Operativo</label>
@@ -702,6 +920,92 @@ const Vehicles = () => {
                   </Button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* FLOATING VEHICLE DETAIL MODAL */}
+      <BusDetailModal
+        isOpen={!!selectedBusForDetail}
+        onClose={() => setSelectedBusForDetail(null)}
+        bus={selectedBusForDetail}
+      />
+
+      {/* BATCH DELETE CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {isBatchDeleteOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsBatchDeleteOpen(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-lg bg-v-dark-soft border border-v-dark-border rounded-2xl shadow-2xl p-6 z-10 space-y-5 text-left"
+            >
+              <div className="flex gap-4">
+                <div className="h-12 w-12 rounded-2xl bg-red-500/10 text-red-500 border border-red-500/20 flex items-center justify-center shrink-0">
+                  <AlertTriangle size={24} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-v-white">¿Eliminar vehículos seleccionados?</h3>
+                  <p className="text-xs text-v-gray mt-1 leading-relaxed">
+                    Está a punto de procesar la eliminación masiva de <strong className="text-v-white font-bold">{selectedVehicleIds.length}</strong> vehículo(s). Las unidades asociadas a rutas, viajes o mantenimientos activos no serán eliminadas para resguardar la integridad del sistema.
+                  </p>
+                </div>
+              </div>
+
+              {batchDeleteResult && (
+                <div className="p-4 bg-v-dark border border-v-dark-border rounded-xl space-y-2 text-xs">
+                  <p className="font-bold text-v-white">{batchDeleteResult.message}</p>
+                  {batchDeleteResult.failed_items && batchDeleteResult.failed_items.length > 0 && (
+                    <div className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar pt-2 border-t border-v-dark-border">
+                      <span className="text-red-400 font-bold block">No eliminados ({batchDeleteResult.failed_items.length}):</span>
+                      {batchDeleteResult.failed_items.map((item, idx) => (
+                        <div key={idx} className="text-v-gray flex justify-between gap-2">
+                          <span className="font-mono text-v-white font-bold">{item.placa || item.id}</span>
+                          <span className="text-red-300">{item.reason}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {apiError && (
+                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs flex items-start gap-2 font-medium">
+                  <AlertTriangle className="shrink-0 mt-0.5" size={14} />
+                  <span>{apiError}</span>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-2">
+                <Button
+                  variant="ghost"
+                  onClick={() => setIsBatchDeleteOpen(false)}
+                  disabled={isSubmitLoading}
+                  className="cursor-pointer"
+                >
+                  {batchDeleteResult ? 'Cerrar' : 'Cancelar'}
+                </Button>
+                {!batchDeleteResult && (
+                  <Button
+                    variant="outline"
+                    onClick={handleConfirmBatchDelete}
+                    isLoading={isSubmitLoading}
+                    className="bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white border-red-500/20 cursor-pointer"
+                  >
+                    Confirmar Eliminación Masiva
+                  </Button>
+                )}
+              </div>
             </motion.div>
           </div>
         )}

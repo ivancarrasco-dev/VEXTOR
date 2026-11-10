@@ -45,7 +45,15 @@ def register(req: RegisterRequest, request: Request, db: Session = Depends(get_d
     auth_rate_limiter.check(request, "register")
     """Registra un nuevo usuario"""
     try:
-        user = AuthService.register_user(req.email, req.password, req.fullName, db)
+        user = AuthService.register_user(
+            email=req.email,
+            password=req.password,
+            full_name=req.fullName,
+            db=db,
+            phone=req.phone,
+            document_type=req.documentType,
+            document_number=req.documentNumber,
+        )
         
         # Auditoría defensiva
         try:

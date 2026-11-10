@@ -4,7 +4,9 @@ Inicializa FastAPI, configura middlewares y registra routers
 """
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket
+import os
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from app.core.config import settings
@@ -93,6 +95,10 @@ app = FastAPI(
 )
 
 # Configurar excepciones globales
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+
 setup_exception_handlers(app)
 
 # Configurar CORS

@@ -88,6 +88,9 @@ export const AuthProvider = ({ children }) => {
       await axios.post(`${API_BASE_URL}/api/auth/register`, {
         fullName: userData.fullName,
         email: userData.email,
+        phone: userData.phone,
+        documentType: userData.documentType,
+        documentNumber: userData.documentNumber,
         password: userData.password
       });
 

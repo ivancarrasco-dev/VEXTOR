@@ -37,10 +37,15 @@ class AuthService:
         password: str,
         full_name: str,
         db: Session,
+        phone: Optional[str] = None,
+        document_type: Optional[str] = None,
+        document_number: Optional[str] = None,
     ) -> Usuario:
         """Registra un nuevo usuario"""
         email_clean = email.strip().lower()
         full_name_clean = full_name.strip()
+        doc_num_clean = document_number.strip() if document_number and document_number.strip() else None
+        phone_clean = phone.strip() if phone and phone.strip() else ""
 
         if not full_name_clean or len(full_name_clean) < 2:
             raise HTTPException(
@@ -53,13 +58,37 @@ class AuthService:
         if not is_valid:
             raise HTTPException(status_code=400, detail=error_msg)
 
-        # Verificar si existe
+        # Validar tipo de documento si se envía
+        allowed_doc_types = [
+            "CEDULA_CIUDADANIA",
+            "CEDULA_EXTRANJERIA",
+            "PASAPORTE",
+            "PERMISO_ESPECIAL_PERMANENCIA",
+            "NIT",
+        ]
+        doc_type_clean = document_type.strip().upper() if document_type and document_type.strip() else None
+        if doc_type_clean and doc_type_clean not in allowed_doc_types:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Tipo de documento no válido. Tipos permitidos: {', '.join(allowed_doc_types)}",
+            )
+
+        # Verificar si existe por correo
         existing = db.query(Usuario).filter(Usuario.correo_usuario == email_clean).first()
         if existing:
             raise HTTPException(
                 status_code=400,
                 detail="El correo electrónico ya está registrado.",
             )
+
+        # Verificar si existe por cédula/documento
+        if doc_num_clean:
+            existing_doc = db.query(Usuario).filter(Usuario.cedula_usuario == doc_num_clean).first()
+            if existing_doc:
+                raise HTTPException(
+                    status_code=400,
+                    detail="El número de documento ya está registrado.",
+                )
 
         # Obtener rol predeterminado 'Usuario' o fallback a 'Administrador'
         rol = db.query(Rol).filter(Rol.nombre_rol == "Usuario").first()
@@ -87,7 +116,9 @@ class AuthService:
             apellidos_usuario=apellidos,
             correo_usuario=email_clean,
             contrasenia_usuario=hashed_password,
-            telefono_usuario="",
+            telefono_usuario=phone_clean,
+            cedula_usuario=doc_num_clean,
+            tipo_documento=doc_type_clean,
             estado_usuario="ACTIVO",
         )
         try:
@@ -107,14 +138,21 @@ class AuthService:
         db: Session,
     ) -> Tuple[str, dict]:
         """
-        Autentica un usuario y crea una sesión.
+        Autentica un usuario (por correo, cédula o teléfono) y crea una sesión.
         
         Retorna: (token, user_info_dict)
         """
-        email_clean = email.strip().lower()
+        identifier_clean = email.strip()
         client_ip = get_client_ip(request)
 
-        user = db.query(Usuario).filter(Usuario.correo_usuario == email_clean).first()
+        from sqlalchemy import or_
+        user = db.query(Usuario).filter(
+            or_(
+                Usuario.correo_usuario == identifier_clean.lower(),
+                Usuario.cedula_usuario == identifier_clean,
+                Usuario.telefono_usuario == identifier_clean,
+            )
+        ).first()
         if not user or not verify_password(password, user.contrasenia_usuario):
             raise HTTPException(
                 status_code=400,

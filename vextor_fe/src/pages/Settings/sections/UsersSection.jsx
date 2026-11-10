@@ -135,6 +135,29 @@ const UsersSection = ({
                   value={userForm.correo_usuario}
                   onChange={(e) => setUserForm({ ...userForm, correo_usuario: e.target.value })}
                 />
+                <Input
+                  label="Número de Teléfono"
+                  value={userForm.telefono_usuario || ''}
+                  onChange={(e) => setUserForm({ ...userForm, telefono_usuario: e.target.value })}
+                />
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-v-gray font-mono">Tipo de Documento</label>
+                  <Select
+                    value={userForm.tipo_documento || 'CEDULA_CIUDADANIA'}
+                    onChange={(e) => setUserForm({ ...userForm, tipo_documento: e.target.value })}
+                  >
+                    <option value="CEDULA_CIUDADANIA">Cédula de Ciudadanía</option>
+                    <option value="CEDULA_EXTRANJERIA">Cédula de Extranjería</option>
+                    <option value="PASAPORTE">Pasaporte</option>
+                    <option value="PERMISO_ESPECIAL_PERMANENCIA">Permiso Especial de Permanencia</option>
+                    <option value="NIT">NIT</option>
+                  </Select>
+                </div>
+                <Input
+                  label="Número de Documento"
+                  value={userForm.cedula_usuario || ''}
+                  onChange={(e) => setUserForm({ ...userForm, cedula_usuario: e.target.value })}
+                />
                 {!isEditingUser && (
                   <Input
                     label="Contraseña"
