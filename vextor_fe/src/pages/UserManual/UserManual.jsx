@@ -12,7 +12,7 @@ const UserManual = () => {
             <ArrowLeft className="h-4 w-4" />
             Volver al inicio
           </Link>
-          <a href={MANUAL_URL} download="VEXTOR-Manual-de-usuario.pdf" target="_blank" rel="noopener noreferrer"
+          <a href="/manual.pdf" download="manual.pdf"
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#A6C98F] px-4 py-2.5 text-sm font-semibold text-[#102016] hover:bg-[#b8d6a5] transition-colors">
             <Download className="h-4 w-4" />
             Descargar PDF
@@ -32,15 +32,17 @@ const UserManual = () => {
             <div className="flex items-center gap-3 rounded-xl border border-v-dark-border bg-v-dark/40 px-4 py-3">
               <FileText className="h-8 w-8 shrink-0 text-[#A6C98F]" />
               <div>
-                <p className="text-sm font-semibold">VEXTOR Manual de usuario.pdf</p>
+                <p className="text-sm font-semibold">VEXTOR-Manual-de-usuario.pdf</p>
                 <p className="text-xs text-v-gray">Documento PDF</p>
               </div>
             </div>
           </div>
           <div className="overflow-hidden rounded-2xl border border-v-dark-border bg-white shadow-xl">
-            <iframe title="Vista previa del Manual de usuario de VEXTOR"
-              src={`https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(MANUAL_URL)}`}
-              className="h-[65vh] min-h-[480px] w-full sm:h-[78vh]" />
+            <embed
+              src="/manual.pdf"
+              type="application/pdf"
+              className="h-[65vh] min-h-[480px] w-full sm:h-[78vh]"
+            />
           </div>
           <p className="mt-4 text-center text-xs text-v-gray">
             Si la vista previa no se muestra en tu navegador, usa el botón “Descargar PDF”.
