@@ -96,7 +96,7 @@ async def websocket_tracking_endpoint(websocket: WebSocket):
     finally:
         db_role.close()
 
-    await manager.connect(websocket, role_name)
+    manager.register(websocket, role_name)
     try:
         while True:
             data = await websocket.receive_json()
