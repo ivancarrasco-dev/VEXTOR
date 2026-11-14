@@ -87,7 +87,7 @@ La forma más rápida y recomendada de desplegar VEXTOR completamente es utiliza
 
 ### ¿Qué realiza el script `setup-vextor.ps1` automáticamente?
 1. **Verificación de Entorno:** Comprueba que Docker Engine y Docker Compose estén en ejecución.
-2. **Configuración de Variables de Entorno:** Copia `.env.example` a `.env` si no existe, valida `DATABASE_URL` y autogenera una clave `JWT_SECRET_KEY` criptográfica segura de 32 bytes en Base64.
+2. **Configuración de Variables de Entorno:** Copia `.env.example` a `.env` si no existe, valida `DATABASE_URL` y autogenera una clave `JWT_SECRET_KEY` criptográfica segura de 32 bytes en Base64. El administrador inicial solo se crea si defines `VEXTOR_ADMIN_EMAIL` y `VEXTOR_ADMIN_PASSWORD`; no existe una contraseña predeterminada pública.
 3. **Procesamiento de Grafo OSRM (Idempotente):** Descarga el archivo geográfico `colombia-latest.osm.pbf` desde Geofabrik si no está presente y ejecuta el pipeline de compilación MLD (`osrm-extract`, `osrm-partition`, `osrm-customize`) mediante el contenedor `osrm-tools`.
 4. **Construcción e Inicio de Contenedores:** Levanta los servicios de Frontend (Nginx), Backend (FastAPI) y OSRM con `docker compose up -d --build`.
 5. **Verificación de Salud (Healthchecks):** Realiza comprobaciones deterministas a los endpoints `http://localhost:5000`, `http://localhost:8000/`, `http://localhost:8000/api/routing/health` y `http://localhost/`.
@@ -223,7 +223,11 @@ MAIL_HOST=smtp.gmail.com
 MAIL_PORT=587
 MAIL_USERNAME=tu-correo@gmail.com
 MAIL_PASSWORD=tu-contrasena-de-aplicacion
-MAIL_FROM=VEXTOR Fleet <noreply@vextor.local>
+MAIL_FROM=VEXTOR Fleet <tu-correo-emisor@gmail.com>
+
+# --- ADMINISTRADOR INICIAL (OPCIONAL) ---
+VEXTOR_ADMIN_EMAIL=admin@tu-dominio.com
+VEXTOR_ADMIN_PASSWORD=usa-una-clave-larga-y-unica
 ```
 
 ---
