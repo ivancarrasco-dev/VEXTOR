@@ -12,7 +12,9 @@ import {
   Truck,
   ChevronLeft,
   ChevronRight,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Grid2X2,
+  List
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Select } from '../../components/ui/Select';
@@ -40,6 +42,7 @@ const Vehicles = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
   const [selectedImages, setSelectedImages] = useState([]);
+  const [viewMode, setViewMode] = useState('list');
 
   // Search & Filters state
   const [search, setSearch] = useState('');
@@ -340,6 +343,19 @@ const Vehicles = () => {
             ))}
           </Select>
         </div>
+
+        <div className="flex items-center gap-1 rounded-xl border border-v-dark-border bg-v-dark p-1 self-start md:self-auto">
+          <button type="button" onClick={() => setViewMode('list')} aria-pressed={viewMode === 'list'}
+            className={cn("inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold transition-colors cursor-pointer", viewMode === 'list' ? "bg-primary text-white shadow" : "text-v-gray hover:text-v-white")}
+            title="Vista en filas">
+            <List size={16} /> Filas
+          </button>
+          <button type="button" onClick={() => setViewMode('cards')} aria-pressed={viewMode === 'cards'}
+            className={cn("inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold transition-colors cursor-pointer", viewMode === 'cards' ? "bg-primary text-white shadow" : "text-v-gray hover:text-v-white")}
+            title="Vista en tarjetas">
+            <Grid2X2 size={16} /> Tarjetas
+          </button>
+        </div>
       </div>
 
       {/* Main Content */}
@@ -374,6 +390,44 @@ const Vehicles = () => {
           }
         />
       ) : (
+        <>
+        {viewMode === 'cards' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+            {currentItems.map((vehicle) => {
+              const statusInfo = VEHICLE_STATUSES.find(st => st.value === vehicle.estado_vehiculo) || { label: vehicle.estado_vehiculo, variant: 'neutral' };
+              const primaryImage = vehicle.imagenes?.find(image => image.es_principal) || vehicle.imagenes?.[0];
+              return (
+                <article key={vehicle.id_vehiculo} className="overflow-hidden rounded-2xl border border-v-dark-border bg-v-dark-soft shadow-lg transition-all hover:-translate-y-1 hover:border-primary/40">
+                  <div className="relative h-52 sm:h-56 bg-v-dark">
+                    {primaryImage ? (
+                      <img src={`${API_BASE_URL}${primaryImage.url_imagen}`} alt={`Vehículo ${vehicle.placa}`} className="h-full w-full object-cover" loading="lazy" />
+                    ) : (
+                      <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-v-gray">
+                        <Truck size={42} /><span className="text-xs">Sin fotografía</span>
+                      </div>
+                    )}
+                    <span className="absolute left-3 top-3 rounded-lg border border-v-dark-border bg-v-dark/90 px-3 py-1.5 font-mono text-xs font-extrabold text-primary backdrop-blur">{vehicle.placa}</span>
+                    <div className="absolute right-3 top-3"><Badge variant={statusInfo.variant} pulse={statusInfo.pulse}>{statusInfo.label}</Badge></div>
+                  </div>
+                  <div className="space-y-4 p-5">
+                    <div>
+                      <h3 className="text-lg font-extrabold text-v-white">{vehicle.marca} {vehicle.modelo}</h3>
+                      <p className="mt-1 text-xs font-medium text-v-gray">{vehicle.tipo_vehiculo} · {vehicle.anio} · {vehicle.color || 'Color no especificado'}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 border-y border-v-dark-border py-3">
+                      <div><p className="text-[10px] font-bold uppercase tracking-wider text-v-gray">Capacidad</p><p className="mt-1 text-sm font-semibold text-v-white">{vehicle.capacidad_pasajeros} pasajeros</p></div>
+                      <div><p className="text-[10px] font-bold uppercase tracking-wider text-v-gray">Kilometraje</p><p className="mt-1 text-sm font-semibold text-v-white">{Number(vehicle.kilometraje_actual || 0).toLocaleString()} km</p></div>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => handleOpenEdit(vehicle)} className="inline-flex items-center gap-2 rounded-xl border border-v-dark-border px-3 py-2 text-xs font-semibold text-v-gray transition-colors hover:bg-v-dark hover:text-v-white cursor-pointer" title="Editar vehículo"><Edit2 size={15} /> Editar</button>
+                      <button onClick={() => handleOpenDelete(vehicle)} className="inline-flex items-center gap-2 rounded-xl border border-red-500/20 px-3 py-2 text-xs font-semibold text-red-400 transition-colors hover:bg-red-500/10 cursor-pointer" title="Eliminar vehículo"><Trash2 size={15} /> Eliminar</button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
         <div className="bg-v-dark-soft border border-v-dark-border rounded-2xl overflow-hidden shadow-xl">
           <div className="overflow-x-auto w-full custom-scrollbar">
             <table className="w-full text-left border-collapse min-w-[700px]">
@@ -486,6 +540,8 @@ const Vehicles = () => {
             </div>
           )}
         </div>
+        )}
+        </>
       )}
 
       {/* CREATE & EDIT FORM MODAL */}
