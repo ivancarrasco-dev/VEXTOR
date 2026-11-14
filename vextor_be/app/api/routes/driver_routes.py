@@ -140,8 +140,8 @@ def start_route(
     if not asig or asig.estado_asignacion != "ACTIVA":
         raise HTTPException(status_code=403, detail="No tienes una asignación activa para esta ruta.")
 
-    if ruta.estado_ruta == "COMPLETADA":
-        raise HTTPException(status_code=400, detail="Esta ruta ya ha sido completada.")
+    if ruta.estado_ruta not in ("PROGRAMADA", "SUSPENDIDA"):
+        raise HTTPException(status_code=409, detail="Solo se pueden iniciar rutas programadas o suspendidas.")
 
     # Cambiar estado de la ruta a EN_PROCESO
     ruta.estado_ruta = "EN_PROCESO"
@@ -236,10 +236,8 @@ def pause_route(
     driver.estado_conductor = "NO_DISPONIBLE"
 
     asig_veh = db.query(AsignacionVehiculo).filter(AsignacionVehiculo.id_ruta == id_ruta).first()
-    if asig_veh and asig_veh.id_vehiculo:
-        vehiculo = db.query(Vehiculo).filter(Vehiculo.id_vehiculo == asig_veh.id_vehiculo).first()
-        if vehiculo:
-            vehiculo.estado_vehiculo = "DISPONIBLE"
+    # El vehículo permanece reservado mientras la ruta está suspendida;
+    # no debe marcarse disponible para una nueva asignación.
 
     db.commit()
     db.refresh(ruta)
@@ -283,6 +281,8 @@ def finish_route(
     ).first()
     if not asig or asig.estado_asignacion != "ACTIVA":
         raise HTTPException(status_code=403, detail="No tienes una asignación activa para esta ruta.")
+    if ruta.estado_ruta not in ("EN_PROCESO", "EN_RUTA", "SUSPENDIDA"):
+        raise HTTPException(status_code=409, detail="Solo se pueden finalizar rutas que estén en ejecución o suspendidas.")
 
     ruta.estado_ruta = "COMPLETADA"
     ruta.hora_fin_real = datetime.now()
