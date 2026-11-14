@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
-import { Layers, MapPin, Navigation, Compass, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Layers, MapPin, Navigation, Compass, Loader2, ChevronDown, ChevronUp, AlertCircle, ExternalLink } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 import { useTheme } from '../../../context/ThemeContext';
 import { routeService } from '../services/routeService';
-import { TOMTOM_API_KEY } from '../../../config/api';
 
 // Tile Providers configuration list
 const TILE_PROVIDERS = [
@@ -13,7 +12,7 @@ const TILE_PROVIDERS = [
     name: 'Esri Dark Gray Canvas',
     label: 'Oscuro',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-    attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+    attribution: 'Tiles © Esri — Esri, DeLorme, NAVTEQ',
     subdomains: [],
     maxZoom: 18
   },
@@ -22,7 +21,7 @@ const TILE_PROVIDERS = [
     name: 'OpenStreetMap Standard',
     label: 'Calles',
     url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; OpenStreetMap contributors',
+    attribution: '© OpenStreetMap contributors',
     subdomains: 'abc',
     maxZoom: 19
   },
@@ -31,7 +30,7 @@ const TILE_PROVIDERS = [
     name: 'Esri Light Gray Canvas',
     label: 'Claro',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-    attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+    attribution: 'Tiles © Esri — Esri, DeLorme, NAVTEQ',
     subdomains: [],
     maxZoom: 18
   },
@@ -40,7 +39,7 @@ const TILE_PROVIDERS = [
     name: 'OpenTopoMap',
     label: 'Relieve',
     url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; OpenTopoMap contributors &copy; OpenStreetMap',
+    attribution: '© OpenTopoMap contributors © OpenStreetMap',
     subdomains: 'abc',
     maxZoom: 17
   },
@@ -49,7 +48,7 @@ const TILE_PROVIDERS = [
     name: 'Esri World Imagery',
     label: 'Satélite',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, USDA, USGS, GeoEye',
+    attribution: 'Tiles © Esri — Source: Esri, USDA, USGS, GeoEye',
     subdomains: [],
     maxZoom: 18
   }
@@ -84,7 +83,6 @@ const createNumberedMarkerIcon = (number, colorHex = '#3b82f6') => {
   });
 };
 
-// Vehicle marker icon with heading rotation
 const createVehicleIcon = (heading = 0) => {
   return L.divIcon({
     html: `<div class="relative flex items-center justify-center w-10 h-10 transition-transform duration-300 ease-out" style="transform: rotate(${heading}deg);">
@@ -126,14 +124,13 @@ const createMyLocationIcon = () => {
   });
 };
 
-// Colors for other routes to make them distinctive
 const DISTINCT_COLORS = [
-  { stroke: '#3b82f6', bg: 'bg-blue-500' },     // Blue
-  { stroke: '#f59e0b', bg: 'bg-amber-500' },    // Amber
-  { stroke: '#8b5cf6', bg: 'bg-violet-500' },   // Violet
-  { stroke: '#ec4899', bg: 'bg-pink-500' },     // Pink
-  { stroke: '#06b6d4', bg: 'bg-cyan-500' },     // Cyan
-  { stroke: '#f97316', bg: 'bg-orange-500' },   // Orange
+  { stroke: '#3b82f6', bg: 'bg-blue-500' },
+  { stroke: '#f59e0b', bg: 'bg-amber-500' },
+  { stroke: '#8b5cf6', bg: 'bg-violet-500' },
+  { stroke: '#ec4899', bg: 'bg-pink-500' },
+  { stroke: '#06b6d4', bg: 'bg-cyan-500' },
+  { stroke: '#f97316', bg: 'bg-orange-500' },
 ];
 
 const MapComponent = ({
@@ -158,13 +155,11 @@ const MapComponent = ({
   const [hasTileError, setHasTileError] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isAutoFollowing, setIsAutoFollowing] = useState(true);
-  const [isTrafficEnabled, setIsTrafficEnabled] = useState(Boolean(TOMTOM_API_KEY));
-  const [showTrafficLegend, setShowTrafficLegend] = useState(false);
-  const [trafficErrorStatus, setTrafficErrorStatus] = useState(null);
+  
+  // Waze Traffic Modal State
+  const [showWazeTraffic, setShowWazeTraffic] = useState(false);
 
-  // References to map layers and a generation token for asynchronous route requests.
   const tileLayerRef = useRef(null);
-  const trafficLayerRef = useRef(null);
   const activeLayersRef = useRef([]);
   const vehicleMarkerRef = useRef(null);
   const pathHistoryRef = useRef([]);
@@ -174,10 +169,8 @@ const MapComponent = ({
   const myLocationMarkerRef = useRef(null);
   const lastRouteKeyRef = useRef(null);
 
-  // Click outside to close dropdown ref
   const dropdownRef = useRef(null);
 
-  // Helper to safely parse coordinate string "lat, lng" or "lng, lat" into normalized [lat, lng] array
   const parseCoordinates = (coordString) => {
     if (!coordString || typeof coordString !== 'string') return null;
     const parts = coordString.split(',');
@@ -186,18 +179,12 @@ const MapComponent = ({
     let val2 = parseFloat(parts[1].trim());
     if (isNaN(val1) || isNaN(val2)) return null;
 
-    // Detect if coordinates are in [lng, lat] format instead of [lat, lng].
-    // In Colombia / Western Hemisphere: Latitude is ~4.7 (between -90 and 90),
-    // and Longitude is ~-74.0 (between -180 and 180).
-    // If val1 magnitude > 30 (or val1 < -10) and val2 magnitude <= 30, val1 is longitude.
     if (Math.abs(val1) > 30 && Math.abs(val2) <= 30) {
       return [val2, val1];
     }
-
     if (Math.abs(val1) <= 90 && Math.abs(val2) <= 180) {
       return [val1, val2];
     }
-
     return null;
   };
 
@@ -220,7 +207,6 @@ const MapComponent = ({
     return null;
   };
 
-  // Close dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -231,39 +217,32 @@ const MapComponent = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Initialize Map
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
-    // Clean up container _leaflet_id if present to avoid "Map container is already initialized" error
     if (mapContainerRef.current._leaflet_id) {
       delete mapContainerRef.current._leaflet_id;
     }
 
-    // Centered in Bogotá: Lat 4.7110, Lng -74.0721, zoom 12
     const map = L.map(mapContainerRef.current, {
       center: [4.7110, -74.0721],
       zoom: 12,
       zoomControl: false,
     });
 
-    // Add custom zoom control in top right
     L.control.zoom({
       position: 'topright'
     }).addTo(map);
 
     mapInstanceRef.current = map;
 
-    // Load initial tile layer based on current theme
     const initialTileId = theme === 'dark' ? 'esri-dark' : 'esri-light';
     switchTileLayer(initialTileId);
 
-    // Pause auto-following when user interacts with map manually
     map.on('dragstart zoomstart', () => {
       setIsAutoFollowing(false);
     });
 
-    // Handle map clicks for selecting points
     map.on('click', (e) => {
       if (e.originalEvent.defaultPrevented) return;
       
@@ -281,13 +260,11 @@ const MapComponent = ({
           onSelectPoints?.({ coordinates: coordString, address });
         })
         .catch((err) => {
-          console.warn('Reverse geocoding failed, falling back to raw coordinates:', err);
+          console.warn('Reverse geocoding failed:', err);
           onSelectPoints?.({ coordinates: coordString, address: `Coordenadas: ${coordString}` });
         });
     });
 
-    // 🌟 ABSOLUTE CRITICAL FIX FOR CUT-OFF MAP: 🌟
-    // Force Leaflet to invalidate size and redraw tiles properly once the container and flex-layout render is fully completed.
     const resizeObserver = new ResizeObserver(() => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.invalidateSize();
@@ -298,15 +275,9 @@ const MapComponent = ({
       resizeObserver.observe(mapContainerRef.current);
     }
 
-    const timer1 = setTimeout(() => {
-      map.invalidateSize();
-    }, 150);
+    const timer1 = setTimeout(() => { map.invalidateSize(); }, 150);
+    const timer2 = setTimeout(() => { map.invalidateSize(); }, 600);
 
-    const timer2 = setTimeout(() => {
-      map.invalidateSize();
-    }, 600);
-
-    // Listen to global window resize events too
     const handleWindowResize = () => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.invalidateSize();
@@ -315,7 +286,6 @@ const MapComponent = ({
     window.addEventListener('resize', handleWindowResize);
 
     return () => {
-      // Robust full map unmount cleanup
       routingGenerationRef.current += 1;
       resizeObserver.disconnect();
       window.removeEventListener('resize', handleWindowResize);
@@ -324,7 +294,6 @@ const MapComponent = ({
 
       const map = mapInstanceRef.current;
       if (map) {
-        // Clean up layers safely and reset refs
         if (myLocationMarkerRef.current && map.hasLayer(myLocationMarkerRef.current)) {
           map.removeLayer(myLocationMarkerRef.current);
         }
@@ -346,11 +315,6 @@ const MapComponent = ({
         routePolylineRef.current = null;
         lastRouteKeyRef.current = null;
 
-        if (trafficLayerRef.current && map.hasLayer(trafficLayerRef.current)) {
-          map.removeLayer(trafficLayerRef.current);
-        }
-        trafficLayerRef.current = null;
-
         activeLayersRef.current.forEach(layer => {
           if (layer && map.hasLayer(layer)) {
             map.removeLayer(layer);
@@ -365,41 +329,6 @@ const MapComponent = ({
     };
   }, []);
 
-  // Update TomTom Traffic Layer dynamically when enabled status, theme, or map instance changes
-  useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (!map) return;
-
-    // Always remove existing traffic layer to avoid duplication/leaks
-    if (trafficLayerRef.current && map.hasLayer(trafficLayerRef.current)) {
-      map.removeLayer(trafficLayerRef.current);
-      trafficLayerRef.current = null;
-    }
-
-    if (isTrafficEnabled && TOMTOM_API_KEY) {
-      setTrafficErrorStatus(null);
-      // TomTom relative0 / relative0-dark style for crisp, clear non-blurred traffic lines
-      const trafficStyle = theme === 'dark' ? 'relative0-dark' : 'relative0';
-      const trafficUrl = `https://api.tomtom.com/traffic/map/4/tile/flow/${trafficStyle}/{z}/{x}/{y}.png?key=${TOMTOM_API_KEY}&tileSize=256`;
-
-      const layer = L.tileLayer(trafficUrl, {
-        attribution: '&copy; <a href="https://www.tomtom.com" target="_blank" rel="noopener noreferrer">TomTom</a> Traffic',
-        tileSize: 256,
-        maxZoom: 19,
-        opacity: 0.9,
-      });
-
-      layer.on('tileerror', (err) => {
-        console.warn('Error al cargar tiles de tráfico de TomTom (API Key inválida, caducada o límite de cuota excedido):', err);
-        setTrafficErrorStatus('Respuesta HTTP fallida o API Key de TomTom rechazada por el servidor.');
-      });
-
-      layer.addTo(map);
-      trafficLayerRef.current = layer;
-    }
-  }, [isTrafficEnabled, theme]);
-
-  // Switch tile layer automatically when global theme changes
   useEffect(() => {
     if (mapInstanceRef.current) {
       const targetTileId = theme === 'dark' ? 'esri-dark' : 'esri-light';
@@ -407,14 +336,12 @@ const MapComponent = ({
     }
   }, [theme]);
 
-  // Set tile loading states and handle tile layer swaps
   const switchTileLayer = (providerId) => {
     const map = mapInstanceRef.current;
     if (!map) return;
 
     const provider = TILE_PROVIDERS.find(p => p.id === providerId) || TILE_PROVIDERS[0];
 
-    // Remove existing tile layer
     if (tileLayerRef.current) {
       map.removeLayer(tileLayerRef.current);
     }
@@ -428,21 +355,14 @@ const MapComponent = ({
       maxZoom: provider.maxZoom,
     });
 
-    // Tile Load Listeners for a modern UX loading state indicator
-    newLayer.on('loading', () => {
-      setIsTilesLoading(true);
-    });
-    newLayer.on('load', () => {
-      setIsTilesLoading(false);
-    });
+    newLayer.on('loading', () => { setIsTilesLoading(true); });
+    newLayer.on('load', () => { setIsTilesLoading(false); });
     newLayer.on('tileerror', (error) => {
       console.error(`Tile layer load error for ${provider.name}:`, error);
       setIsTilesLoading(false);
       setHasTileError(true);
 
-      // Robust Auto Fallback to OSM
       if (providerId !== 'osm') {
-        console.warn('Falling back to OpenStreetMap Standard layer automatically...');
         switchTileLayer('osm');
       }
     });
@@ -451,13 +371,11 @@ const MapComponent = ({
     tileLayerRef.current = newLayer;
     setActiveTileId(providerId);
 
-    // Force map invalidation on layer swaps to ensure tiles load seamlessly
     setTimeout(() => {
       map.invalidateSize();
     }, 50);
   };
 
-  // Browser Geolocation API wrapper to locate User's location
   const handleMyLocation = () => {
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -475,7 +393,6 @@ const MapComponent = ({
         const { latitude, longitude } = position.coords;
         const userLatLng = [latitude, longitude];
 
-        // Place beautiful pulsing dot marker
         if (myLocationMarkerRef.current) {
           map.removeLayer(myLocationMarkerRef.current);
         }
@@ -490,41 +407,35 @@ const MapComponent = ({
       (error) => {
         setIsTilesLoading(false);
         console.warn('Geolocation error:', error);
-        alert('No se pudo determinar su ubicación actual. Asegúrese de otorgar permisos de ubicación.');
+        alert('No se pudo determinar su ubicación actual.');
       },
       { enableHighAccuracy: true, timeout: 8000 }
     );
   };
 
-  // Update map state and render routes/markers. Route computation lives in FastAPI.
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
 
-    // Generate unique key representing the target route state
     const currentRouteKey = activeRoute
       ? `${activeRoute.id_ruta || ''}|${activeRoute.origen || ''}|${activeRoute.destino || ''}|${activeRoute.paradas || ''}`
       : `${stops.map(s => `${s.id}:${s.coordinates}`).join(';')}|${selectedOrigin}|${selectedDestination}`;
 
-    // If route identity/endpoints haven't changed and we already have a polyline, skip re-calculating
     if (lastRouteKeyRef.current === currentRouteKey && routePolylineRef.current && map.hasLayer(routePolylineRef.current)) {
       return;
     }
 
     lastRouteKeyRef.current = currentRouteKey;
 
-    // Reset vehicle trajectory history when switching/resetting routes
     pathHistoryRef.current = [];
     if (completedPolylineRef.current && map.hasLayer(completedPolylineRef.current)) {
       map.removeLayer(completedPolylineRef.current);
       completedPolylineRef.current = null;
     }
 
-    // Increment generation token to invalidate any pending async callbacks
     routingGenerationRef.current += 1;
     const currentGen = routingGenerationRef.current;
 
-    // 1. Safe clearance of active layers
     activeLayersRef.current.forEach(layer => {
       if (layer && map.hasLayer(layer)) {
         map.removeLayer(layer);
@@ -537,12 +448,10 @@ const MapComponent = ({
       routePolylineRef.current = null;
     }
 
-    // Preserve the User's Location dot if it exists
     if (myLocationMarkerRef.current && !map.hasLayer(myLocationMarkerRef.current)) {
       myLocationMarkerRef.current.addTo(map);
     }
 
-    // 2. Draw Other (Non-Active) Routes in background
     routes.forEach((route, index) => {
       if (activeRoute && route.id_ruta === activeRoute.id_ruta) return;
 
@@ -572,12 +481,10 @@ const MapComponent = ({
       }
     });
 
-    // 3. Draw Active Multi-Stop Route or Legacy Selected Route
     const renderActiveRoute = async () => {
       let activeRouteName = activeRoute?.nombre_ruta || activeRoute?.codigo_ruta || 'Ruta';
       let stopsToRender = [];
 
-      // Determine stops to render:
       if (stops && stops.length > 0) {
         stopsToRender = stops;
       } else if (activeRoute) {
@@ -632,7 +539,7 @@ const MapComponent = ({
             const newCoordString = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
 
             fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=es`, {
-              headers: { 'User-Agent': 'VextorFleetApp/1.0 (contact: info@vextor.com)' }
+              headers: { 'User-Agent': 'VextorFleetApp/1.0' }
             })
               .then(res => res.json())
               .then(data => {
@@ -642,7 +549,6 @@ const MapComponent = ({
                   stopIndex: idx,
                   coordinates: newCoordString,
                   address,
-                  // Backwards compatibility
                   type: idx === 0 ? 'origin' : (idx === stopsToRender.length - 1 ? 'destination' : 'stop')
                 });
               })
@@ -663,7 +569,6 @@ const MapComponent = ({
         }
       }
 
-      // 4. Calculate route through all waypoints if >= 2 valid points
       if (validWaypoints.length >= 2) {
         routeService.calculateRoute({ waypoints: validWaypoints })
           .then((route) => {
@@ -718,7 +623,6 @@ const MapComponent = ({
 
   }, [routes, activeRoute, stops, selectedOrigin, selectedDestination]);
 
-  // Update vehicle position marker and center view when autoFollow is active
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -734,10 +638,8 @@ const MapComponent = ({
     const { lat, lng, heading } = driverPosition;
     const vehicleLatLng = [lat, lng];
 
-    // Basic coordinate bounds sanity check
     if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return;
 
-    // Append to path history only if position actually changed
     const lastPos = pathHistoryRef.current[pathHistoryRef.current.length - 1];
     const hasMoved = !lastPos || Math.abs(lastPos[0] - lat) > 0.00005 || Math.abs(lastPos[1] - lng) > 0.00005;
 
@@ -754,7 +656,6 @@ const MapComponent = ({
       vehicleMarkerRef.current.setIcon(createVehicleIcon(heading || 0));
     }
 
-    // Draw completed path polyline in solid emerald
     if (pathHistoryRef.current.length > 1) {
       if (completedPolylineRef.current) {
         completedPolylineRef.current.setLatLngs(pathHistoryRef.current);
@@ -772,29 +673,13 @@ const MapComponent = ({
     }
   }, [driverPosition, isAutoFollowing]);
 
-  const handleRecenter = () => {
-    const map = mapInstanceRef.current;
-    if (!map) return;
-
-    if (driverPosition && driverPosition.lat && driverPosition.lng) {
-      setIsAutoFollowing(true);
-      map.setView([driverPosition.lat, driverPosition.lng], 16, { animate: true });
-    } else {
-      map.setView([4.7110, -74.0721], 12, { animate: true });
-    }
-
-    setTimeout(() => {
-      map.invalidateSize();
-    }, 150);
-  };
-
   const activeProvider = TILE_PROVIDERS.find(p => p.id === activeTileId);
 
   return (
     <div className="relative w-full h-full rounded-2xl overflow-hidden border border-v-dark-border shadow-2xl transition-all duration-300">
       
       {/* Real Map Canvas */}
-      <div ref={mapContainerRef} className="w-full h-full min-h-100 lg:min-h-150 z-10" />
+      <div ref={mapContainerRef} className="w-full h-full min-h-[400px] lg:min-h-[600px] z-10" />
 
       {/* Modern custom tile loader overlay */}
       {isTilesLoading && (
@@ -831,14 +716,14 @@ const MapComponent = ({
                     className={cn(
                       "w-full px-3 py-2 rounded-lg text-left text-xs font-medium transition-all flex items-center justify-between cursor-pointer",
                       activeTileId === provider.id
-                        ? "bg-primary/20 text-primary font-bold"
-                        : "text-v-gray hover:text-v-white hover:bg-v-dark/50"
+                        ? "bg-primary text-white font-semibold shadow-lg"
+                        : "text-v-gray hover:bg-v-dark hover:text-v-white"
                     )}
                   >
-                    <span>{provider.name.replace(' Standard', '').replace(' World Imagery', '')}</span>
-                    {activeTileId === provider.id && (
-                      <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                    )}
+                    <span>{provider.name}</span>
+                    <span className="text-[10px] opacity-75 uppercase px-1.5 py-0.5 bg-black/20 rounded">
+                      {provider.label}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -846,161 +731,80 @@ const MapComponent = ({
           )}
         </div>
 
-        {/* Traffic & Incidents Info Control */}
-        <div className="relative flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => {
-              if (!TOMTOM_API_KEY) {
-                setShowTrafficLegend(!showTrafficLegend);
-                return;
-              }
-              setIsTrafficEnabled(!isTrafficEnabled);
-            }}
-            className={cn(
-              "px-3 py-2 bg-v-dark-soft/95 backdrop-blur-md border rounded-xl shadow-2xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 hover:scale-105 active:scale-95",
-              isTrafficEnabled
-                ? "border-emerald-500/60 text-emerald-400 bg-emerald-500/10"
-                : "border-v-dark-border text-v-gray hover:text-v-white"
-            )}
-            title={TOMTOM_API_KEY ? "Activar/desactivar tráfico en tiempo real" : "TomTom Traffic API Key no detectada"}
-          >
-            <span>🚦</span>
-            <span>Tráfico</span>
-            <span className={cn(
-              "w-2 h-2 rounded-full transition-colors",
-              isTrafficEnabled ? "bg-emerald-500 animate-pulse" : "bg-v-gray/40"
-            )} />
-          </button>
-
-          {/* Legend Details Toggle Button */}
-          <button
-            type="button"
-            onClick={() => setShowTrafficLegend(!showTrafficLegend)}
-            className="p-2 bg-v-dark-soft/95 backdrop-blur-md border border-v-dark-border rounded-xl text-v-gray hover:text-v-white shadow-xl cursor-pointer text-xs font-bold transition-all hover:scale-105 active:scale-95"
-            title="Ver leyenda e información de tráfico"
-          >
-            ℹ️
-          </button>
-
-          {/* Traffic Legend & Info Modal Card */}
-          {showTrafficLegend && (
-            <div className="absolute left-0 top-full mt-2 w-72 sm:w-80 p-4 bg-v-dark-soft/95 backdrop-blur-xl border border-v-dark-border rounded-2xl shadow-2xl z-50 text-left space-y-3 animate-in fade-in slide-in-from-top-2 duration-150">
-              <div className="flex items-center justify-between border-b border-v-dark-border pb-2">
-                <div className="flex items-center gap-2 text-v-white font-bold text-xs">
-                  <span>🚦</span>
-                  <span>Tráfico TomTom en Tiempo Real</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowTrafficLegend(false)}
-                  className="text-v-gray hover:text-v-white text-xs font-bold px-1.5 py-0.5 rounded-md hover:bg-v-dark/60 cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {!TOMTOM_API_KEY ? (
-                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-300 leading-relaxed">
-                  ⚠️ <strong>API Key Requerida:</strong> Configura <code>VITE_TOMTOM_API_KEY</code> en tu archivo <code>.env</code> para activar la capa visual en tiempo real.
-                </div>
-              ) : trafficErrorStatus && (
-                <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/30 text-[11px] text-red-300 leading-relaxed">
-                  ⛔ <strong>Error de Servidor TomTom:</strong> La API Key está inyectada en el cliente pero TomTom no devolvió datos válidos (posible clave inválida, caducada o límite de cuota alcanzado).
-                </div>
-              )}
-
-              {/* Traffic Colors Legend */}
-              <div className="space-y-1.5 text-xs">
-                <div className="text-[10px] uppercase font-semibold text-v-gray tracking-wider">Estado del Tráfico</div>
-                <div className="grid grid-cols-2 gap-2 text-[11px]">
-                  <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-v-dark/60 border border-v-dark-border">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shrink-0" />
-                    <span className="text-v-white">🟢 Fluido</span>
-                  </div>
-                  <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-v-dark/60 border border-v-dark-border">
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-sm shrink-0" />
-                    <span className="text-v-white">🟡 Moderado</span>
-                  </div>
-                  <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-v-dark/60 border border-v-dark-border">
-                    <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-sm shrink-0" />
-                    <span className="text-v-white">🟠 Congestionado</span>
-                  </div>
-                  <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-v-dark/60 border border-v-dark-border">
-                    <span className="w-2.5 h-2.5 rounded-full bg-red-600 shadow-sm shrink-0" />
-                    <span className="text-v-white">🔴 Muy congestionado</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-1 text-[10px] text-v-gray leading-relaxed border-t border-v-dark-border">
-                Capa independiente renderizada mediante la API oficial TomTom Raster Flow Tiles sin alterar las rutas calculadas por OSRM.
-              </div>
-            </div>
-          )}
-        </div>
+        {/* Botón de Tráfico en Vivo con Waze */}
+        <button
+          type="button"
+          onClick={() => setShowWazeTraffic(true)}
+          className="flex items-center gap-2 px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs rounded-xl shadow-xl transition-all cursor-pointer hover:scale-105 active:scale-95 border border-blue-400/30"
+          title="Ver tráfico en tiempo real con Waze"
+        >
+          <span>🚦 Tráfico en Vivo (Waze)</span>
+        </button>
       </div>
 
-      {/* Active Layer Legend Indicator (Bottom-Center) */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 px-3.5 py-1.5 bg-v-dark-soft/95 backdrop-blur-md border border-v-dark-border rounded-full shadow-lg flex items-center gap-2 pointer-events-none text-[10px] sm:text-xs">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-        <span className="text-v-gray">Capa:</span>
-        <span className="font-bold text-v-white">{activeProvider?.name}</span>
-      </div>
-
-      {/* Floating Action Controls Block (Bottom Right) */}
-      <div className="absolute bottom-4 right-4 z-20 flex flex-col gap-2">
-        {/* Follow Vehicle / Auto-center button when driverPosition is present */}
-        {driverPosition && (
-          <button
-            onClick={() => {
-              setIsAutoFollowing(true);
-              if (mapInstanceRef.current && driverPosition.lat && driverPosition.lng) {
-                mapInstanceRef.current.setView([driverPosition.lat, driverPosition.lng], 16, { animate: true });
-              }
-            }}
-            className={cn(
-              "px-3 py-2 bg-v-dark-soft/95 backdrop-blur-sm border rounded-xl shadow-xl flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer hover:scale-105 active:scale-95",
-              isAutoFollowing
-                ? "border-emerald-500/50 text-emerald-400 bg-emerald-500/10"
-                : "border-v-dark-border text-v-gray hover:text-v-white"
-            )}
-            title="Seguir posición del vehículo"
-          >
-            <Compass size={15} className={cn("shrink-0", isAutoFollowing && "animate-spin text-emerald-400")} />
-            <span>{isAutoFollowing ? "Seguimiento Activo" : "🎯 Seguir vehículo"}</span>
-          </button>
-        )}
-
-        {/* Find My Location Button */}
+      {/* Floating Control Buttons (Bottom Right / Geolocation & Recenter) */}
+      <div className="absolute bottom-6 right-6 z-20 flex flex-col gap-2">
         <button
           onClick={handleMyLocation}
-          className="p-3 bg-v-dark-soft/95 backdrop-blur-sm border border-v-dark-border rounded-xl text-v-gray hover:text-v-white hover:border-primary/40 shadow-lg cursor-pointer transition-all hover:scale-105 active:scale-95"
-          title="Obtener mi ubicación actual"
+          className="p-3 bg-v-dark-soft/95 backdrop-blur-md border border-v-dark-border rounded-xl shadow-2xl text-v-white hover:border-primary/40 hover:text-primary transition-all cursor-pointer hover:scale-105 active:scale-95"
+          title="Mi ubicación GPS"
         >
-          <Compass size={16} className="text-primary" />
-        </button>
-
-        {/* Recenter Map Button */}
-        <button
-          onClick={handleRecenter}
-          className="p-3 bg-v-dark-soft/95 backdrop-blur-sm border border-v-dark-border rounded-xl text-v-gray hover:text-v-white hover:border-primary/40 shadow-lg cursor-pointer transition-all hover:scale-105 active:scale-95"
-          title="Centrar mapa"
-        >
-          <Navigation size={16} className="rotate-45" />
+          <Compass size={18} />
         </button>
       </div>
 
-      {/* Interactive Overlay Info Instructions */}
-      <div className="absolute bottom-4 left-4 bg-v-dark-soft/95 backdrop-blur-md border border-v-dark-border px-3.5 py-2.5 rounded-2xl text-xs text-v-white z-20 pointer-events-none shadow-xl space-y-1 max-w-70 text-left">
-        <div className="font-bold text-emerald-400 flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-          Navegación Interactiva Gratis
+      {/* Modal de Waze Live Map */}
+      {showWazeTraffic && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-5xl h-[82vh] flex flex-col overflow-hidden">
+            
+            {/* Cabecera del Modal */}
+            <div className="flex items-center justify-between px-5 py-3.5 bg-slate-950 border-b border-slate-800 text-white">
+              <div className="flex items-center gap-2.5">
+                <span className="text-sm font-semibold tracking-wide">Monitor de Tráfico en Tiempo Real - Bogotá (Waze)</span>
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30 font-medium">
+                  En Vivo
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowWazeTraffic(false)}
+                className="text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer"
+              >
+                ✕ Cerrar
+              </button>
+            </div>
+
+            {/* Contenedor del Iframe de Waze */}
+            <div className="flex-1 w-full h-full bg-slate-950 relative">
+              <iframe
+                src="https://embed.waze.com/iframe?zoom=12&lat=4.6533&lon=-74.0836&ct=livemap"
+                width="100%"
+                height="100%"
+                allowFullScreen
+                loading="lazy"
+                title="Waze Live Traffic Bogotá"
+                className="border-0 w-full h-full"
+              />
+            </div>
+
+            {/* Pie de modal */}
+            <div className="px-5 py-2.5 bg-slate-950 border-t border-slate-800 flex justify-between items-center text-xs text-slate-400">
+              <span>Datos de congestión, accidentes y obras viales provistos por Waze Live Map.</span>
+              <a
+                href="https://www.waze.com/live-map"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline flex items-center gap-1 font-medium"
+              >
+                Abrir en pantalla completa <ExternalLink size={12} />
+              </a>
+            </div>
+
+          </div>
         </div>
-        <p className="text-[11px] text-v-gray leading-relaxed">
-          Haz clic en cualquier parte del mapa para marcar <strong className="text-emerald-400">Origen (A)</strong> y <strong className="text-red-400">Destino (B)</strong> utilizando geocodificación gratuita.
-        </p>
-      </div>
+      )}
+
     </div>
   );
 };
