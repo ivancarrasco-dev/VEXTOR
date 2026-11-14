@@ -74,33 +74,40 @@ async def websocket_tracking_endpoint(websocket: WebSocket):
     finally:
         db_auth.close()
 
-    # Solo conductores pueden publicar telemetría; los administradores mantienen
-    # su consumo de tracking desde la API protegida del panel web.
+    # Conductores publican telemetría; administradores reciben únicamente broadcasts.
     db_role = SessionLocal()
     try:
         role = db_role.query(Rol).filter(Rol.id_rol == current_user.id_rol).first()
-        if not role or role.nombre_rol.strip().lower() != "conductor":
-            await websocket.send_json({"type": "error", "message": "El canal GPS está reservado a conductores."})
-            await websocket.close(code=4003, reason="Rol no autorizado para publicar GPS")
+        role_name = role.nombre_rol.strip().lower() if role else ""
+        if role_name not in ("conductor", "administrador"):
+            await websocket.send_json({"type": "error", "message": "El canal GPS está reservado a conductores y administradores."})
+            await websocket.close(code=4003, reason="Rol no autorizado para tracking")
             return
-        driver = db_role.query(Conductor).filter(
-            Conductor.id_usuario == current_user.id_usuario
-        ).first()
-        if not driver:
-            await websocket.send_json({"type": "error", "message": "No existe un perfil de conductor asociado."})
-            await websocket.close(code=4003, reason="Perfil de conductor requerido")
-            return
-        driver_id = driver.id_conductor
+        driver_id = None
+        if role_name == "conductor":
+            driver = db_role.query(Conductor).filter(
+                Conductor.id_usuario == current_user.id_usuario
+            ).first()
+            if not driver:
+                await websocket.send_json({"type": "error", "message": "No existe un perfil de conductor asociado."})
+                await websocket.close(code=4003, reason="Perfil de conductor requerido")
+                return
+            driver_id = driver.id_conductor
     finally:
         db_role.close()
 
-    if websocket not in manager.active_connections:
-        manager.active_connections.append(websocket)
+    await manager.connect(websocket, role_name)
     try:
         while True:
             data = await websocket.receive_json()
             
             if data.get("type") == "location_update":
+                if role_name != "conductor":
+                    await manager.send_personal(websocket, {
+                        "type": "error",
+                        "message": "Los administradores tienen acceso de solo lectura al canal GPS."
+                    })
+                    continue
                 try:
                     loc_payload = LocationUpdateSchema(
                         id_ruta=data.get("id_ruta"),
