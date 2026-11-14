@@ -42,6 +42,8 @@ const Vehicles = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
   const [selectedImages, setSelectedImages] = useState([]);
+  const [selectedImagePreviews, setSelectedImagePreviews] = useState([]);
+  const [deletingImageIds, setDeletingImageIds] = useState([]);
   const [viewMode, setViewMode] = useState('list');
 
   // Search & Filters state
@@ -91,6 +93,12 @@ const Vehicles = () => {
   useEffect(() => {
     loadVehicles();
   }, []);
+
+  useEffect(() => {
+    const previews = selectedImages.map((image) => ({ name: image.name, url: URL.createObjectURL(image) }));
+    setSelectedImagePreviews(previews);
+    return () => previews.forEach((preview) => URL.revokeObjectURL(preview.url));
+  }, [selectedImages]);
 
   useEffect(() => {
     if (searchParams.get('action') === 'new' && vehicles.length > 0) {
@@ -196,6 +204,27 @@ const Vehicles = () => {
     setFormErrors({});
     setApiError('');
     setIsFormOpen(true);
+  };
+
+  const handleDeleteVehicleImage = async (image) => {
+    if (!currentVehicle?.id_vehiculo || deletingImageIds.includes(image.id_imagen)) return;
+    setDeletingImageIds((prev) => [...prev, image.id_imagen]);
+    setApiError('');
+    try {
+      await vehicleService.deleteVehicleImage(currentVehicle.id_vehiculo, image.id_imagen);
+      const remainingImages = (currentVehicle.imagenes || []).filter((item) => item.id_imagen !== image.id_imagen);
+      const normalizedImages = image.es_principal
+        ? remainingImages.map((item, index) => ({ ...item, es_principal: index === 0 }))
+        : remainingImages;
+      setCurrentVehicle((prev) => ({ ...prev, imagenes: normalizedImages }));
+      setVehicles((prev) => prev.map((vehicle) => vehicle.id_vehiculo === currentVehicle.id_vehiculo
+        ? { ...vehicle, imagenes: normalizedImages }
+        : vehicle));
+    } catch (err) {
+      setApiError(err.message || 'No se pudo eliminar la fotografía.');
+    } finally {
+      setDeletingImageIds((prev) => prev.filter((id) => id !== image.id_imagen));
+    }
   };
 
   const handleFormSubmit = async (e) => {
@@ -587,22 +616,75 @@ const Vehicles = () => {
                   </div>
                 )}
 
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-v-gray font-mono">Fotografías del vehículo</label>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    multiple
-                    onChange={(event) => setSelectedImages(Array.from(event.target.files || []))}
-                    className="block w-full text-sm text-v-gray file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-primary file:font-semibold hover:file:bg-primary/20"
-                  />
-                  <p className="text-xs text-v-gray">JPG, PNG o WEBP. Máximo 10 MB por imagen. La primera será la principal.</p>
-                  {selectedImages.length > 0 && (
-                    <p className="text-xs text-primary">{selectedImages.length} imagen(es) seleccionada(s): {selectedImages.map(image => image.name).join(', ')}</p>
-                  )}
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-v-gray font-mono">Fotografías del vehículo</label>
+                    <p className="mt-1 text-xs text-v-gray">Visualiza las fotos guardadas, elimina las que no necesites o agrega nuevas.</p>
+                  </div>
+
                   {currentVehicle?.imagenes?.length > 0 && (
-                    <p className="text-xs text-v-gray">{currentVehicle.imagenes.length} imagen(es) guardada(s). Las nuevas se agregarán al vehículo.</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {currentVehicle.imagenes.map((image) => (
+                        <div key={image.id_imagen} className="relative overflow-hidden rounded-xl border border-v-dark-border bg-v-dark">
+                          <img src={`${API_BASE_URL}${image.url_imagen}`} alt={`Fotografía de ${currentVehicle.placa}`} className="h-28 w-full object-cover" />
+                          {image.es_principal && <span className="absolute left-2 top-2 rounded-md bg-primary px-2 py-1 text-[10px] font-bold text-white">Principal</span>}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteVehicleImage(image)}
+                            disabled={deletingImageIds.includes(image.id_imagen) || isSubmitLoading}
+                            className="absolute right-2 top-2 rounded-lg border border-red-500/30 bg-v-dark/90 p-2 text-red-400 transition-colors hover:bg-red-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                            title="Eliminar fotografía"
+                            aria-label="Eliminar fotografía"
+                          >
+                            {deletingImageIds.includes(image.id_imagen)
+                              ? <span className="block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                              : <Trash2 size={15} />}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   )}
+
+                  {selectedImagePreviews.length > 0 && (
+                    <div>
+                      <p className="mb-2 text-xs font-semibold text-primary">Nuevas fotografías ({selectedImagePreviews.length})</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {selectedImagePreviews.map((preview, index) => (
+                          <div key={`${preview.name}-${index}`} className="relative overflow-hidden rounded-xl border border-primary/30 bg-v-dark">
+                            <img src={preview.url} alt={preview.name} className="h-28 w-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => setSelectedImages((prev) => prev.filter((_, imageIndex) => imageIndex !== index))}
+                              disabled={isSubmitLoading}
+                              className="absolute right-2 top-2 rounded-lg border border-red-500/30 bg-v-dark/90 p-2 text-red-400 transition-colors hover:bg-red-500 hover:text-white disabled:opacity-50"
+                              title="Quitar fotografía seleccionada"
+                              aria-label="Quitar fotografía seleccionada"
+                            >
+                              <X size={15} />
+                            </button>
+                            <span className="block truncate px-2 py-1.5 text-[10px] text-v-gray">{preview.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-v-dark-border bg-v-dark px-4 py-3 text-sm font-semibold text-v-gray transition-colors hover:border-primary hover:text-primary">
+                    <Plus size={17} /> Subir fotografías
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      multiple
+                      disabled={isSubmitLoading}
+                      onChange={(event) => {
+                        const incoming = Array.from(event.target.files || []);
+                        setSelectedImages((prev) => [...prev, ...incoming]);
+                        event.target.value = '';
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                  <p className="text-xs text-v-gray">JPG, PNG o WEBP. Máximo 10 MB por imagen. Las nuevas se guardarán al pulsar {currentVehicle ? 'Guardar Cambios' : 'Registrar'}.</p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
