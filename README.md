@@ -116,6 +116,29 @@ pnpm install
 pnpm run dev
 ```
 
+### 4.4 Aplicación Android exclusiva para conductores (APK)
+
+La app Android usa el mismo frontend React y el backend FastAPI, pero el enrutamiento nativo limita la experiencia a cuentas con rol **Conductor**. El backend también valida el rol y la asignación antes de aceptar cambios de estado o telemetría GPS.
+
+**Importante para pruebas en un teléfono físico:** `localhost` dentro del APK apunta al propio teléfono, no al PC. El PC y el teléfono deben estar conectados a la misma red Wi-Fi y el APK debe compilarse con la IPv4 LAN del PC donde corre Docker.
+
+En PowerShell, desde `vextor_fe`:
+
+```powershell
+$env:VITE_API_BASE_URL="http://192.168.1.100:8000"
+$env:VITE_WS_BASE_URL="ws://192.168.1.100:8000"
+pnpm install --frozen-lockfile
+pnpm run build:android
+```
+
+Sustituye `192.168.1.100` por la IPv4 real del PC (puedes consultarla con `ipconfig`). Permite los puertos TCP 8000 y 80 en el Firewall de Windows para la red privada. El APK de depuración se genera en:
+
+`vextor_fe/android/app/build/outputs/apk/debug/app-debug.apk`
+
+Para la versión web, continúa usando `http://localhost`; no necesita usar la IP LAN.
+
+**Enlaces de recuperación en Gmail:** para que el enlace recibido en el teléfono abra la web local del PC, configura `FRONTEND_URL=http://IP_LAN_DEL_PC` en el `.env` raíz (por ejemplo `http://192.168.1.100`). Si se solicita recuperación desde el PC, también se puede usar `http://localhost`. No uses localhost para un enlace que se abrirá en otro dispositivo.
+
 ### 4.3 Contenedor OSRM con Docker Compose
 ```bash
 docker compose up -d osrm
