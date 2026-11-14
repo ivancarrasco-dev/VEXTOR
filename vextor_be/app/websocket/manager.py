@@ -13,13 +13,17 @@ class ConnectionManager:
         self.active_connections: List[WebSocket] = []
         self.admin_connections: List[WebSocket] = []
 
-    async def connect(self, websocket: WebSocket, role: str = ""):
-        """Registra una conexión y clasifica observadores administrativos."""
-        await websocket.accept()
+    def register(self, websocket: WebSocket, role: str = ""):
+        """Registra un socket que ya completó el handshake."""
         if websocket not in self.active_connections:
             self.active_connections.append(websocket)
         if role.strip().lower() == "administrador" and websocket not in self.admin_connections:
             self.admin_connections.append(websocket)
+
+    async def connect(self, websocket: WebSocket, role: str = ""):
+        """Acepta el handshake y registra la conexión."""
+        await websocket.accept()
+        self.register(websocket, role)
 
     def disconnect(self, websocket: WebSocket):
         """Desconecta un cliente"""
