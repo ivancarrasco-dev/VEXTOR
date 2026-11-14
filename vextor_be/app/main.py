@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
+import os
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
@@ -60,23 +61,33 @@ async def lifespan(app: FastAPI):
                     db.refresh(rol)
                 roles_dict[role_name] = rol
 
-            # Sembrar admin por defecto
-            admin_email = "admin@vextor.com"
-            admin_user = db.query(Usuario).filter(Usuario.correo_usuario == admin_email).first()
-            if not admin_user:
-                admin_user = Usuario(
-                    id_usuario=uuid4(),
-                    id_rol=roles_dict["Administrador"].id_rol,
-                    nombres_usuario="Administrador",
-                    apellidos_usuario="Sistema",
-                    correo_usuario=admin_email,
-                    contrasenia_usuario=hash_password("Admin123!"),
-                    telefono_usuario="3000000000",
-                    estado_usuario="ACTIVO",
+            # Crear administrador inicial únicamente con credenciales explícitas del entorno.
+            # Nunca sembrar una contraseña pública/conocida en una base de datos real.
+            admin_email = (os.getenv("VEXTOR_ADMIN_EMAIL") or "").strip().lower()
+            admin_password = os.getenv("VEXTOR_ADMIN_PASSWORD") or ""
+            if admin_email and admin_password:
+                admin_user = db.query(Usuario).filter(
+                    Usuario.correo_usuario == admin_email
+                ).first()
+                if not admin_user:
+                    admin_user = Usuario(
+                        id_usuario=uuid4(),
+                        id_rol=roles_dict["Administrador"].id_rol,
+                        nombres_usuario="Administrador",
+                        apellidos_usuario="Sistema",
+                        correo_usuario=admin_email,
+                        contrasenia_usuario=hash_password(admin_password),
+                        telefono_usuario="",
+                        estado_usuario="ACTIVO",
+                    )
+                    db.add(admin_user)
+                    db.commit()
+                    print(f"Usuario administrador inicial creado: {admin_email}")
+            else:
+                print(
+                    "Administrador inicial no creado: define VEXTOR_ADMIN_EMAIL y "
+                    "VEXTOR_ADMIN_PASSWORD de forma segura si necesitas sembrar uno."
                 )
-                db.add(admin_user)
-                db.commit()
-                print(f"Usuario semilla admin creado: {admin_email}")
         finally:
             db.close()
     except Exception as e:
