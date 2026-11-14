@@ -94,6 +94,17 @@ La forma más rápida y recomendada de desplegar VEXTOR completamente es utiliza
 
 ---
 
+### Verificar envío SMTP antes de probar recuperación
+
+Después de configurar `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME` y `MAIL_PASSWORD` en el `.env` raíz y reconstruir el backend, prueba el envío aislado:
+
+```powershell
+docker compose up -d --build backend
+docker compose exec backend python scripts/test_smtp.py tu-correo-destino@gmail.com
+```
+
+El script confirma el envío SMTP o muestra el error de autenticación/conexión sin imprimir la contraseña. Revisa también Spam/Promociones. Si el correo de prueba llega, prueba después `/forgot-password` con una dirección que exista en VEXTOR. El endpoint de recuperación siempre devuelve un mensaje genérico para no revelar si una cuenta está registrada; los detalles de envío quedan en `docker compose logs backend`.
+
 ## 🛠️ 4. Instalación Manual
 
 Si prefieres ejecutar los componentes de manera independiente en desarrollo:
