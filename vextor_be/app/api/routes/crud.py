@@ -3,8 +3,9 @@ Endpoints CRUD para Vehículos, Conductores, Rutas, Mantenimiento, Usuarios, Emp
 ACTUALIZADO: Soporte para correo de conductores vinculado a Usuario
 """
 from typing import List
-from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, status
+from pathlib import Path
+from uuid import UUID, uuid4
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 import sys
@@ -24,7 +25,8 @@ from app.services import (
     AuditService,
 )
 from app.api.routes.auth import get_current_user
-from app.models import Rol as RolModel
+from app.models import Rol as RolModel, Vehiculo as VehiculoModel, ImagenVehiculo
+from app.schemas import ImagenVehiculoResponse
 
 # Routers
 vehicles_router = APIRouter(prefix="/api/vehicles", tags=["Vehicles"])
@@ -111,6 +113,98 @@ def delete_vehicle(
         "ELIMINACION", "Vehículos", f"Vehículo eliminado ID: {id_vehiculo}"
     )
     return {"message": "Vehículo eliminado correctamente"}
+
+
+@vehicles_router.post("/{id_vehiculo}/images", response_model=List[ImagenVehiculoResponse])
+async def upload_vehicle_images(
+    id_vehiculo: UUID,
+    files: List[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+    current_user = Depends(require_admin),
+):
+    """Carga varias fotografías de un vehículo (máximo 10 MB por archivo)."""
+    vehicle = db.query(VehiculoModel).filter(VehiculoModel.id_vehiculo == id_vehiculo).first()
+    if not vehicle:
+        raise HTTPException(status_code=404, detail="Vehículo no encontrado")
+    if not files:
+        raise HTTPException(status_code=400, detail="Selecciona al menos una imagen")
+
+    upload_dir = Path(__file__).resolve().parents[3] / "uploads" / "vehicles"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    allowed_types = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+    saved_paths = []
+    has_primary = db.query(ImagenVehiculo).filter(
+        ImagenVehiculo.id_vehiculo == id_vehiculo,
+        ImagenVehiculo.es_principal.is_(True)
+    ).first() is not None
+
+    try:
+        created = []
+        for upload in files:
+            extension = allowed_types.get(upload.content_type or "")
+            if not extension:
+                raise HTTPException(status_code=415, detail="Solo se permiten imágenes JPG, PNG o WEBP")
+            content = await upload.read()
+            if not content:
+                raise HTTPException(status_code=400, detail="Uno de los archivos está vacío")
+            if len(content) > 10 * 1024 * 1024:
+                raise HTTPException(status_code=413, detail="Cada imagen debe pesar máximo 10 MB")
+
+            filename = f"{uuid4().hex}{extension}"
+            destination = upload_dir / filename
+            destination.write_bytes(content)
+            saved_paths.append(destination)
+
+            image = ImagenVehiculo(
+                id_vehiculo=id_vehiculo,
+                url_imagen=f"/uploads/vehicles/{filename}",
+                es_principal=not has_primary,
+            )
+            has_primary = True
+            db.add(image)
+            created.append(image)
+
+        db.commit()
+        for image in created:
+            db.refresh(image)
+        return created
+    except Exception:
+        db.rollback()
+        for path in saved_paths:
+            path.unlink(missing_ok=True)
+        raise
+
+
+@vehicles_router.delete("/{id_vehiculo}/images/{id_imagen}")
+def delete_vehicle_image(
+    id_vehiculo: UUID,
+    id_imagen: UUID,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_admin),
+):
+    """Elimina una fotografía y promueve otra a principal si es necesario."""
+    image = db.query(ImagenVehiculo).filter(
+        ImagenVehiculo.id_imagen == id_imagen,
+        ImagenVehiculo.id_vehiculo == id_vehiculo
+    ).first()
+    if not image:
+        raise HTTPException(status_code=404, detail="Imagen no encontrada")
+
+    was_primary = image.es_principal
+    upload_dir = Path(__file__).resolve().parents[3] / "uploads" / "vehicles"
+    filename = Path(image.url_imagen).name
+    file_path = upload_dir / filename
+    db.delete(image)
+    if was_primary:
+        replacement = db.query(ImagenVehiculo).filter(
+            ImagenVehiculo.id_vehiculo == id_vehiculo,
+            ImagenVehiculo.id_imagen != id_imagen
+        ).order_by(ImagenVehiculo.fecha_creacion.asc()).first()
+        if replacement:
+            replacement.es_principal = True
+    db.commit()
+    file_path.unlink(missing_ok=True)
+    return {"message": "Imagen eliminada correctamente"}
 
 
 # ========== DRIVERS ==========

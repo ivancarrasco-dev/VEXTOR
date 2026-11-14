@@ -2,7 +2,7 @@
 Modelos ORM - Exporta todos los modelos para que SQLAlchemy los registre
 """
 from app.models.user import Rol, Usuario, SesionUsuario
-from app.models.vehicle import Vehiculo, Marca, Modelo, DocumentoVehiculo
+from app.models.vehicle import Vehiculo, Marca, Modelo, DocumentoVehiculo, ImagenVehiculo
 from app.models.driver import Conductor
 from app.models.route import Ruta, RutaDefinicion, Viaje, AsignacionConductor, AsignacionVehiculo, Novedad
 from app.models.maintenance import Mantenimiento
@@ -19,6 +19,7 @@ __all__ = [
     "Marca",
     "Modelo",
     "DocumentoVehiculo",
+    "ImagenVehiculo",
     "Conductor",
     "Ruta",
     "RutaDefinicion",

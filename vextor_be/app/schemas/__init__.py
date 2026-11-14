@@ -199,9 +199,18 @@ class VehiculoUpdate(BaseModel):
     documentacion_vehiculo: Optional[str] = Field(None, max_length=255)
 
 
+class ImagenVehiculoResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id_imagen: UUID
+    url_imagen: str
+    es_principal: bool
+    fecha_creacion: datetime
+
+
 class Vehiculo(VehiculoBase):
     model_config = ConfigDict(from_attributes=True)
     id_vehiculo: UUID
+    imagenes: List[ImagenVehiculoResponse] = Field(default_factory=list)
 
 
 # ========== DOCUMENTO VEHICULO SCHEMAS ==========

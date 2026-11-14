@@ -36,6 +36,8 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    volumes:
+      - vextor_uploads:/app/uploads
     environment:
       # Dentro de Docker Compose, Backend habla con OSRM a través del nombre de servicio
       - OSRM_URL=http://osrm:5000
@@ -67,3 +69,6 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+
+volumes:
+  vextor_uploads:

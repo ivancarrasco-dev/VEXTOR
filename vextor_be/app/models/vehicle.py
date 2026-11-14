@@ -1,6 +1,6 @@
 """Modelos de Vehículo, Marca, Modelo y DocumentoVehiculo"""
 import uuid
-from sqlalchemy import Column, String, Integer, Date, ForeignKey, CheckConstraint
+from sqlalchemy import Column, String, Integer, Date, DateTime, Boolean, ForeignKey, CheckConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.database.connection import Base
@@ -43,6 +43,7 @@ class Vehiculo(Base):
     asignaciones = relationship("AsignacionVehiculo", back_populates="vehiculo")
     mantenimientos = relationship("Mantenimiento", back_populates="vehiculo")
     documentos = relationship("DocumentoVehiculo", back_populates="vehiculo")
+    imagenes = relationship("ImagenVehiculo", back_populates="vehiculo", cascade="all, delete-orphan", order_by="ImagenVehiculo.fecha_creacion")
 
     __table_args__ = (
         CheckConstraint("estado_vehiculo IN ('DISPONIBLE', 'EN_RUTA', 'MANTENIMIENTO', 'INACTIVO')", name="chk_estado_vehiculo"),
@@ -88,3 +89,16 @@ class DocumentoVehiculo(Base):
     fecha_vencimiento = Column(Date, nullable=False)
 
     vehiculo = relationship("Vehiculo", back_populates="documentos")
+
+
+class ImagenVehiculo(Base):
+    """Fotografías asociadas a un vehículo."""
+    __tablename__ = "imagen_vehiculo"
+
+    id_imagen = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id_vehiculo = Column(UUID(as_uuid=True), ForeignKey("vehiculo.id_vehiculo", ondelete="CASCADE"), nullable=False, index=True)
+    url_imagen = Column(String(500), nullable=False)
+    es_principal = Column(Boolean, nullable=False, default=False)
+    fecha_creacion = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+    vehiculo = relationship("Vehiculo", back_populates="imagenes")
