@@ -121,9 +121,9 @@ if (-not $envMap.ContainsKey("JWT_SECRET_KEY") -or [string]::IsNullOrWhiteSpace(
 $smtpDefaults = @{
     "MAIL_HOST" = "smtp.gmail.com"
     "MAIL_PORT" = "587"
-    "MAIL_USERNAME" = "tu-correo@gmail.com"
-    "MAIL_PASSWORD" = "abcd-efgh-ijkl-mnop"
-    "MAIL_FROM" = "VEXTOR Fleet Management <tu-correo@gmail.com>"
+    "MAIL_USERNAME" = ""
+    "MAIL_PASSWORD" = ""
+    "MAIL_FROM" = ""
 }
 
 $envContent = Get-Content $EnvFile -Raw
@@ -366,10 +366,18 @@ Write-Host "  Ver logs de la aplicacion : docker compose logs -f" -ForegroundCol
 Write-Host "  Detener VEXTOR            : docker compose down" -ForegroundColor White
 Write-Host "  Reiniciar VEXTOR          : docker compose restart" -ForegroundColor White
 Write-Host ""
-Write-Host "Nota sobre correos (SMTP):" -ForegroundColor Yellow
-Write-Host "  Actualmente los correos estan deshabilitados (credenciales dummy en .env)." -ForegroundColor DarkYellow
-Write-Host "  Para habilitar recuperacion de contrasena y notificaciones, edita .env" -ForegroundColor DarkYellow
-Write-Host "  con credenciales reales de Gmail o tu proveedor SMTP preferido." -ForegroundColor DarkYellow
+Write-Host "Estado del correo (SMTP):" -ForegroundColor Yellow
+if ($isSmtpDisabled) {
+    Write-Host "  NO CONFIGURADO: VEXTOR no puede enviar correos reales todavia." -ForegroundColor DarkYellow
+    Write-Host "  Edita .env y define MAIL_USERNAME y MAIL_PASSWORD con una cuenta emisora real." -ForegroundColor DarkYellow
+    Write-Host "  En Gmail usa una Contraseña de Aplicacion de 16 caracteres, no la clave normal." -ForegroundColor DarkYellow
+} else {
+    Write-Host "  CONFIGURADO: se detectaron credenciales SMTP no ficticias para $mailUser." -ForegroundColor Green
+}
+if ($envMap["FRONTEND_URL"] -match "localhost|127\.0\.0\.1") {
+    Write-Host "  AVISO: FRONTEND_URL apunta a localhost. Los enlaces solo funcionaran en el equipo local." -ForegroundColor DarkYellow
+    Write-Host "  Para uso externo, configura FRONTEND_URL con la URL HTTPS publica del frontend." -ForegroundColor DarkYellow
+}
 Write-Host ""
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host ""
