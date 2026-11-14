@@ -11,20 +11,27 @@ class ConnectionManager:
 
     def __init__(self):
         self.active_connections: List[WebSocket] = []
+        self.admin_connections: List[WebSocket] = []
 
-    async def connect(self, websocket: WebSocket):
-        """Acepta una nueva conexión"""
+    async def connect(self, websocket: WebSocket, role: str = ""):
+        """Registra una conexión y clasifica observadores administrativos."""
         await websocket.accept()
-        self.active_connections.append(websocket)
+        if websocket not in self.active_connections:
+            self.active_connections.append(websocket)
+        if role.strip().lower() == "administrador" and websocket not in self.admin_connections:
+            self.admin_connections.append(websocket)
 
     def disconnect(self, websocket: WebSocket):
         """Desconecta un cliente"""
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
+        if websocket in self.admin_connections:
+            self.admin_connections.remove(websocket)
 
     async def broadcast(self, message: dict):
         """Envía un mensaje a todos los clientes conectados"""
-        for connection in list(self.active_connections):
+        # La telemetría contiene ubicaciones sensibles: solo se retransmite al panel admin.
+        for connection in list(self.admin_connections):
             try:
                 await connection.send_json(message)
             except Exception:
