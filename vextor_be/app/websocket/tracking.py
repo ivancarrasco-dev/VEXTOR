@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
-from app.models import SeguimientoRuta, HistorialUbicacion, Ruta, Conductor, Vehiculo
+from app.models import SeguimientoRuta, HistorialUbicacion, Ruta, Conductor, Vehiculo, AsignacionConductor, Rol
 from app.websocket.manager import ConnectionManager
 
 # Manager global
@@ -74,13 +74,40 @@ async def websocket_tracking_endpoint(websocket: WebSocket):
     finally:
         db_auth.close()
 
-    if websocket not in manager.active_connections:
-        manager.active_connections.append(websocket)
+    # Conductores publican telemetría; administradores reciben únicamente broadcasts.
+    db_role = SessionLocal()
+    try:
+        role = db_role.query(Rol).filter(Rol.id_rol == current_user.id_rol).first()
+        role_name = role.nombre_rol.strip().lower() if role else ""
+        if role_name not in ("conductor", "administrador"):
+            await websocket.send_json({"type": "error", "message": "El canal GPS está reservado a conductores y administradores."})
+            await websocket.close(code=4003, reason="Rol no autorizado para tracking")
+            return
+        driver_id = None
+        if role_name == "conductor":
+            driver = db_role.query(Conductor).filter(
+                Conductor.id_usuario == current_user.id_usuario
+            ).first()
+            if not driver:
+                await websocket.send_json({"type": "error", "message": "No existe un perfil de conductor asociado."})
+                await websocket.close(code=4003, reason="Perfil de conductor requerido")
+                return
+            driver_id = driver.id_conductor
+    finally:
+        db_role.close()
+
+    manager.register(websocket, role_name)
     try:
         while True:
             data = await websocket.receive_json()
             
             if data.get("type") == "location_update":
+                if role_name != "conductor":
+                    await manager.send_personal(websocket, {
+                        "type": "error",
+                        "message": "Los administradores tienen acceso de solo lectura al canal GPS."
+                    })
+                    continue
                 try:
                     loc_payload = LocationUpdateSchema(
                         id_ruta=data.get("id_ruta"),
@@ -104,8 +131,22 @@ async def websocket_tracking_endpoint(websocket: WebSocket):
                     speed = loc_payload.velocidad
                     heading = loc_payload.heading
 
+                    assignment = db.query(AsignacionConductor).filter(
+                        AsignacionConductor.id_ruta == id_ruta,
+                        AsignacionConductor.id_conductor == driver_id,
+                        AsignacionConductor.estado_asignacion == "ACTIVA",
+                    ).first()
+                    route = db.query(Ruta).filter(Ruta.id_ruta == id_ruta).first()
+                    if not assignment or not route or route.estado_ruta not in ("EN_PROCESO", "EN_RUTA"):
+                        await manager.send_personal(websocket, {
+                            "type": "error",
+                            "message": "No tienes una asignación activa para publicar GPS en esta ruta."
+                        })
+                        continue
+
                     seg = db.query(SeguimientoRuta).filter(
-                        SeguimientoRuta.id_ruta == id_ruta
+                        SeguimientoRuta.id_ruta == id_ruta,
+                        SeguimientoRuta.id_conductor == driver_id,
                     ).first()
 
                     now = datetime.now()
@@ -132,7 +173,6 @@ async def websocket_tracking_endpoint(websocket: WebSocket):
                         db.commit()
 
                         # Preparar broadcast
-                        route = db.query(Ruta).filter(Ruta.id_ruta == id_ruta).first()
                         conductor = db.query(Conductor).filter(
                             Conductor.id_conductor == seg.id_conductor
                         ).first()

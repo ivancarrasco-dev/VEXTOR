@@ -3,6 +3,7 @@ Endpoints para rutas del conductor
 """
 from uuid import UUID
 from datetime import datetime
+import math
 from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session, selectinload, joinedload
 
@@ -16,11 +17,32 @@ from app.models import (
     AsignacionVehiculo,
     SeguimientoRuta,
     HistorialUbicacion,
+    Rol,
 )
 from app.services.crud_services import sync_driver_status, sync_vehicle_status
 from app.services.audit_service import AuditService
 
 router = APIRouter(prefix="/api/routes", tags=["Driver Routes"])
+
+
+def _require_conductor(db: Session, current_user):
+    """Resuelve el rol desde la BD y exige un conductor vinculado al usuario."""
+    role = db.query(Rol).filter(Rol.id_rol == current_user.id_rol).first()
+    if not role or role.nombre_rol.strip().lower() != "conductor":
+        raise HTTPException(status_code=403, detail="Esta operación está disponible únicamente para conductores.")
+    driver = db.query(ConductorModel).filter(
+        ConductorModel.id_usuario == current_user.id_usuario
+    ).first()
+    if not driver:
+        raise HTTPException(status_code=403, detail="El usuario no tiene un perfil de conductor asociado.")
+    return driver
+
+
+def _require_admin(db: Session, current_user):
+    """Resuelve el rol desde la BD; no confía en claims enviados por el cliente."""
+    role = db.query(Rol).filter(Rol.id_rol == current_user.id_rol).first()
+    if not role or role.nombre_rol.strip().lower() != "administrador":
+        raise HTTPException(status_code=403, detail="Se requiere el rol Administrador.")
 
 
 @router.get("/driver/my-routes")
@@ -32,16 +54,7 @@ def get_driver_routes(
     Obtiene las rutas asignadas al conductor logueado
     Retorna estructura: {conductor, active_route, assigned_routes, history_routes}
     """
-    # Buscar el conductor del usuario actual
-    driver = db.query(ConductorModel).filter(ConductorModel.id_usuario == current_user.id_usuario).first()
-    
-    if not driver:
-        return {
-            "conductor": None,
-            "active_route": None,
-            "assigned_routes": [],
-            "history_routes": []
-        }
+    driver = _require_conductor(db, current_user)
     
     # Sincronizar estado del conductor antes de retornar
     sync_driver_status(driver.id_conductor, db)
@@ -114,9 +127,7 @@ def start_route(
     current_user = Depends(get_current_user),
 ):
     """Inicia una ruta asignada y sincroniza estado de conductor y vehículo a 'EN_RUTA'"""
-    driver = db.query(ConductorModel).filter(ConductorModel.id_usuario == current_user.id_usuario).first()
-    if not driver:
-        raise HTTPException(status_code=403, detail="El usuario actual no es un conductor registrado.")
+    driver = _require_conductor(db, current_user)
 
     ruta = db.query(Ruta).filter(Ruta.id_ruta == id_ruta).first()
     if not ruta:
@@ -126,12 +137,11 @@ def start_route(
         AsignacionConductor.id_ruta == id_ruta,
         AsignacionConductor.id_conductor == driver.id_conductor
     ).first()
-    is_admin = "admin" in (getattr(getattr(current_user, 'rol', None), 'nombre_rol', '') or '').strip().lower()
-    if not asig and not is_admin:
-        raise HTTPException(status_code=403, detail="No estás asignado a esta ruta.")
+    if not asig or asig.estado_asignacion != "ACTIVA":
+        raise HTTPException(status_code=403, detail="No tienes una asignación activa para esta ruta.")
 
-    if ruta.estado_ruta == "COMPLETADA":
-        raise HTTPException(status_code=400, detail="Esta ruta ya ha sido completada.")
+    if ruta.estado_ruta not in ("PROGRAMADA", "SUSPENDIDA"):
+        raise HTTPException(status_code=409, detail="Solo se pueden iniciar rutas programadas o suspendidas.")
 
     # Cambiar estado de la ruta a EN_PROCESO
     ruta.estado_ruta = "EN_PROCESO"
@@ -206,9 +216,7 @@ def pause_route(
     current_user = Depends(get_current_user),
 ):
     """Pausa una ruta en curso y actualiza estados"""
-    driver = db.query(ConductorModel).filter(ConductorModel.id_usuario == current_user.id_usuario).first()
-    if not driver:
-        raise HTTPException(status_code=403, detail="El usuario actual no es un conductor registrado.")
+    driver = _require_conductor(db, current_user)
 
     ruta = db.query(Ruta).filter(Ruta.id_ruta == id_ruta).first()
     if not ruta:
@@ -218,9 +226,8 @@ def pause_route(
         AsignacionConductor.id_ruta == id_ruta,
         AsignacionConductor.id_conductor == driver.id_conductor
     ).first()
-    is_admin = "admin" in (getattr(getattr(current_user, 'rol', None), 'nombre_rol', '') or '').strip().lower()
-    if not asig and not is_admin:
-        raise HTTPException(status_code=403, detail="No estás asignado a esta ruta.")
+    if not asig or asig.estado_asignacion != "ACTIVA":
+        raise HTTPException(status_code=403, detail="No tienes una asignación activa para esta ruta.")
 
     if ruta.estado_ruta not in ("EN_PROCESO", "EN_RUTA"):
         raise HTTPException(status_code=400, detail="Solo se pueden pausar rutas en proceso o en ruta.")
@@ -229,10 +236,8 @@ def pause_route(
     driver.estado_conductor = "NO_DISPONIBLE"
 
     asig_veh = db.query(AsignacionVehiculo).filter(AsignacionVehiculo.id_ruta == id_ruta).first()
-    if asig_veh and asig_veh.id_vehiculo:
-        vehiculo = db.query(Vehiculo).filter(Vehiculo.id_vehiculo == asig_veh.id_vehiculo).first()
-        if vehiculo:
-            vehiculo.estado_vehiculo = "DISPONIBLE"
+    # El vehículo permanece reservado mientras la ruta está suspendida;
+    # no debe marcarse disponible para una nueva asignación.
 
     db.commit()
     db.refresh(ruta)
@@ -264,9 +269,7 @@ def finish_route(
     current_user = Depends(get_current_user),
 ):
     """Finaliza una ruta y resincroniza conductor y vehículo a 'DISPONIBLE'"""
-    driver = db.query(ConductorModel).filter(ConductorModel.id_usuario == current_user.id_usuario).first()
-    if not driver:
-        raise HTTPException(status_code=403, detail="El usuario actual no es un conductor registrado.")
+    driver = _require_conductor(db, current_user)
 
     ruta = db.query(Ruta).filter(Ruta.id_ruta == id_ruta).first()
     if not ruta:
@@ -276,8 +279,10 @@ def finish_route(
         AsignacionConductor.id_ruta == id_ruta,
         AsignacionConductor.id_conductor == driver.id_conductor
     ).first()
-    if not asig and not is_admin:
-        raise HTTPException(status_code=403, detail="No estás asignado a esta ruta.")
+    if not asig or asig.estado_asignacion != "ACTIVA":
+        raise HTTPException(status_code=403, detail="No tienes una asignación activa para esta ruta.")
+    if ruta.estado_ruta not in ("EN_PROCESO", "EN_RUTA", "SUSPENDIDA"):
+        raise HTTPException(status_code=409, detail="Solo se pueden finalizar rutas que estén en ejecución o suspendidas.")
 
     ruta.estado_ruta = "COMPLETADA"
     ruta.hora_fin_real = datetime.now()
@@ -324,36 +329,59 @@ def update_route_location(
     current_user = Depends(get_current_user),
 ):
     """Fallback HTTP para actualización de coordenadas GPS de la ruta"""
-    lat = payload.get("latitud")
-    lng = payload.get("longitud")
-    speed = payload.get("velocidad", 0.0)
-    heading = payload.get("heading", 0.0)
+    driver = _require_conductor(db, current_user)
+    try:
+        lat = float(payload.get("latitud"))
+        lng = float(payload.get("longitud"))
+        speed = float(payload.get("velocidad", 0.0))
+        heading = float(payload.get("heading", 0.0))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Las coordenadas y métricas GPS deben ser numéricas.")
 
-    if lat is None or lng is None:
-        raise HTTPException(status_code=400, detail="Latitud y longitud son requeridas.")
+    if not all(math.isfinite(value) for value in (lat, lng, speed, heading)):
+        raise HTTPException(status_code=400, detail="Los valores GPS deben ser finitos.")
+    if not -90 <= lat <= 90 or not -180 <= lng <= 180:
+        raise HTTPException(status_code=400, detail="Las coordenadas GPS están fuera de rango.")
+    if speed < 0 or not 0 <= heading <= 360:
+        raise HTTPException(status_code=400, detail="Velocidad o rumbo fuera de rango.")
 
-    seg = db.query(SeguimientoRuta).filter(SeguimientoRuta.id_ruta == id_ruta).first()
+    assignment = db.query(AsignacionConductor).filter(
+        AsignacionConductor.id_ruta == id_ruta,
+        AsignacionConductor.id_conductor == driver.id_conductor,
+        AsignacionConductor.estado_asignacion == "ACTIVA",
+    ).first()
+    if not assignment:
+        raise HTTPException(status_code=403, detail="No tienes una asignación activa para esta ruta.")
+
+    seg = db.query(SeguimientoRuta).filter(
+        SeguimientoRuta.id_ruta == id_ruta,
+        SeguimientoRuta.id_conductor == driver.id_conductor,
+    ).first()
+    if not seg:
+        raise HTTPException(status_code=404, detail="No existe un seguimiento activo para esta ruta.")
+
+    ruta = db.query(Ruta).filter(Ruta.id_ruta == id_ruta).first()
+    if not ruta or ruta.estado_ruta not in ("EN_PROCESO", "EN_RUTA"):
+        raise HTTPException(status_code=409, detail="La ruta no está en ejecución y no admite telemetría.")
+
     now = datetime.now()
+    seg.latitud = lat
+    seg.longitud = lng
+    seg.velocidad = speed
+    seg.heading = heading
+    seg.ultima_actualizacion = now
+    seg.estado_seguimiento = "ACTIVO"
 
-    if seg:
-        seg.latitud = lat
-        seg.longitud = lng
-        seg.velocidad = speed
-        seg.heading = heading
-        seg.ultima_actualizacion = now
-        seg.estado_seguimiento = "ACTIVO"
-        db.commit()
-
-        hist = HistorialUbicacion(
-            id_seguimiento=seg.id_seguimiento,
-            id_ruta=id_ruta,
-            latitud=lat,
-            longitud=lng,
-            velocidad=speed,
-            fecha_hora=now
-        )
-        db.add(hist)
-        db.commit()
+    hist = HistorialUbicacion(
+        id_seguimiento=seg.id_seguimiento,
+        id_ruta=id_ruta,
+        latitud=lat,
+        longitud=lng,
+        velocidad=speed,
+        fecha_hora=now
+    )
+    db.add(hist)
+    db.commit()
 
     return {"status": "ok", "timestamp": now.isoformat()}
 
@@ -367,6 +395,7 @@ def get_active_tracking(
     Obtiene la lista de seguimientos activos en tiempo real para el panel de administración.
     Retorna un arreglo de objetos con información de la ruta, conductor, vehículo y coordenadas GPS.
     """
+    _require_admin(db, current_user)
     rutas_activas = db.query(Ruta).options(
         selectinload(Ruta.asignaciones_conductor).joinedload(AsignacionConductor.conductor),
         selectinload(Ruta.asignaciones_vehiculo).joinedload(AsignacionVehiculo.vehiculo)

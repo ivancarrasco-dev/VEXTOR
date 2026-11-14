@@ -87,12 +87,23 @@ La forma más rápida y recomendada de desplegar VEXTOR completamente es utiliza
 
 ### ¿Qué realiza el script `setup-vextor.ps1` automáticamente?
 1. **Verificación de Entorno:** Comprueba que Docker Engine y Docker Compose estén en ejecución.
-2. **Configuración de Variables de Entorno:** Copia `.env.example` a `.env` si no existe, valida `DATABASE_URL` y autogenera una clave `JWT_SECRET_KEY` criptográfica segura de 32 bytes en Base64.
+2. **Configuración de Variables de Entorno:** Copia `.env.example` a `.env` si no existe, valida `DATABASE_URL` y autogenera una clave `JWT_SECRET_KEY` criptográfica segura de 32 bytes en Base64. El administrador inicial solo se crea si defines `VEXTOR_ADMIN_EMAIL` y `VEXTOR_ADMIN_PASSWORD`; no existe una contraseña predeterminada pública.
 3. **Procesamiento de Grafo OSRM (Idempotente):** Descarga el archivo geográfico `colombia-latest.osm.pbf` desde Geofabrik si no está presente y ejecuta el pipeline de compilación MLD (`osrm-extract`, `osrm-partition`, `osrm-customize`) mediante el contenedor `osrm-tools`.
 4. **Construcción e Inicio de Contenedores:** Levanta los servicios de Frontend (Nginx), Backend (FastAPI) y OSRM con `docker compose up -d --build`.
 5. **Verificación de Salud (Healthchecks):** Realiza comprobaciones deterministas a los endpoints `http://localhost:5000`, `http://localhost:8000/`, `http://localhost:8000/api/routing/health` y `http://localhost/`.
 
 ---
+
+### Verificar envío SMTP antes de probar recuperación
+
+Después de configurar `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME` y `MAIL_PASSWORD` en el `.env` raíz y reconstruir el backend, prueba el envío aislado:
+
+```powershell
+docker compose up -d --build backend
+docker compose exec backend python scripts/test_smtp.py tu-correo-destino@gmail.com
+```
+
+El script confirma el envío SMTP o muestra el error de autenticación/conexión sin imprimir la contraseña. Revisa también Spam/Promociones. Si el correo de prueba llega, prueba después `/forgot-password` con una dirección que exista en VEXTOR. El endpoint de recuperación siempre devuelve un mensaje genérico para no revelar si una cuenta está registrada; los detalles de envío quedan en `docker compose logs backend`.
 
 ## 🛠️ 4. Instalación Manual
 
@@ -115,6 +126,29 @@ cd vextor_fe
 pnpm install
 pnpm run dev
 ```
+
+### 4.4 Aplicación Android exclusiva para conductores (APK)
+
+La app Android usa el mismo frontend React y el backend FastAPI, pero el enrutamiento nativo limita la experiencia a cuentas con rol **Conductor**. El backend también valida el rol y la asignación antes de aceptar cambios de estado o telemetría GPS.
+
+**Importante para pruebas en un teléfono físico:** `localhost` dentro del APK apunta al propio teléfono, no al PC. El PC y el teléfono deben estar conectados a la misma red Wi-Fi y el APK debe compilarse con la IPv4 LAN del PC donde corre Docker.
+
+En PowerShell, desde `vextor_fe`:
+
+```powershell
+$env:VITE_API_BASE_URL="http://192.168.1.100:8000"
+$env:VITE_WS_BASE_URL="ws://192.168.1.100:8000"
+pnpm install --frozen-lockfile
+pnpm run build:android
+```
+
+Sustituye `192.168.1.100` por la IPv4 real del PC (puedes consultarla con `ipconfig`). Permite los puertos TCP 8000 y 80 en el Firewall de Windows para la red privada. El APK de depuración se genera en:
+
+`vextor_fe/android/app/build/outputs/apk/debug/app-debug.apk`
+
+Para la versión web, continúa usando `http://localhost`; no necesita usar la IP LAN.
+
+**Enlaces de recuperación en Gmail:** para que el enlace recibido en el teléfono abra la web local del PC, configura `FRONTEND_URL=http://IP_LAN_DEL_PC` en el `.env` raíz (por ejemplo `http://192.168.1.100`). Si se solicita recuperación desde el PC, también se puede usar `http://localhost`. No uses localhost para un enlace que se abrirá en otro dispositivo.
 
 ### 4.3 Contenedor OSRM con Docker Compose
 ```bash
@@ -200,7 +234,11 @@ MAIL_HOST=smtp.gmail.com
 MAIL_PORT=587
 MAIL_USERNAME=tu-correo@gmail.com
 MAIL_PASSWORD=tu-contrasena-de-aplicacion
-MAIL_FROM=VEXTOR Fleet <noreply@vextor.local>
+MAIL_FROM=VEXTOR Fleet <tu-correo-emisor@gmail.com>
+
+# --- ADMINISTRADOR INICIAL (OPCIONAL) ---
+VEXTOR_ADMIN_EMAIL=admin@tu-dominio.com
+VEXTOR_ADMIN_PASSWORD=usa-una-clave-larga-y-unica
 ```
 
 ---
