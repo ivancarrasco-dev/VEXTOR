@@ -22,6 +22,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { vehicleService } from './services/vehicleService';
 import { cn } from '../../utils/cn';
 import { useTranslation } from 'react-i18next';
+import { API_BASE_URL } from '../../config/api';
 
 const VEHICLE_STATUSES = [
   { value: 'DISPONIBLE', label: 'Disponible', variant: 'success' },
@@ -38,6 +39,7 @@ const Vehicles = () => {
   const [vehicles, setVehicles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
+  const [selectedImages, setSelectedImages] = useState([]);
 
   // Search & Filters state
   const [search, setSearch] = useState('');
@@ -153,6 +155,7 @@ const Vehicles = () => {
 
   const handleOpenCreate = () => {
     setCurrentVehicle(null);
+    setSelectedImages([]);
     setFormData({
       placa: '',
       marca: '',
@@ -173,6 +176,7 @@ const Vehicles = () => {
 
   const handleOpenEdit = (vehicle) => {
     setCurrentVehicle(vehicle);
+    setSelectedImages([]);
     setFormData({
       placa: vehicle.placa,
       marca: vehicle.marca,
@@ -203,10 +207,14 @@ const Vehicles = () => {
     setApiError('');
 
     try {
+      let savedVehicle;
       if (currentVehicle) {
-        await vehicleService.updateVehicle(currentVehicle.id_vehiculo, formData);
+        savedVehicle = await vehicleService.updateVehicle(currentVehicle.id_vehiculo, formData);
       } else {
-        await vehicleService.createVehicle(formData);
+        savedVehicle = await vehicleService.createVehicle(formData);
+      }
+      if (selectedImages.length > 0 && savedVehicle?.id_vehiculo) {
+        await vehicleService.uploadVehicleImages(savedVehicle.id_vehiculo, selectedImages);
       }
       setIsFormOpen(false);
       loadVehicles();
@@ -386,6 +394,21 @@ const Vehicles = () => {
                   return (
                     <tr key={vehicle.id_vehiculo} className="hover:bg-v-dark/30 transition-colors group">
                       <td className="p-4">
+                        {(() => {
+                          const primaryImage = vehicle.imagenes?.find(image => image.es_principal) || vehicle.imagenes?.[0];
+                          return primaryImage ? (
+                            <img
+                              src={`${API_BASE_URL}${primaryImage.url_imagen}`}
+                              alt={`Vehículo ${vehicle.placa}`}
+                              className="w-16 h-12 object-cover rounded-lg border border-v-dark-border mb-2"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="w-16 h-12 rounded-lg border border-dashed border-v-dark-border flex items-center justify-center text-v-gray mb-2">
+                              <Truck size={18} />
+                            </div>
+                          );
+                        })()}
                         <span className="font-mono text-xs font-extrabold px-3 py-1.5 bg-v-dark border border-v-dark-border rounded-lg text-primary shadow-sm">
                           {vehicle.placa}
                         </span>
@@ -507,6 +530,24 @@ const Vehicles = () => {
                     <span>{apiError}</span>
                   </div>
                 )}
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-v-gray font-mono">Fotografías del vehículo</label>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    onChange={(event) => setSelectedImages(Array.from(event.target.files || []))}
+                    className="block w-full text-sm text-v-gray file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-primary file:font-semibold hover:file:bg-primary/20"
+                  />
+                  <p className="text-xs text-v-gray">JPG, PNG o WEBP. Máximo 10 MB por imagen. La primera será la principal.</p>
+                  {selectedImages.length > 0 && (
+                    <p className="text-xs text-primary">{selectedImages.length} imagen(es) seleccionada(s): {selectedImages.map(image => image.name).join(', ')}</p>
+                  )}
+                  {currentVehicle?.imagenes?.length > 0 && (
+                    <p className="text-xs text-v-gray">{currentVehicle.imagenes.length} imagen(es) guardada(s). Las nuevas se agregarán al vehículo.</p>
+                  )}
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">

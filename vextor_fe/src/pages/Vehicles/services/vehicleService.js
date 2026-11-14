@@ -51,6 +51,28 @@ export const vehicleService = {
     }
   },
 
+  async uploadVehicleImages(id_vehiculo, images) {
+    try {
+      const formData = new FormData();
+      images.forEach((image) => formData.append('files', image));
+      const response = await axios.post(`${API_URL}/${id_vehiculo}/images`, formData);
+      return response.data;
+    } catch (error) {
+      const message = error.response?.data?.detail || 'Error al subir las imágenes del vehículo.';
+      throw new Error(message);
+    }
+  },
+
+  async deleteVehicleImage(id_vehiculo, id_imagen) {
+    try {
+      const response = await axios.delete(`${API_URL}/${id_vehiculo}/images/${id_imagen}`);
+      return response.data;
+    } catch (error) {
+      const message = error.response?.data?.detail || 'Error al eliminar la imagen del vehículo.';
+      throw new Error(message);
+    }
+  },
+
   async deleteVehicle(id_vehiculo) {
     try {
       await axios.delete(`${API_URL}/${id_vehiculo}`);
