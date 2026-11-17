@@ -3,5 +3,4 @@ execute-lifecycle-scripts=true
 fetch-timeout=120000
 fetch-retry-mintimeout=20000
 fetch-retry-maxtimeout=120000
-# Permitir todos los builds del lockfile sin restricciones
-allowedBuildScripts=esbuild
+# La autorización de scripts de dependencias se mantiene en pnpm-workspace.yaml.
