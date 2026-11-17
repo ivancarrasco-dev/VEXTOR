@@ -8,10 +8,10 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 
 # Habilitar pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@12.21.0 --activate
 
 # Copiar archivos de manifest
-COPY package.json pnpm-lock.yaml .pnpmrc ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .pnpmrc ./
 
 # Instalar dependencias de forma reproducible; cualquier error debe detener la imagen.
 RUN pnpm install --frozen-lockfile
