@@ -1,219 +1,215 @@
 # VEXTOR — Aplicación Android APK para Conductores
 
-Este documento detalla la arquitectura, configuración, proceso de compilación, seguridad e instalación de la aplicación móvil Android exclusiva para los conductores de la flota VEXTOR.
+Guía operativa para compilar, localizar, transferir e instalar **VEXTOR Conductor** en Android desde Windows 10/11. La aplicación está construida con React + Vite y Capacitor 8; no es una aplicación Expo/React Native.
 
----
+## 1. Requisitos previos
 
-## 1. Arquitectura de la Aplicación Móvil
+- Windows 10/11 de 64 bits.
+- Node.js LTS compatible con el proyecto.
+- pnpm (la carpeta del frontend contiene `package.json`).
+- JDK 17 o 21 configurado en `JAVA_HOME`.
+- Android Studio con Android SDK instalado (SDK Platform y Build-Tools compatibles con el proyecto).
+- Docker Desktop ejecutándose si el backend se levanta con Docker Compose.
+- Conexión a Internet durante la primera compilación: Gradle Wrapper debe descargar Gradle y Android puede descargar dependencias.
 
-La aplicación móvil **VEXTOR Conductor** está construida integrando **Capacitor 8** con el frontend React + Vite existente (`vextor_fe`).
+Comprueba las herramientas en PowerShell:
 
-- **Identificador de Aplicación**: `com.vextor.driver`
-- **Nombre Visible**: `VEXTOR Conductor`
-- **Motor Web Nativo**: Android WebView (Capacitor Android Runtime con esquema HTTPS seguro `https://localhost`).
-- **Autenticación**: Token JWT enviado mediante cabecera `Authorization: Bearer <token>` y cookies HttpOnly.
-- **Rastreo GPS en Tiempo Real**: Protocolo WebSocket (`/ws/tracking?token=<token>`) con fallback HTTP (`POST /api/routes/{id_ruta}/location`) mediante la API nativa de geolocalización (`@capacitor/geolocation`).
-- **Exclusividad de Rol**: Restricción nativa a nivel de enrutamiento y backend para cuentas con rol **Conductor**. Las cuentas administrativas y de usuario son bloqueadas automáticamente con un mensaje informativo indicando acceder desde la plataforma web.
-
----
-
-## 2. Dependencias y Requisitos de Instalación
-
-### Dependencias agregadas en `vextor_fe/package.json`:
-
-```json
-"dependencies": {
-  "@capacitor/app": "^8.1.2",
-  "@capacitor/core": "^8.5.3",
-  "@capacitor/geolocation": "^8.2.4",
-  "@capacitor/preferences": "^8.0.1",
-  "@capacitor/splash-screen": "^8.0.2",
-  "@capacitor/status-bar": "^8.0.4"
-},
-"devDependencies": {
-  "@capacitor/android": "^8.5.3",
-  "@capacitor/cli": "^8.5.3"
-}
+```powershell
+node --version
+pnpm --version
+java -version
+$env:JAVA_HOME
 ```
 
----
+En Android Studio abre **SDK Manager** y verifica que exista el Android SDK. Configura `ANDROID_HOME` o `ANDROID_SDK_ROOT` apuntando a la ruta real del SDK. Por ejemplo (ajusta el usuario/ruta):
 
-## 3. Configuración de URLs de API y WebSocket
+```powershell
+$env:ANDROID_HOME="$env:LOCALAPPDATA\Android\Sdk"
+$env:ANDROID_SDK_ROOT=$env:ANDROID_HOME
+```
 
-En desarrollo y producción, las URLs se gestionan de forma centralizada en `vextor_fe/src/config/api.js` mediante variables de entorno:
+## 2. Configurar la dirección del backend
 
-- `VITE_API_BASE_URL`: Dirección base del backend (ejemplo en producción: `https://api.vextor.com` o en red local: `http://10.0.2.2:8000` / `http://192.168.1.X:8000`).
-- `VITE_WS_BASE_URL`: Dirección WebSocket en vivo (ejemplo en producción: `wss://api.vextor.com` o en red local: `ws://10.0.2.2:8000`).
+El APK se instala en un teléfono; por eso **no debes compilarlo con `localhost` ni `127.0.0.1`**. Esas direcciones apuntarían al propio teléfono.
 
-### Configuración CORS en Backend (`vextor_be/app/core/config.py`):
-El servidor FastAPI incluye en sus orígenes permitidos:
-- `https://localhost` (Esquema por defecto de Capacitor Android)
-- `capacitor://localhost`
-- Orígenes de desarrollo web local (`http://localhost:5173`, `http://localhost:3000`, etc.)
+### Prueba en la misma red Wi-Fi
 
----
+1. Conecta PC y teléfono a la misma red Wi-Fi.
+2. En Windows ejecuta `ipconfig` y busca la IPv4 del adaptador Wi-Fi/Ethernet activo (por ejemplo `192.168.1.25`).
+3. Verifica que el backend esté disponible desde el PC en el puerto 8000.
+4. Permite TCP 8000 en Firewall de Windows para redes privadas.
+5. Desde el navegador del teléfono comprueba `http://IP_DEL_PC:8000/`.
 
-## 4. Requisitos de Android Studio y Android SDK
+En PowerShell, reemplaza la IP de ejemplo por la real:
 
-Para compilar la APK en tu máquina de desarrollo o servidor de CI/CD:
+```powershell
+cd C:\Users\TU_USUARIO\VEXTOR\vextor_fe
+$env:VITE_API_BASE_URL="http://192.168.1.25:8000"
+$env:VITE_WS_BASE_URL="ws://192.168.1.25:8000"
+```
 
-- **JDK**: OpenJDK 17 u OpenJDK 21.
-- **Android SDK**: API Level 34 o superior (Android 14).
-- **Android SDK Build-Tools**: 34.0.0+.
-- **Variable de Entorno**:
-  ```bash
-  export ANDROID_HOME=/opt/android-sdk # O la ruta de tu SDK local
-  export PATH=$PATH:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin
-  ```
+Si usas un backend publicado en Internet, utiliza su URL HTTPS y su WebSocket seguro WSS. No distribuyas un APK configurado con una IP privada que solo funciona en tu Wi-Fi.
 
----
+> La URL de API y WebSocket se incorporan al bundle durante la compilación de Vite. Si cambias esas variables, vuelve a compilar y sincronizar Capacitor.
 
-## 5. Comandos de Compilación y Sincronización
+## 3. Generar el APK Debug en Windows
 
-Ejecuta los siguientes comandos desde el directorio `vextor_fe`:
+Abre PowerShell en la carpeta del frontend:
 
-```bash
-# 1. Instalar dependencias del frontend
-cd vextor_fe
+```powershell
+cd C:\Users\TU_USUARIO\VEXTOR\vextor_fe
 pnpm install
-
-# 2. Compilar la aplicación React/Vite para producción
-pnpm build
-
-# 3. Sincronizar los activos web y plugins de Capacitor con la plataforma Android
-pnpm cap:sync
 ```
 
----
+Configura las URLs de la sección anterior y ejecuta:
 
-## 6. Procedimiento para Generar la APK Debug
-
-Para compilar la APK de prueba/depuración sin necesidad de abrir Android Studio:
-
-```bash
-cd vextor_fe
-pnpm cap:build
+```powershell
+pnpm run build:android
 ```
 
-O directamente mediante Gradle:
+El script `scripts/build-android.mjs` realiza estos pasos automáticamente:
 
-```bash
-cd vextor_fe/android
-./gradlew assembleDebug
-```
+1. Comprueba que las variables `VITE_API_BASE_URL` y `VITE_WS_BASE_URL` estén definidas y no sean localhost.
+2. Ejecuta `pnpm run build` para generar `dist`.
+3. Ejecuta `npx cap sync android`.
+4. Ejecuta Gradle `assembleDebug`.
 
----
-
-## 7. Ubicación Exacta de la APK Generada
-
-Tras una compilación exitosa, la APK ejecutable se genera en la siguiente ruta:
+La ruta esperada del archivo generado es:
 
 ```
-vextor_fe/android/app/build/outputs/apk/debug/app-debug.apk
+vextor_fe\android\app\build\outputs\apk\debug\app-debug.apk
 ```
 
-*(Tamaño aproximado: ~16.5 MB)*.
+Comprueba que exista:
 
----
-
-## 8. Procedimiento de Instalación en Dispositivos Android
-
-### Método A: Instalación mediante ADB (Conexión USB o Wi-Fi)
-
-```bash
-adb install -r vextor_fe/android/app/build/outputs/apk/debug/app-debug.apk
+```powershell
+Test-Path .\android\app\build\outputs\apk\debug\app-debug.apk
+Get-Item .\android\app\build\outputs\apk\debug\app-debug.apk | Select-Object FullName, Length, LastWriteTime
 ```
 
-### Método B: Instalación Manual en Teléfono
+### Compilar directamente con Gradle
 
-1. Transfiere el archivo `app-debug.apk` al teléfono (vía correo, Telegram, Google Drive o USB).
-2. En el teléfono, abre el archivo APK.
-3. Si el sistema lo solicita, habilita la opción **"Instalar aplicaciones de fuentes desconocidas"** para el explorador de archivos utilizado.
-4. Presiona **Instalar** y luego **Abrir**.
+Si el frontend ya fue compilado y sincronizado:
 
----
+```powershell
+cd .\android
+.\gradlew.bat assembleDebug
+```
 
-## 9. Permisos GPS y Prueba Operativa de Rutas
+## 4. Solución al error de descarga de Gradle
 
-### Permisos Android Declarados (`AndroidManifest.xml`):
-- `ACCESS_FINE_LOCATION` (Ubicación precisa GPS).
-- `ACCESS_COARSE_LOCATION` (Ubicación aproximada).
-- `ACCESS_BACKGROUND_LOCATION` (Ubicación en segundo plano durante recorridos activos).
-- `FOREGROUND_SERVICE` y `FOREGROUND_SERVICE_LOCATION` (Servicio de rastreo en primer plano).
-- `POST_NOTIFICATIONS` (Notificaciones del estado de ruta activa).
+Si aparece:
 
-### Flujo de Prueba de una Ruta para el Conductor:
-1. **Inicio de Sesión**: Inicia sesión en la APK con una cuenta que posea el rol **Conductor** (ejemplo: `juan.conductor@vextor.com`).
-2. **Listado de Rutas**: La APK solicitará las rutas asignadas al endpoint `/api/routes/driver/my-routes`.
-3. **Inicio de Ruta**: Presiona **"Iniciar Ruta"** en una ruta programada.
-4. **Concesión de Permisos**: La aplicación solicitará automáticamente permiso para acceder a la ubicación GPS. Selecciona **"Mientras la app está en uso"** o **"Permitir siempre"**.
-5. **Navegación y Telemetría**: La pantalla de la ruta activa mostrará la ubicación actual, velocidad y ruta en el mapa. Coordenadas se transmitirán vía WebSocket en tiempo real.
-6. **Finalizar Ruta**: Al llegar al destino, presiona **"Finalizar"**. El rastreo GPS se detendrá inmediatamente y tu estado cambiará a disponible.
+```
+Downloading https://services.gradle.org/distributions/gradle-8.14.3-...
+java.net.ConnectException: Connection timed out
+```
 
----
+Gradle no ha podido descargar su propia distribución. Esto ocurre antes de compilar el código Android; no significa por sí solo que el proyecto tenga errores de Java/Kotlin.
 
-## 10. Procedimiento para Generar una APK de Lanzamiento (Signed Release APK)
+Prueba en este orden:
 
-Para generar una APK firmada para producción o distribución formal:
+1. Comprueba que Windows tenga Internet y que una VPN, proxy, firewall corporativo o antivirus no esté bloqueando `services.gradle.org`.
+2. Abre en el navegador: `https://services.gradle.org/distributions/gradle-8.14.3-bin.zip`.
+3. Cierra y vuelve a abrir PowerShell/VS Code después de cambiar VPN o proxy.
+4. Reintenta:
 
-1. **Crear KeyStore (Llave de Firma)**:
-   ```bash
-   keytool -genkey -v -keystore vextor-driver-release.keystore -alias vextor-key -keyalg RSA -keysize 2048 -validity 10000
-   ```
-2. **Configurar variables en `vextor_fe/android/key.properties`**:
-   ```properties
-   storePassword=TU_PASSWORD_KEYSTORE
-   keyPassword=TU_PASSWORD_LLAVE
-   keyAlias=vextor-key
-   storeFile=../vextor-driver-release.keystore
-   ```
-3. **Compilar Release APK**:
-   ```bash
-   cd vextor_fe/android
-   ./gradlew assembleRelease
-   ```
-4. **Ubicación de la APK de Release**:
-   ```
-   vextor_fe/android/app/build/outputs/apk/release/app-release.apk
-   ```
+```powershell
+cd .\android
+.\gradlew.bat --version
+.\gradlew.bat assembleDebug --stacktrace
+```
 
----
+5. Si la descarga se interrumpe, vuelve a ejecutar el comando: Gradle Wrapper puede reanudar/reintentar la obtención de la distribución.
+6. Si estás detrás de un proxy institucional, configura sus datos en el archivo `%USERPROFILE%\.gradle\gradle.properties` (no publiques credenciales del proxy).
 
-## 11. Requisitos de Configuración del Servidor para Producción
+El Wrapper del repositorio utiliza Gradle 8.14.3. Se ha configurado la distribución `bin` (más pequeña que `all`) y un timeout de red mayor. No descargues un Gradle distinto ni cambies versiones de plugins al azar.
 
-Para que la APK funcione fuera de la red local (vía datos móviles 4G/5G):
+## 5. ¿Dónde se descarga el APK?
 
-1. **Dominio con SSL / HTTPS Valido**:
-   Configura un proxy inverso (Nginx, Caddy o Cloudflare) apuntando al backend FastAPI en la nube con un certificado SSL válido (Let's Encrypt).
-2. **Soporte WebSocket (WSS)**:
-   Asegúrate de que Nginx redireccione los encabezados de WebSocket en `/ws/tracking`:
-   ```nginx
-   location /ws/ {
-       proxy_pass http://backend:8000;
-       proxy_http_version 1.1;
-       proxy_set_header Upgrade $http_upgrade;
-       proxy_set_header Connection "Upgrade";
-       proxy_set_header Host $host;
-   }
-   ```
-3. **Variables de Entorno para la APK**:
-   Compila la APK configurando las variables públicas en `.env.production` de `vextor_fe`:
-   ```env
-   VITE_API_BASE_URL=https://tu-dominio-vextor.com
-   VITE_WS_BASE_URL=wss://tu-dominio-vextor.com
-   ```
+El script de compilación **no publica ni descarga el APK desde una página web**. Lo construye localmente en tu computador. Cuando termine correctamente, abre esta ruta desde el Explorador de Windows:
 
----
+```
+VEXTOR\vextor_fe\android\app\build\outputs\apk\debug\app-debug.apk
+```
 
-## 12. Limitaciones Conocidas y Pruebas Ejecutadas
+Para copiarlo a una carpeta fácil de encontrar:
 
-### Pruebas Ejecutadas:
-- Compilación del frontend React/Vite (`pnpm build`).
-- Sincronización y vinculación del runtime de Capacitor Android (`npx cap sync android`).
-- Compilación completa de la APK de depuración usando Gradle (`./gradlew assembleDebug`).
-- Pruebas unitarias y de integración del backend FastAPI en Python 3.12 (`pytest vextor_be/tests`).
-- Validación de restricciones de seguridad de roles (usuarios no conductores bloqueados en la APK).
+```powershell
+Copy-Item .\android\app\build\outputs\apk\debug\app-debug.apk "$HOME\Desktop\VEXTOR-Conductor-debug.apk"
+```
 
-### Limitaciones Conocidas:
-- En emuladores de Android Studio sin Google Play Services o sensores GPS habilitados, se deben simular las coordenadas utilizando las herramientas de ubicación del emulador.
-- Las notificaciones push remotas requieren configurar una cuenta de Firebase Cloud Messaging (FCM) y adjuntar el archivo `google-services.json` en `vextor_fe/android/app/`.
+Para distribuirlo a los conductores, transfiere el archivo por USB, Drive o un canal privado. No envíes el archivo `.env`, claves JWT, contraseñas SMTP ni archivos de firma.
+
+## 6. Instalar en un teléfono Android
+
+### Método A — instalación manual
+
+1. Copia `VEXTOR-Conductor-debug.apk` al teléfono.
+2. Abre el APK desde Archivos/Descargas.
+3. Si Android lo solicita, permite temporalmente **Instalar aplicaciones desconocidas** para la aplicación que abrió el archivo (Archivos, Chrome, Drive, etc.).
+4. Pulsa **Instalar** y después **Abrir**.
+5. Inicia sesión con una cuenta cuyo rol sea **Conductor**.
+6. Acepta los permisos de ubicación cuando la aplicación los solicite.
+
+### Método B — ADB por USB
+
+1. Activa Opciones de desarrollador y Depuración USB en el teléfono.
+2. Conecta el teléfono al PC y acepta la autorización RSA.
+3. Ejecuta desde PowerShell:
+
+```powershell
+adb devices
+adb install -r .\android\app\build\outputs\apk\debug\app-debug.apk
+```
+
+Si `adb` no se reconoce, ejecuta desde la carpeta `platform-tools` del Android SDK o agrega esa carpeta al PATH.
+
+## 7. Prueba funcional mínima
+
+- Comprueba que el teléfono puede abrir la URL del backend.
+- Inicia sesión con un usuario de rol Conductor.
+- Verifica que aparecen únicamente las rutas asignadas a ese conductor.
+- Inicia una ruta y concede permisos GPS.
+- Comprueba que la ubicación se actualiza y que el backend recibe la telemetría.
+- Finaliza la ruta y verifica que el rastreo se detiene.
+
+La app móvil no reemplaza la plataforma web administrativa. Los usuarios Administrador y Usuario deben continuar utilizando la versión web.
+
+## 8. Recuperación de contraseña y enlaces desde el móvil
+
+El correo de recuperación construye un enlace con `FRONTEND_URL`. Esa URL debe ser accesible desde el dispositivo donde se abre el correo:
+
+- Si se abre en el mismo PC: usa la URL local que realmente publica el frontend.
+- Si se abre en un teléfono en la misma Wi-Fi: usa la IPv4 LAN del PC y el puerto publicado por Docker.
+- Si el sistema está desplegado públicamente: usa el dominio HTTPS real.
+
+No uses `localhost` en un enlace que se abrirá desde otro dispositivo. Para Docker Compose de este repositorio, el frontend publica el puerto 80 y también el 5173 del host hacia Nginx.
+
+Después de cambiar variables del archivo `.env` raíz, recrea el backend:
+
+```powershell
+docker compose up -d --build --force-recreate backend
+docker compose logs --tail 100 backend
+```
+
+Prueba primero SMTP de forma independiente:
+
+```powershell
+docker compose exec backend python scripts/test_smtp.py TU_CORREO_DESTINO@gmail.com
+```
+
+Configura Gmail con una contraseña de aplicación (no la contraseña normal de Google). Las variables que lee el backend son `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD` y `MAIL_FROM`. En Gmail, el remitente efectivo se ajusta a `MAIL_USERNAME`.
+
+El endpoint `POST /api/auth/forgot-password` responde intencionalmente con un mensaje genérico para no revelar si un correo está registrado. Si el envío falla, revisa los logs del backend; una respuesta HTTP exitosa del endpoint no garantiza que Gmail haya aceptado el correo.
+
+## 9. APK de lanzamiento (Release)
+
+El APK Debug es para pruebas. Para distribuir una versión de lanzamiento, debe generarse y protegerse una llave de firma (keystore), configurar la firma Release en Gradle y compilar `assembleRelease`. Conserva una copia segura del keystore y sus contraseñas: sin la misma llave no podrás actualizar normalmente la aplicación instalada. No subas el keystore ni sus contraseñas al repositorio.
+
+## 10. Seguridad
+
+- Rota cualquier contraseña de aplicación Gmail o secreto JWT que haya aparecido en capturas, chats o commits.
+- Mantén el archivo `.env` fuera de Git.
+- No compartas APKs configurados con endpoints de desarrollo que no sean accesibles al conductor.
+- La distribución de producción debe usar HTTPS/WSS y una APK firmada.
