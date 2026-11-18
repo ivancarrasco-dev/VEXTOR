@@ -15,7 +15,7 @@ from app.core.exceptions import setup_exception_handlers
 from app.database import engine, Base
 
 # Importar routers
-from app.api.routes import auth, crud, routing, audit, dashboard, driver_routes, reports
+from app.api.routes import auth, crud, routing, audit, dashboard, driver_routes, reports, backup
 from app.websocket import websocket_tracking_endpoint
 
 
@@ -155,6 +155,9 @@ app.include_router(routing.router)
 
 # Audit & Security
 app.include_router(audit.router)
+
+# Backup management (admin-only)
+app.include_router(backup.router)
 
 # Reports
 app.include_router(reports.router, prefix="/api/reports")
