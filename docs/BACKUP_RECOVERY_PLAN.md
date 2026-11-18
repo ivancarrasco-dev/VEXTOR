@@ -70,6 +70,29 @@ El bucket debe permanecer privado. No configurar estas variables en `VITE_*` ni 
 
 Los dumps cubren el esquema de aplicación `public`; no sustituyen los respaldos administrados de Supabase para los esquemas internos `auth` y `storage`. No se realizan operaciones contra la base real desde las pruebas.
 
+## Verificación local antes de integrar
+
+En PowerShell, desde la raíz del repositorio, ejecuta las pruebas del backend usando SQLite temporal para no tocar Supabase:
+
+```powershell
+$env:DATABASE_URL = "sqlite:///./backup_ci.db"
+$env:JWT_SECRET_KEY = "ci-only-test-secret-not-for-production"
+cd .\vextor_be
+python -m pip install -r requirements.txt
+python -m pip install pytest httpx
+python -m pytest -q
+```
+
+Después compila el frontend:
+
+```powershell
+cd ..\vextor_fe
+pnpm install --frozen-lockfile
+pnpm build
+```
+
+No configures `BACKUP_AUTO_ENABLED=true` durante las pruebas. Estas pruebas no deben usar la URL real de Supabase ni ejecutar restauraciones reales.
+
 ## Reglas de seguridad
 
 - No cambiar `DATABASE_URL`, credenciales, tablas ni políticas de negocio.
