@@ -38,6 +38,22 @@ def _storage_error(exc: BackupStorageError):
     raise HTTPException(status_code=503, detail=str(exc)) from None
 
 
+@router.get("/status")
+def get_backup_status(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    require_backup_admin(db, current_user)
+    storage_ready = settings.BACKUP_STORAGE_CONFIGURED
+    return {
+        "storage_configured": storage_ready,
+        "automatic_enabled": bool(settings.BACKUP_AUTO_ENABLED and storage_ready),
+        "hour": settings.BACKUP_AUTO_HOUR,
+        "minute": settings.BACKUP_AUTO_MINUTE,
+        "timezone": settings.BACKUP_AUTO_TIMEZONE,
+    }
+
+
 @router.get("")
 def get_backups(
     db: Session = Depends(get_db),
