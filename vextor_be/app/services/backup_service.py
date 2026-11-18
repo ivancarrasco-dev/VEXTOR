@@ -59,6 +59,13 @@ def _connection_parameters():
     backup_ref = supabase_project_ref(parsed)
     if app_ref and backup_ref and app_ref != backup_ref:
         raise BackupOperationError("BACKUP_DATABASE_URL apunta a un proyecto Supabase distinto.")
+    if (
+        settings.BACKUP_DATABASE_URL != settings.DATABASE_URL
+        and bool(app_ref) != bool(backup_ref)
+    ):
+        raise BackupOperationError(
+            "No se pudo verificar que BACKUP_DATABASE_URL pertenezca al mismo proyecto que DATABASE_URL."
+        )
     query = parse_qs(parsed.query)
     return {
         "host": parsed.hostname,
