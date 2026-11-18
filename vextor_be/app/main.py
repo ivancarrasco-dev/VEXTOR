@@ -114,23 +114,24 @@ async def lifespan(app: FastAPI):
                     lock_key = 734923847201
                     try:
                         with engine.connect() as lock_connection:
+                            # Xact lock también funciona con el pooler de transacciones de Supabase.
+                            lock_connection.execute(
+                                text("SET LOCAL idle_in_transaction_session_timeout = 0")
+                            )
                             acquired = lock_connection.execute(
-                                text("SELECT pg_try_advisory_lock(:lock_key)"),
+                                text("SELECT pg_try_advisory_xact_lock(:lock_key)"),
                                 {"lock_key": lock_key},
                             ).scalar()
-                            lock_connection.commit()
                             if not acquired:
+                                lock_connection.rollback()
                                 return
                             try:
                                 filename, content = generate_database_backup()
                                 upload_backup(filename, content)
                                 print("Scheduled VEXTOR backup completed.")
                             finally:
-                                lock_connection.execute(
-                                    text("SELECT pg_advisory_unlock(:lock_key)"),
-                                    {"lock_key": lock_key},
-                                )
-                                lock_connection.commit()
+                                # Libera el lock transaccional al finalizar o fallar el respaldo.
+                                lock_connection.rollback()
                     except Exception as backup_error:
                         print(f"Scheduled VEXTOR backup failed: {type(backup_error).__name__}")
 
