@@ -46,6 +46,7 @@ El almacenamiento objetivo es un bucket privado de Supabase Storage. Las operaci
 4. Para activar respaldos diarios configura `BACKUP_AUTO_ENABLED=true`. Por defecto queda desactivado.
 5. La programación usa la zona horaria `America/Bogota` y se ejecuta a las 04:00; puedes cambiar hora y zona horaria mediante las variables documentadas en `.env.example`.
 6. El scheduler usa un advisory lock de PostgreSQL para evitar respaldos duplicados entre réplicas. No modifica tablas ni datos de negocio.
+7. Si la URL normal de la aplicación usa el transaction pooler, configura `BACKUP_DATABASE_URL` con una URL de sesión/directa compatible con `pg_dump` y `psql`. Esto no cambia `DATABASE_URL` ni la conexión normal de VEXTOR.
 
 Variables nuevas previstas para el backend:
 
