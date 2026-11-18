@@ -285,6 +285,33 @@ def change_password(
 
 MAX_BACKUP_SIZE_BYTES = settings.BACKUP_MAX_SIZE_BYTES
 
+
+def validate_restore_sql_content(sql_content: str):
+    """Rechaza escapes de psql fuera de bloques COPY sin confundir datos \N."""
+    if not sql_content.strip():
+        raise ValueError("El archivo SQL está vacío.")
+    sql_keywords = ["CREATE", "INSERT", "ALTER", "DROP", "UPDATE", "DELETE", "BEGIN", "COMMIT", "SELECT", "SET", "COPY"]
+    if not any(keyword in sql_content.upper() for keyword in sql_keywords):
+        raise ValueError("El archivo proporcionado no parece ser un script SQL válido.")
+
+    in_copy_data = False
+    for line in sql_content.splitlines():
+        command = line.lstrip()
+        if in_copy_data:
+            if command == "\\.":
+                in_copy_data = False
+            continue
+        if re.match(r"^\\s*COPY\\b.*\\bFROM\\s+stdin\\s*;", line, re.IGNORECASE):
+            in_copy_data = True
+            continue
+        if command.startswith("\\\\"):
+            if re.match(r"^\\\\(?:restrict|unrestrict)\\b", command):
+                continue
+            raise ValueError("El archivo contiene comandos interactivos de psql no permitidos.")
+    if in_copy_data:
+        raise ValueError("El bloque COPY del archivo SQL está incompleto.")
+    return True
+
 @router.post("/api/backup/restore")
 async def restore_backup(
     request: Request,
@@ -402,27 +429,15 @@ async def restore_backup(
             detail="El archivo SQL está vacío.",
         )
 
-    # Validación básica y bloqueo de comandos interactivos de psql que podrían
-    # ejecutar procesos o leer archivos locales del contenedor.
-    sql_keywords = ["CREATE", "INSERT", "ALTER", "DROP", "UPDATE", "DELETE", "BEGIN", "COMMIT", "SELECT", "SET", "COPY"]
-    if not any(kw in stripped_sql.upper() for kw in sql_keywords):
+    # Validar el SQL sin confundir valores \N de los bloques COPY de pg_dump.
+    try:
+        validate_restore_sql_content(stripped_sql)
+    except ValueError as validation_error:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El archivo proporcionado no parece ser un script SQL válido.",
-        )
-    for line in stripped_sql.splitlines():
-        command = line.lstrip()
-        if command.startswith("\\"):
-            if command == "\\." or re.match(r"^\\(?:restrict|unrestrict)\\b", command):
-                continue
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="El archivo contiene comandos interactivos de psql no permitidos.",
-            )
+            detail=str(validation_error),
+        ) from None
 
-    # Capturar los datos de auditoría antes de que la restauración pueda reemplazar tablas.
-    restoring_user_id = current_user.id_usuario
-    user_name = f"{current_user.nombres_usuario} {current_user.apellidos_usuario}".strip()
 
     # Ejecución de la restauración
     pre_restore_backup = None
