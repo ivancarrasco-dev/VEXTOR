@@ -20,7 +20,7 @@ from app.services.backup_storage import (
     list_backups,
     download_backup,
 )
-from app.services.backup_service import BackupOperationError, generate_database_backup, restore_postgres_sql
+from app.services.backup_service import BackupOperationError, generate_database_backup
 
 router = APIRouter(prefix="/api/backup", tags=["Backups"])
 
@@ -45,6 +45,11 @@ def get_backup_status(
 ):
     require_backup_admin(db, current_user)
     storage_ready = settings.BACKUP_STORAGE_CONFIGURED
+    if storage_ready:
+        try:
+            list_backups()  # Verifica que el bucket exista y sea accesible.
+        except BackupStorageError:
+            storage_ready = False
     return {
         "storage_configured": storage_ready,
         "automatic_enabled": bool(settings.BACKUP_AUTO_ENABLED and storage_ready),
