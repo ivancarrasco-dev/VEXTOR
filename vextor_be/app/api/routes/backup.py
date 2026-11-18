@@ -18,7 +18,6 @@ from app.api.routes.auth import get_current_user
 from app.models import Rol as RolModel
 from app.services.backup_storage import (
     BackupStorageError,
-    upload_backup,
     list_backups,
     download_backup,
 )
