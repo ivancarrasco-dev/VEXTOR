@@ -420,6 +420,10 @@ async def restore_backup(
                 detail="El archivo contiene comandos interactivos de psql no permitidos.",
             )
 
+    # Capturar los datos de auditoría antes de que la restauración pueda reemplazar tablas.
+    restoring_user_id = current_user.id_usuario
+    user_name = f"{current_user.nombres_usuario} {current_user.apellidos_usuario}".strip()
+
     # Ejecución de la restauración
     pre_restore_backup = None
 
@@ -438,6 +442,9 @@ async def restore_backup(
                 detail="Error al ejecutar la restauración en la base de datos SQLite.",
             )
     else:
+        # Cerrar la transacción de autorización antes de reemplazar tablas:
+        # evita que los SELECT previos bloqueen los DROP del dump.
+        db.rollback()
         # PostgreSQL exige una copia previa subida y verificada en Storage.
         try:
             pre_restore_backup = restore_postgres_sql(stripped_sql)
@@ -456,11 +463,10 @@ async def restore_backup(
             ) from None
 
 
-    user_name = f"{current_user.nombres_usuario} {current_user.apellidos_usuario}".strip()
     try:
         AuditService.record_activity(
             db,
-            id_usuario=current_user.id_usuario,
+            id_usuario=restoring_user_id,
             nombres_usuario=user_name,
             tipo_accion="RESTAURACION",
             modulo="Configuración",
