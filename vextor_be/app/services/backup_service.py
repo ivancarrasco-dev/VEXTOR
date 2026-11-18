@@ -39,6 +39,8 @@ def _connection_parameters():
         .replace("postgres://", "postgresql://")
     )
     app_parsed = urlparse(app_url)
+    if app_parsed.scheme != "postgresql":
+        raise BackupOperationError("BACKUP_DATABASE_URL solo puede usarse cuando DATABASE_URL apunta a PostgreSQL.")
     backup_database = unquote(parsed.path.lstrip("/"))
     app_database = unquote(app_parsed.path.lstrip("/"))
     if backup_database != app_database:
