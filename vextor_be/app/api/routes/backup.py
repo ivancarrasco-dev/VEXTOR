@@ -142,8 +142,14 @@ async def upload_manual_backup(
         raise HTTPException(status_code=413, detail="El archivo supera el tamaño máximo permitido.")
     try:
         # Nombre único: nunca sobrescribir una copia que ya exista.
-        safe_name = "".join(ch if ch.isascii() and (ch.isalnum() or ch in "._-") else "_" for ch in original_name)
-        filename = f"manual_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')}_{uuid4().hex[:8]}_{safe_name}"
+        safe_stem = "".join(
+            ch if ch.isascii() and (ch.isalnum() or ch in "._-") else "_"
+            for ch in Path(original_name).stem
+        )[:80] or "backup"
+        filename = (
+            f"manual_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')}_"
+            f"{uuid4().hex[:8]}_{safe_stem}.sql"
+        )
         upload_backup(filename, content)
     except BackupStorageError as exc:
         _storage_error(exc)
