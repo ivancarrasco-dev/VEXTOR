@@ -213,3 +213,55 @@ def test_backup_list_returns_storage_objects_for_admin(test_db, monkeypatch):
     assert len(response.json()) == 1
     assert response.json()[0]["filename"] == "vextor_backup_test.sql"
     assert response.json()[0]["size"] == 1024
+
+
+def test_manual_sql_upload_is_stored_not_executed(test_db, monkeypatch):
+    """Subir un SQL lo almacena; no debe invocar la ruta de restauración."""
+    from app.core.config import settings
+
+    client = TestClient(app)
+    login_res = client.post(
+        "/api/auth/login",
+        json={"email": "admin_backup@vextor.com", "password": "Admin123!"}
+    )
+    assert login_res.status_code == 200
+
+    stored = []
+    monkeypatch.setattr(
+        type(settings),
+        "BACKUP_STORAGE_CONFIGURED",
+        property(lambda self: True),
+    )
+    monkeypatch.setattr(
+        backup_routes,
+        "upload_backup",
+        lambda filename, content: stored.append((filename, content)),
+    )
+
+    response = client.post(
+        "/api/backup/upload",
+        cookies=login_res.cookies,
+        files={"file": ("my_backup.sql", b"-- SQL backup", "application/sql")},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["status"] == "success"
+    assert "no se ha ejecutado" in response.json()["message"]
+    assert len(stored) == 1
+    assert stored[0][1] == b"-- SQL backup"
+
+
+def test_manual_sql_upload_rejects_non_sql(test_db):
+    client = TestClient(app)
+    login_res = client.post(
+        "/api/auth/login",
+        json={"email": "admin_backup@vextor.com", "password": "Admin123!"}
+    )
+    assert login_res.status_code == 200
+
+    response = client.post(
+        "/api/backup/upload",
+        cookies=login_res.cookies,
+        files={"file": ("malware.exe", b"not SQL", "application/octet-stream")},
+    )
+    assert response.status_code == 400
