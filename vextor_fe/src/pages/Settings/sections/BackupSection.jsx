@@ -81,7 +81,7 @@ const BackupSection = ({
 
   return (
     <div className="space-y-6 text-left">
-      {/* La programación automática se habilitará cuando exista un scheduler persistente. */}
+      {/* Estado del scheduler diario configurado en el backend. */}
       <div className="bg-v-dark/20 p-4 border border-v-dark-border rounded-xl">
         <p className="font-bold text-v-white text-sm">Respaldos automáticos</p>
         <p className="text-xs text-v-gray mt-0.5">
