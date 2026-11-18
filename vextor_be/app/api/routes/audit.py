@@ -287,7 +287,7 @@ MAX_BACKUP_SIZE_BYTES = settings.BACKUP_MAX_SIZE_BYTES
 
 
 def validate_restore_sql_content(sql_content: str):
-    """Rechaza escapes de psql fuera de bloques COPY sin confundir datos \N."""
+    """Rechaza escapes de psql fuera de bloques COPY sin confundir valores nulos."""
     if not sql_content.strip():
         raise ValueError("El archivo SQL está vacío.")
     sql_keywords = ["CREATE", "INSERT", "ALTER", "DROP", "UPDATE", "DELETE", "BEGIN", "COMMIT", "SELECT", "SET", "COPY"]
@@ -301,16 +301,17 @@ def validate_restore_sql_content(sql_content: str):
             if command == "\\.":
                 in_copy_data = False
             continue
-        if re.match(r"^\\s*COPY\\b.*\\bFROM\\s+stdin\\s*;", line, re.IGNORECASE):
+        if re.match(r"^\s*COPY\b.*\bFROM\s+stdin\s*;", line, re.IGNORECASE):
             in_copy_data = True
             continue
-        if command.startswith("\\\\"):
-            if re.match(r"^\\\\(?:restrict|unrestrict)\\b", command):
+        if command.startswith("\\"):
+            if re.match(r"^\\(?:restrict|unrestrict)\b", command):
                 continue
             raise ValueError("El archivo contiene comandos interactivos de psql no permitidos.")
     if in_copy_data:
         raise ValueError("El bloque COPY del archivo SQL está incompleto.")
     return True
+
 
 @router.post("/api/backup/restore")
 async def restore_backup(
