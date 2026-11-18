@@ -396,16 +396,12 @@ async def restore_backup(
         )
 
     # Ejecución de la restauración
-    psql_path = shutil.which("psql")
     from app.core.config import settings
+    pre_restore_backup = None
 
-    database_url = settings.DATABASE_URL
-    restored_successfully = False
-
-    if database_url.startswith("sqlite"):
-        # Restauración en SQLite (principalmente entornos de prueba o desarrollo ligero)
+    if settings.DATABASE_URL.startswith("sqlite"):
+        # SQLite se conserva para pruebas y desarrollo local aislado.
         try:
-            # Ejecutar script sobre la conexión SQLAlchemy
             connection = db.connection().connection
             connection.executescript(stripped_sql)
             db.commit()
@@ -418,74 +414,24 @@ async def restore_backup(
                 detail="Error al ejecutar la restauración en la base de datos SQLite.",
             )
     else:
-        # PostgreSQL restore
-        if psql_path:
-            # Si psql está disponible en el entorno
-            parsed = urlparse(database_url.replace("postgresql+psycopg://", "postgresql://").replace("postgres://", "postgresql://"))
-            db_host = parsed.hostname or "localhost"
-            db_port = str(parsed.port or 5432)
-            db_user = parsed.username or "postgres"
-            db_pass = parsed.password or ""
-            db_name = parsed.path.lstrip("/") or "vextor"
-
-            tmp_file = None
-            try:
-                with tempfile.NamedTemporaryFile("w", suffix=".sql", delete=False, encoding="utf-8") as tf:
-                    tf.write(stripped_sql)
-                    tmp_file = tf.name
-
-                env = os.environ.copy()
-                if db_pass:
-                    env["PGPASSWORD"] = db_pass
-
-                cmd = [
-                    psql_path,
-                    "-h", db_host,
-                    "-p", db_port,
-                    "-U", db_user,
-                    "-d", db_name,
-                    "-f", tmp_file,
-                ]
-
-                proc = subprocess.run(
-                    cmd,
-                    env=env,
-                    capture_output=True,
-                    text=True,
-                    timeout=120,
-                )
-
-                if proc.returncode == 0:
-                    restored_successfully = True
-                else:
-                    logging.error(f"[RESTORE ERROR psql] {proc.stderr}")
-                    # Reintento con fallback interno por si psql falló por argumentos o SSL
-                    restored_successfully = False
-            except Exception as proc_err:
-                logging.error(f"[RESTORE EXCEPTION psql] {proc_err}")
-                restored_successfully = False
-            finally:
-                if tmp_file and os.path.exists(tmp_file):
-                    try:
-                        os.remove(tmp_file)
-                    except Exception:
-                        pass
-
-        if not restored_successfully:
-            # Fallback a ejecución via cursor de conexión SQLAlchemy / Psycopg
-            try:
-                raw_conn = db.get_bind().raw_connection()
-                cursor = raw_conn.cursor()
-                cursor.execute(stripped_sql)
-                raw_conn.commit()
-                restored_successfully = True
-            except Exception as pg_err:
-                db.rollback()
-                logging.error(f"[RESTORE ERROR DB CURSOR] {pg_err}")
+        # PostgreSQL exige una copia previa subida y verificada en Storage.
+        try:
+            from app.services.backup_service import BackupOperationError, restore_postgres_sql
+            pre_restore_backup = restore_postgres_sql(stripped_sql)
+            restored_successfully = True
+        except Exception as restore_err:
+            db.rollback()
+            logging.error("[RESTORE ERROR PostgreSQL] La restauración protegida no pudo completarse.")
+            if isinstance(restore_err, BackupOperationError):
                 raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Error interno al ejecutar la restauración en la base de datos PostgreSQL.",
-                )
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail=str(restore_err),
+                ) from None
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="La restauración PostgreSQL falló. Si se alcanzó a crear, la copia previa está guardada en Supabase Storage.",
+            ) from None
+
 
     user_name = f"{current_user.nombres_usuario} {current_user.apellidos_usuario}".strip()
     try:
@@ -495,7 +441,7 @@ async def restore_backup(
             nombres_usuario=user_name,
             tipo_accion="RESTAURACION",
             modulo="Configuración",
-            descripcion=f"Restauración de base de datos ejecutada desde la copia: {source_label}",
+            descripcion=f"Restauración de base de datos ejecutada desde la copia: {source_label}" + (f". Copia previa: {pre_restore_backup}" if pre_restore_backup else ""),
             resultado="EXITOSO",
         )
     except Exception as audit_err:
@@ -503,5 +449,5 @@ async def restore_backup(
 
     return {
         "status": "success",
-        "message": f"Sistema y base de datos restaurados exitosamente desde {source_label}",
+        "message": f"Sistema y base de datos restaurados exitosamente desde {source_label}" + (f". Copia previa verificada: {pre_restore_backup}" if pre_restore_backup else ""),
     }
