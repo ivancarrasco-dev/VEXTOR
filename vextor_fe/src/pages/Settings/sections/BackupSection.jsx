@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Upload, Download } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Upload, Download, AlertTriangle, X } from 'lucide-react';
 import axios from 'axios';
 import { Button } from '../../../components/ui/Button';
 import { API_BASE_URL } from '../../../config/api';
@@ -13,6 +14,9 @@ const BackupSection = ({
 }) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [selectedBackupToRestore, setSelectedBackupToRestore] = useState(null);
+  const [restoreConfirmation, setRestoreConfirmation] = useState('');
+  const [isRestoring, setIsRestoring] = useState(false);
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
@@ -39,6 +43,29 @@ const BackupSection = ({
       showToast(error.response?.data?.detail || 'No fue posible subir el archivo SQL.');
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleExecuteRestore = async () => {
+    if (!selectedBackupToRestore || restoreConfirmation !== 'RESTAURAR') return;
+    setIsRestoring(true);
+    try {
+      const formData = new FormData();
+      if (selectedBackupToRestore.fileObj) {
+        formData.append('file', selectedBackupToRestore.fileObj);
+      } else {
+        formData.append('filename', selectedBackupToRestore.filename);
+      }
+      const response = await axios.post(`${API_BASE_URL}/api/backup/restore`, formData);
+      showToast(response.data?.message || 'Restauración completada.');
+      setSelectedBackupToRestore(null);
+      setSelectedFile(null);
+      setRestoreConfirmation('');
+      await fetchBackups();
+    } catch (error) {
+      showToast(error.response?.data?.detail || 'No fue posible completar la restauración.');
+    } finally {
+      setIsRestoring(false);
     }
   };
 
@@ -72,7 +99,7 @@ const BackupSection = ({
         <div className="flex flex-col justify-between p-4 bg-v-dark/10 border border-v-dark-border/40 rounded-xl gap-4">
           <div>
             <h4 className="font-bold text-v-white text-sm">Guardar Respaldo SQL</h4>
-            <p className="text-xs text-v-gray mt-0.5">Guarde un archivo SQL existente en el almacenamiento privado. Subirlo no ejecuta ni restaura su contenido.</p>
+            <p className="text-xs text-v-gray mt-0.5">Puedes guardar el archivo en Storage o solicitar una restauración protegida. La restauración crea y verifica una copia previa de la base de datos.</p>
           </div>
           <label className="cursor-pointer inline-flex items-center justify-center gap-2 px-4 py-2 bg-v-dark border border-v-dark-border hover:border-primary/50 text-v-white text-xs font-semibold rounded-lg transition-colors">
             <Upload size={16} className="text-primary" />
@@ -84,15 +111,30 @@ const BackupSection = ({
               onChange={handleFileChange}
             />
           </label>
-          <Button
-            variant="outline"
-            onClick={handleUploadBackup}
-            isLoading={isUploading}
-            disabled={!selectedFile || isUploading}
-            className="w-full font-semibold"
-          >
-            Guardar en Supabase Storage
-          </Button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <Button
+              variant="outline"
+              onClick={handleUploadBackup}
+              isLoading={isUploading}
+              disabled={!selectedFile || isUploading}
+              className="w-full font-semibold"
+            >
+              Guardar en Supabase Storage
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (selectedFile) {
+                  setSelectedBackupToRestore({ filename: selectedFile.name, fileObj: selectedFile });
+                  setRestoreConfirmation('');
+                }
+              }}
+              disabled={!selectedFile || isRestoring}
+              className="w-full font-semibold"
+            >
+              Restaurar archivo local
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -142,9 +184,11 @@ const BackupSection = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled
-                  title="La restauración desde Storage se habilitará tras implementar y probar el respaldo previo obligatorio."
                   className="text-xs h-8 px-3 font-semibold"
+                  onClick={() => {
+                    setSelectedBackupToRestore(bk);
+                    setRestoreConfirmation('');
+                  }}
                 >
                   Restaurar
                 </Button>
@@ -154,6 +198,80 @@ const BackupSection = ({
         </div>
       </div>
 
+      <AnimatePresence>
+        {selectedBackupToRestore && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              className="w-full max-w-lg space-y-5 rounded-2xl border border-v-dark-border bg-v-dark-soft p-6 shadow-2xl"
+            >
+              <div className="flex items-start gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400">
+                  <AlertTriangle size={22} />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-lg font-bold text-v-white">Confirmar restauración</h3>
+                  <p className="mt-1 text-xs leading-relaxed text-v-gray">
+                    Se restaurará la base de datos desde este archivo. Antes de ejecutar el SQL, VEXTOR generará una copia del estado actual y verificará su integridad en Supabase Storage. Si esa copia falla, la restauración se cancela.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedBackupToRestore(null);
+                    setRestoreConfirmation('');
+                  }}
+                  disabled={isRestoring}
+                  className="text-v-gray hover:text-v-white"
+                  aria-label="Cerrar"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <p className="break-all rounded-lg border border-v-dark-border bg-v-dark p-3 font-mono text-xs font-bold text-primary">
+                {selectedBackupToRestore.filename}
+              </p>
+              <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs leading-relaxed text-amber-300">
+                Esta operación modifica datos actuales. No cierres el servidor ni interrumpas la conexión mientras se ejecuta.
+              </div>
+              <label className="block space-y-2 text-xs text-v-gray">
+                Escribe <strong className="text-v-white">RESTAURAR</strong> para habilitar la operación.
+                <input
+                  value={restoreConfirmation}
+                  onChange={(event) => setRestoreConfirmation(event.target.value)}
+                  autoComplete="off"
+                  className="w-full rounded-lg border border-v-dark-border bg-v-dark px-3 py-2 text-sm text-v-white outline-none focus:border-primary"
+                  placeholder="RESTAURAR"
+                  disabled={isRestoring}
+                />
+              </label>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  disabled={isRestoring}
+                  onClick={() => {
+                    setSelectedBackupToRestore(null);
+                    setRestoreConfirmation('');
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleExecuteRestore}
+                  isLoading={isRestoring}
+                  disabled={restoreConfirmation !== 'RESTAURAR' || isRestoring}
+                  className="bg-amber-500 font-bold text-black hover:bg-amber-600"
+                >
+                  Restaurar ahora
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
