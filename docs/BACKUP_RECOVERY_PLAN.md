@@ -55,6 +55,17 @@ Variables nuevas previstas para el backend:
 
 El bucket debe permanecer privado. No configurar estas variables en `VITE_*` ni incluir sus valores en Git. La ausencia de estas variables deshabilita solo las operaciones de respaldo, no el resto de la API.
 
+## Endpoints implementados
+
+- `GET /api/backup/status`: estado de Storage y programación diaria (solo administrador).
+- `GET /api/backup`: historial real del bucket privado.
+- `POST /api/backup/create`: genera dump de `public` con `pg_dump` y lo almacena.
+- `POST /api/backup/upload`: almacena un SQL manual sin ejecutarlo.
+- `GET /api/backup/{filename}/download`: descarga autenticada.
+- `POST /api/backup/restore`: restaura un archivo local o un nombre de respaldo de Storage. Para PostgreSQL exige snapshot previo verificado y ejecuta con `ON_ERROR_STOP` y transacción única.
+
+Los dumps cubren el esquema de aplicación `public`; no sustituyen los respaldos administrados de Supabase para los esquemas internos `auth` y `storage`. No se realizan operaciones contra la base real desde las pruebas.
+
 ## Reglas de seguridad
 
 - No cambiar `DATABASE_URL`, credenciales, tablas ni políticas de negocio.
