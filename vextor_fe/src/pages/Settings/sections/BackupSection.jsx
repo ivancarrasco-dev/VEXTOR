@@ -191,7 +191,7 @@ const BackupSection = ({
                       document.body.appendChild(anchor);
                       anchor.click();
                       anchor.remove();
-                      window.URL.revokeObjectURL(url);
+                      window.setTimeout(() => window.URL.revokeObjectURL(url), 1000);
                     } catch (error) {
                       showToast(error.response?.data?.detail || 'No fue posible descargar el respaldo.');
                     }
