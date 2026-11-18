@@ -22,7 +22,7 @@ class BackupOperationError(RuntimeError):
 
 def _connection_parameters():
     raw_url = (
-        settings.DATABASE_URL
+        settings.BACKUP_DATABASE_URL
         .replace("postgresql+psycopg://", "postgresql://")
         .replace("postgres://", "postgresql://")
     )
