@@ -22,7 +22,7 @@ from app.services.backup_storage import (
     list_backups,
     download_backup,
 )
-from app.services.backup_service import BackupOperationError, generate_database_backup
+from app.services.backup_service import BackupOperationError, generate_database_backup, store_backup_verified
 
 router = APIRouter(prefix="/api/backup", tags=["Backups"])
 
@@ -101,7 +101,7 @@ def create_backup(
         )
     try:
         filename, content = generate_database_backup()
-        upload_backup(filename, content)
+        store_backup_verified(filename, content)
     except BackupOperationError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from None
     except BackupStorageError as exc:
@@ -151,7 +151,9 @@ async def upload_manual_backup(
             f"manual_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')}_"
             f"{uuid4().hex[:8]}_{safe_stem}.sql"
         )
-        await asyncio.to_thread(upload_backup, filename, content)
+        await asyncio.to_thread(store_backup_verified, filename, content)
+    except BackupOperationError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from None
     except BackupStorageError as exc:
         _storage_error(exc)
     return {
