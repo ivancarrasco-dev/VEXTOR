@@ -20,6 +20,8 @@ class Settings:
 
     # ========== DATABASE ==========
     DATABASE_URL: str = os.getenv("DATABASE_URL")
+    # URL opcional solo para pg_dump/psql; no cambia la conexión normal de la aplicación.
+    BACKUP_DATABASE_URL: str = os.getenv("BACKUP_DATABASE_URL") or DATABASE_URL
     if not DATABASE_URL:
         raise RuntimeError(
             "DATABASE_URL no está configurada. Crea .env en la raíz del proyecto a partir de .env.example."
@@ -41,6 +43,23 @@ class Settings:
     MAIL_PASSWORD: str = os.getenv("MAIL_PASSWORD") or os.getenv("SMTP_PASSWORD")
     MAIL_FROM: str = os.getenv("MAIL_FROM") or os.getenv("SMTP_FROM_EMAIL") or "noreply@vextor.com"
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip("/")
+
+    # ========== SUPABASE STORAGE (BACKUPS) ==========
+    # Opcional: si no se configura, las operaciones de respaldo quedan deshabilitadas.
+    # La clave privilegiada se mantiene exclusivamente en el backend.
+    SUPABASE_URL: str = os.getenv("SUPABASE_URL", "").rstrip("/")
+    SUPABASE_SERVICE_ROLE_KEY: str = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    SUPABASE_BACKUP_BUCKET: str = os.getenv("SUPABASE_BACKUP_BUCKET", "vextor-backups")
+    BACKUP_MAX_SIZE_BYTES: int = int(os.getenv("BACKUP_MAX_SIZE_BYTES", str(50 * 1024 * 1024)))
+    BACKUP_STORAGE_TIMEOUT_SECONDS: float = float(os.getenv("BACKUP_STORAGE_TIMEOUT_SECONDS", "30"))
+    BACKUP_AUTO_ENABLED: bool = os.getenv("BACKUP_AUTO_ENABLED", "false").lower() in ("true", "1", "yes")
+    BACKUP_AUTO_HOUR: int = int(os.getenv("BACKUP_AUTO_HOUR", "4"))
+    BACKUP_AUTO_MINUTE: int = int(os.getenv("BACKUP_AUTO_MINUTE", "0"))
+    BACKUP_AUTO_TIMEZONE: str = os.getenv("BACKUP_AUTO_TIMEZONE", "America/Bogota")
+
+    @property
+    def BACKUP_STORAGE_CONFIGURED(self) -> bool:
+        return bool(self.SUPABASE_URL and self.SUPABASE_SERVICE_ROLE_KEY)
 
     # ========== OSRM ==========
     OSRM_URL: str = os.getenv("OSRM_URL", "http://localhost:5000").rstrip("/")

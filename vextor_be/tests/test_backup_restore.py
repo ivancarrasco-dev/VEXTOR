@@ -14,6 +14,8 @@ from app.main import app
 from app.database import get_db, Base
 from app.models import Usuario, Rol, Actividad
 from app.core.security import hash_password
+from app.api.routes import backup as backup_routes
+from app.api.routes.audit import validate_restore_sql_content
 
 
 @pytest.fixture
@@ -170,3 +172,124 @@ def test_backup_restore_successful_upload(test_db):
     assert audit is not None
     assert audit.id_usuario == admin.id_usuario
     assert "valid_backup.sql" in audit.descripcion
+
+
+def test_backup_list_requires_admin(test_db):
+    """El historial de Storage no debe estar disponible para usuarios normales."""
+    client = TestClient(app)
+    login_res = client.post(
+        "/api/auth/login",
+        json={"email": "user_backup@vextor.com", "password": "User123!"}
+    )
+    assert login_res.status_code == 200
+
+    response = client.get("/api/backup", cookies=login_res.cookies)
+    assert response.status_code == 403
+
+
+def test_backup_list_returns_storage_objects_for_admin(test_db, monkeypatch):
+    """El administrador recibe solo los objetos SQL del bucket privado."""
+    client = TestClient(app)
+    login_res = client.post(
+        "/api/auth/login",
+        json={"email": "admin_backup@vextor.com", "password": "Admin123!"}
+    )
+    assert login_res.status_code == 200
+
+    monkeypatch.setattr(
+        backup_routes,
+        "list_backups",
+        lambda: [
+            {
+                "name": "vextor_backup_test.sql",
+                "created_at": "2026-11-18T12:00:00Z",
+                "metadata": {"size": 1024},
+            },
+            {"name": "readme.txt", "metadata": {"size": 12}},
+        ],
+    )
+    response = client.get("/api/backup", cookies=login_res.cookies)
+
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+    assert response.json()[0]["filename"] == "vextor_backup_test.sql"
+    assert response.json()[0]["size"] == 1024
+
+
+def test_manual_sql_upload_is_stored_not_executed(test_db, monkeypatch):
+    """Subir un SQL lo almacena; no debe invocar la ruta de restauración."""
+    from app.core.config import settings
+
+    client = TestClient(app)
+    login_res = client.post(
+        "/api/auth/login",
+        json={"email": "admin_backup@vextor.com", "password": "Admin123!"}
+    )
+    assert login_res.status_code == 200
+
+    stored = []
+    monkeypatch.setattr(
+        type(settings),
+        "BACKUP_STORAGE_CONFIGURED",
+        property(lambda self: True),
+    )
+    monkeypatch.setattr(
+        backup_routes,
+        "store_backup_verified",
+        lambda filename, content: stored.append((filename, content)),
+    )
+
+    response = client.post(
+        "/api/backup/upload",
+        cookies=login_res.cookies,
+        files={"file": ("my_backup.sql", b"-- SQL backup", "application/sql")},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["status"] == "success"
+    assert "no se ha ejecutado" in response.json()["message"].lower()
+    assert len(stored) == 1
+    assert stored[0][1] == b"-- SQL backup"
+
+
+def test_manual_sql_upload_rejects_non_sql(test_db):
+    client = TestClient(app)
+    login_res = client.post(
+        "/api/auth/login",
+        json={"email": "admin_backup@vextor.com", "password": "Admin123!"}
+    )
+    assert login_res.status_code == 200
+
+    response = client.post(
+        "/api/backup/upload",
+        cookies=login_res.cookies,
+        files={"file": ("malware.exe", b"not SQL", "application/octet-stream")},
+    )
+    assert response.status_code == 400
+
+
+def test_backup_restore_rejects_psql_shell_commands(test_db):
+    """No se deben aceptar metacomandos psql que puedan ejecutar procesos locales."""
+    client = TestClient(app)
+    login_res = client.post(
+        "/api/auth/login",
+        json={"email": "admin_backup@vextor.com", "password": "Admin123!"}
+    )
+    assert login_res.status_code == 200
+
+    response = client.post(
+        "/api/backup/restore",
+        cookies=login_res.cookies,
+        files={"file": ("unsafe.sql", b"SELECT 1;\n\\! echo unsafe", "text/plain")},
+    )
+    assert response.status_code == 400
+    assert "comandos interactivos" in response.json()["detail"]
+
+
+def test_restore_sql_validator_accepts_pg_dump_copy_null_values():
+    sql_dump = (
+        "COPY public.example (value) FROM stdin;\n"
+        "\\N\n"
+        "\\.\n"
+    )
+    assert validate_restore_sql_content(sql_dump) is True

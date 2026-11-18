@@ -15,13 +15,14 @@ from app.core.exceptions import setup_exception_handlers
 from app.database import engine, Base
 
 # Importar routers
-from app.api.routes import auth, crud, routing, audit, dashboard, driver_routes, reports
+from app.api.routes import auth, crud, routing, audit, dashboard, driver_routes, reports, backup
 from app.websocket import websocket_tracking_endpoint
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Gestor de ciclo de vida de la aplicación"""
+    scheduler = None
     # Inicialización en startup
     try:
         Base.metadata.create_all(bind=engine)
@@ -93,9 +94,74 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print("Seed data note:", e)
 
+    # Programación opcional de respaldos: desactivada por defecto.
+    # El advisory lock evita duplicados si el backend corre en más de una réplica.
+    if settings.BACKUP_AUTO_ENABLED:
+        if not settings.BACKUP_STORAGE_CONFIGURED:
+            print("Backup scheduler disabled: Supabase Storage credentials are missing.")
+        elif engine.dialect.name != "postgresql":
+            print("Backup scheduler disabled: PostgreSQL is required.")
+        else:
+            try:
+                from apscheduler.schedulers.background import BackgroundScheduler
+                from apscheduler.triggers.cron import CronTrigger
+                from app.services.backup_service import generate_database_backup, store_backup_verified
+                from app.services.backup_storage import list_backups
+
+                list_backups()  # No iniciar el scheduler si el bucket no existe/no es accesible.
+
+                def run_scheduled_backup():
+                    lock_key = 734923847201
+                    try:
+                        with engine.connect() as lock_connection:
+                            # Xact lock también funciona con el pooler de transacciones de Supabase.
+                            lock_connection.execute(
+                                text("SET LOCAL idle_in_transaction_session_timeout = 0")
+                            )
+                            acquired = lock_connection.execute(
+                                text("SELECT pg_try_advisory_xact_lock(:lock_key)"),
+                                {"lock_key": lock_key},
+                            ).scalar()
+                            if not acquired:
+                                lock_connection.rollback()
+                                return
+                            try:
+                                filename, content = generate_database_backup()
+                                store_backup_verified(filename, content)
+                                print("Scheduled VEXTOR backup completed.")
+                            finally:
+                                # Libera el lock transaccional al finalizar o fallar el respaldo.
+                                lock_connection.rollback()
+                    except Exception as backup_error:
+                        print(f"Scheduled VEXTOR backup failed: {type(backup_error).__name__}")
+
+                scheduler = BackgroundScheduler(timezone=settings.BACKUP_AUTO_TIMEZONE)
+                scheduler.add_job(
+                    run_scheduled_backup,
+                    CronTrigger(
+                        hour=settings.BACKUP_AUTO_HOUR,
+                        minute=settings.BACKUP_AUTO_MINUTE,
+                        timezone=settings.BACKUP_AUTO_TIMEZONE,
+                    ),
+                    id="vextor_daily_backup",
+                    replace_existing=True,
+                    max_instances=1,
+                    coalesce=True,
+                )
+                scheduler.start()
+                print(
+                    f"VEXTOR daily backup scheduled at "
+                    f"{settings.BACKUP_AUTO_HOUR:02d}:{settings.BACKUP_AUTO_MINUTE:02d} "
+                    f"({settings.BACKUP_AUTO_TIMEZONE})."
+                )
+            except Exception as scheduler_error:
+                # Una falla del scheduler nunca debe impedir que la API arranque.
+                print(f"Backup scheduler could not start: {type(scheduler_error).__name__}")
+
     yield
 
-    # Limpieza en shutdown if required
+    if scheduler and scheduler.running:
+        scheduler.shutdown(wait=False)
 
 
 # Crear app
@@ -155,6 +221,9 @@ app.include_router(routing.router)
 
 # Audit & Security
 app.include_router(audit.router)
+
+# Backup management (admin-only)
+app.include_router(backup.router)
 
 # Reports
 app.include_router(reports.router, prefix="/api/reports")

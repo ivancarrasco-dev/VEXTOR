@@ -462,30 +462,37 @@ const Settings = () => {
   };
 
   // 11. Backup State
-  const [backupList, setBackupList] = useState([
-    { id: 'b1', filename: 'backup_vextor_20260805_0400.sql', size: '14.2 MB', date: '2026-08-05 04:00 AM', status: 'Completado' },
-    { id: 'b2', filename: 'backup_vextor_20260804_0400.sql', size: '14.1 MB', date: '2026-08-04 04:00 AM', status: 'Completado' },
-    { id: 'b3', filename: 'backup_vextor_20260803_0400.sql', size: '14.0 MB', date: '2026-08-03 04:00 AM', status: 'Completado' }
-  ]);
+  const [backupList, setBackupList] = useState([]);
   const [isBackingUp, setIsBackingUp] = useState(false);
-  const [isAutoBackup, setIsAutoBackup] = useState(true);
 
-  const handleCreateBackup = () => {
+  const fetchBackups = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/backup`);
+      setBackupList(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error('Error fetching backups:', error);
+      showToast(error.response?.data?.detail || 'No fue posible consultar los respaldos.');
+    }
+  };
+
+  useEffect(() => {
+    if (isAdmin && activeCategory === 'backup') {
+      fetchBackups();
+    }
+  }, [isAdmin, activeCategory]);
+
+  const handleCreateBackup = async () => {
     setIsBackingUp(true);
-    setTimeout(() => {
-      const now = new Date();
-      const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-      const newBackup = {
-        id: Date.now().toString(),
-        filename: `backup_vextor_${dateStr}_manual.sql`,
-        size: '14.5 MB',
-        date: now.toLocaleString(),
-        status: 'Completado'
-      };
-      setBackupList([newBackup, ...backupList]);
+    try {
+      const response = await axios.post(`${API_BASE_URL}/api/backup/create`);
+      showToast(response.data?.message || 'Respaldo generado correctamente.');
+      await fetchBackups();
+    } catch (error) {
+      console.error('Error creating backup:', error);
+      showToast(error.response?.data?.detail || 'No fue posible generar el respaldo.');
+    } finally {
       setIsBackingUp(false);
-      showToast('Respaldo del sistema generado correctamente.');
-    }, 2000);
+    }
   };
 
   // 12. System Settings
@@ -719,12 +726,10 @@ const Settings = () => {
               {/* 11. Copias de Seguridad */}
               {activeCategory === 'backup' && (
                 <BackupSection
-                  isAutoBackup={isAutoBackup}
-                  setIsAutoBackup={setIsAutoBackup}
                   handleCreateBackup={handleCreateBackup}
                   isBackingUp={isBackingUp}
                   backupList={backupList}
-                  setBackupList={setBackupList}
+                  fetchBackups={fetchBackups}
                   showToast={showToast}
                 />
               )}

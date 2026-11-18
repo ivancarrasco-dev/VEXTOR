@@ -5,7 +5,6 @@ Actividades, notificaciones, sesiones
 from typing import List, Optional
 from uuid import UUID
 from datetime import datetime, date
-from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, or_
 
@@ -21,18 +20,16 @@ from app.models import (
 )
 from app.api.routes.auth import get_current_user
 from app.core.security import hash_password, verify_password
-from app.utils import get_client_ip
-from pydantic import BaseModel
 
 import os
-import shutil
-import tempfile
-import subprocess
+import asyncio
 import logging
-from urllib.parse import urlparse
+import re
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Request
-from sqlalchemy import text
 from app.services.audit_service import AuditService
+from app.core.config import settings
+from app.services.backup_service import BackupOperationError, restore_postgres_sql
+from app.services.backup_storage import BackupStorageError, download_backup
 
 router = APIRouter(tags=["Audit & Security"])
 
@@ -279,7 +276,35 @@ def change_password(
 
 # ========== RESPALDOS Y RESTAURACIÓN ==========
 
-MAX_BACKUP_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
+MAX_BACKUP_SIZE_BYTES = settings.BACKUP_MAX_SIZE_BYTES
+
+
+def validate_restore_sql_content(sql_content: str):
+    """Rechaza escapes de psql fuera de bloques COPY sin confundir valores nulos."""
+    if not sql_content.strip():
+        raise ValueError("El archivo SQL está vacío.")
+    sql_keywords = ["CREATE", "INSERT", "ALTER", "DROP", "UPDATE", "DELETE", "BEGIN", "COMMIT", "SELECT", "SET", "COPY"]
+    if not any(keyword in sql_content.upper() for keyword in sql_keywords):
+        raise ValueError("El archivo proporcionado no parece ser un script SQL válido.")
+
+    in_copy_data = False
+    for line in sql_content.splitlines():
+        command = line.lstrip()
+        if in_copy_data:
+            if command == "\\.":
+                in_copy_data = False
+            continue
+        if re.match(r"^\s*COPY\b.*\bFROM\s+stdin\s*;", line, re.IGNORECASE):
+            in_copy_data = True
+            continue
+        if command.startswith("\\"):
+            if re.match(r"^\\(?:restrict|unrestrict)\b", command):
+                continue
+            raise ValueError("El archivo contiene comandos interactivos de psql no permitidos.")
+    if in_copy_data:
+        raise ValueError("El bloque COPY del archivo SQL está incompleto.")
+    return True
+
 
 @router.post("/api/backup/restore")
 async def restore_backup(
@@ -319,7 +344,7 @@ async def restore_backup(
                 detail="Formato de archivo no permitido. Debe ser un archivo .sql",
             )
 
-        contents = await file.read()
+        contents = await file.read(MAX_BACKUP_SIZE_BYTES + 1)
         if len(contents) > MAX_BACKUP_SIZE_BYTES:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -340,39 +365,50 @@ async def restore_backup(
 
     elif filename:
         fname = filename.strip()
-        if not fname.lower().endswith(".sql"):
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,180}\.sql", fname, re.IGNORECASE):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Nombre de archivo inválido. Debe terminar en .sql",
+                detail="Nombre de archivo inválido. Debe ser un nombre .sql seguro.",
             )
 
-        # Buscar en carpetas conocidas si el archivo existe físicamente en el servidor
+        if os.path.basename(fname) != fname or "/" in fname or "\\" in fname:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Nombre de archivo inválido.",
+            )
+
+        # Compatibilidad con respaldos antiguos en disco y respaldos nuevos en Storage.
         possible_paths = [
             os.path.join(os.getcwd(), fname),
             os.path.join(os.getcwd(), "backups", fname),
             os.path.join("/tmp", fname),
         ]
-        found_path = None
-        for p in possible_paths:
-            if os.path.exists(p) and os.path.isfile(p):
-                found_path = p
-                break
-
+        found_path = next(
+            (path for path in possible_paths if os.path.isfile(path)),
+            None,
+        )
         if found_path:
             if os.path.getsize(found_path) > MAX_BACKUP_SIZE_BYTES:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="El archivo excede el tamaño máximo permitido (50MB).",
                 )
-            with open(found_path, "r", encoding="utf-8", errors="replace") as f:
-                sql_content = f.read()
+            with open(found_path, "r", encoding="utf-8", errors="replace") as backup_file:
+                sql_content = backup_file.read()
             source_label = fname
         else:
-            # Si no existe en disco local y tampoco se subió un archivo, requerir la subida
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"No se encontró el archivo '{fname}' en el servidor. Por favor, adjunte el archivo SQL directamente.",
-            )
+            try:
+                stored_content = await asyncio.to_thread(download_backup, fname)
+                if not isinstance(stored_content, bytes):
+                    raise HTTPException(status_code=404, detail="No se encontró el respaldo solicitado.")
+                if len(stored_content) > MAX_BACKUP_SIZE_BYTES:
+                    raise HTTPException(status_code=400, detail="El archivo excede el tamaño máximo permitido (50MB).")
+                sql_content = stored_content.decode("utf-8")
+                source_label = fname
+            except UnicodeDecodeError:
+                raise HTTPException(status_code=400, detail="El respaldo no contiene texto UTF-8 válido.") from None
+            except BackupStorageError:
+                raise HTTPException(status_code=404, detail="No se encontró el respaldo en Supabase Storage.") from None
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -387,25 +423,26 @@ async def restore_backup(
             detail="El archivo SQL está vacío.",
         )
 
-    # Verificación básica de sintaxis SQL
-    sql_keywords = ["CREATE", "INSERT", "ALTER", "DROP", "UPDATE", "DELETE", "BEGIN", "COMMIT", "SELECT", "SET"]
-    if not any(kw in stripped_sql.upper() for kw in sql_keywords):
+    # Validar el SQL sin confundir valores \N de los bloques COPY de pg_dump.
+    try:
+        validate_restore_sql_content(stripped_sql)
+    except ValueError as validation_error:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El archivo proporcionado no parece ser un script SQL válido.",
-        )
+            detail=str(validation_error),
+        ) from None
+
+
+    # Capturar datos de auditoría antes de que la restauración pueda reemplazar tablas.
+    restoring_user_id = current_user.id_usuario
+    user_name = f"{current_user.nombres_usuario} {current_user.apellidos_usuario}".strip()
 
     # Ejecución de la restauración
-    psql_path = shutil.which("psql")
-    from app.core.config import settings
+    pre_restore_backup = None
 
-    database_url = settings.DATABASE_URL
-    restored_successfully = False
-
-    if database_url.startswith("sqlite"):
-        # Restauración en SQLite (principalmente entornos de prueba o desarrollo ligero)
+    if settings.DATABASE_URL.startswith("sqlite"):
+        # SQLite se conserva para pruebas y desarrollo local aislado.
         try:
-            # Ejecutar script sobre la conexión SQLAlchemy
             connection = db.connection().connection
             connection.executescript(stripped_sql)
             db.commit()
@@ -418,84 +455,35 @@ async def restore_backup(
                 detail="Error al ejecutar la restauración en la base de datos SQLite.",
             )
     else:
-        # PostgreSQL restore
-        if psql_path:
-            # Si psql está disponible en el entorno
-            parsed = urlparse(database_url.replace("postgresql+psycopg://", "postgresql://").replace("postgres://", "postgresql://"))
-            db_host = parsed.hostname or "localhost"
-            db_port = str(parsed.port or 5432)
-            db_user = parsed.username or "postgres"
-            db_pass = parsed.password or ""
-            db_name = parsed.path.lstrip("/") or "vextor"
-
-            tmp_file = None
-            try:
-                with tempfile.NamedTemporaryFile("w", suffix=".sql", delete=False, encoding="utf-8") as tf:
-                    tf.write(stripped_sql)
-                    tmp_file = tf.name
-
-                env = os.environ.copy()
-                if db_pass:
-                    env["PGPASSWORD"] = db_pass
-
-                cmd = [
-                    psql_path,
-                    "-h", db_host,
-                    "-p", db_port,
-                    "-U", db_user,
-                    "-d", db_name,
-                    "-f", tmp_file,
-                ]
-
-                proc = subprocess.run(
-                    cmd,
-                    env=env,
-                    capture_output=True,
-                    text=True,
-                    timeout=120,
-                )
-
-                if proc.returncode == 0:
-                    restored_successfully = True
-                else:
-                    logging.error(f"[RESTORE ERROR psql] {proc.stderr}")
-                    # Reintento con fallback interno por si psql falló por argumentos o SSL
-                    restored_successfully = False
-            except Exception as proc_err:
-                logging.error(f"[RESTORE EXCEPTION psql] {proc_err}")
-                restored_successfully = False
-            finally:
-                if tmp_file and os.path.exists(tmp_file):
-                    try:
-                        os.remove(tmp_file)
-                    except Exception:
-                        pass
-
-        if not restored_successfully:
-            # Fallback a ejecución via cursor de conexión SQLAlchemy / Psycopg
-            try:
-                raw_conn = db.get_bind().raw_connection()
-                cursor = raw_conn.cursor()
-                cursor.execute(stripped_sql)
-                raw_conn.commit()
-                restored_successfully = True
-            except Exception as pg_err:
-                db.rollback()
-                logging.error(f"[RESTORE ERROR DB CURSOR] {pg_err}")
+        # Cerrar la transacción de autorización antes de reemplazar tablas:
+        # evita que los SELECT previos bloqueen los DROP del dump.
+        db.rollback()
+        # PostgreSQL exige una copia previa subida y verificada en Storage.
+        try:
+            pre_restore_backup = await asyncio.to_thread(restore_postgres_sql, stripped_sql)
+            restored_successfully = True
+        except Exception as restore_err:
+            db.rollback()
+            logging.error("[RESTORE ERROR PostgreSQL] La restauración protegida no pudo completarse.")
+            if isinstance(restore_err, BackupOperationError):
                 raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Error interno al ejecutar la restauración en la base de datos PostgreSQL.",
-                )
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail=str(restore_err),
+                ) from None
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="La restauración PostgreSQL falló. Si se alcanzó a crear, la copia previa está guardada en Supabase Storage.",
+            ) from None
 
-    user_name = f"{current_user.nombres_usuario} {current_user.apellidos_usuario}".strip()
+
     try:
         AuditService.record_activity(
             db,
-            id_usuario=current_user.id_usuario,
+            id_usuario=restoring_user_id,
             nombres_usuario=user_name,
             tipo_accion="RESTAURACION",
             modulo="Configuración",
-            descripcion=f"Restauración de base de datos ejecutada desde la copia: {source_label}",
+            descripcion=f"Restauración de base de datos ejecutada desde la copia: {source_label}" + (f". Copia previa: {pre_restore_backup}" if pre_restore_backup else ""),
             resultado="EXITOSO",
         )
     except Exception as audit_err:
@@ -503,5 +491,5 @@ async def restore_backup(
 
     return {
         "status": "success",
-        "message": f"Sistema y base de datos restaurados exitosamente desde {source_label}",
+        "message": f"Sistema y base de datos restaurados exitosamente desde {source_label}" + (f". Copia previa verificada: {pre_restore_backup}" if pre_restore_backup else ""),
     }
