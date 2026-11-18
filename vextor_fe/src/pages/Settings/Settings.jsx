@@ -464,8 +464,6 @@ const Settings = () => {
   // 11. Backup State
   const [backupList, setBackupList] = useState([]);
   const [isBackingUp, setIsBackingUp] = useState(false);
-  // La programación automática aún no está implementada en el backend.
-  const [isAutoBackup, setIsAutoBackup] = useState(false);
 
   const fetchBackups = async () => {
     try {
@@ -728,12 +726,9 @@ const Settings = () => {
               {/* 11. Copias de Seguridad */}
               {activeCategory === 'backup' && (
                 <BackupSection
-                  isAutoBackup={isAutoBackup}
-                  setIsAutoBackup={setIsAutoBackup}
                   handleCreateBackup={handleCreateBackup}
                   isBackingUp={isBackingUp}
                   backupList={backupList}
-                  setBackupList={setBackupList}
                   fetchBackups={fetchBackups}
                   showToast={showToast}
                 />
