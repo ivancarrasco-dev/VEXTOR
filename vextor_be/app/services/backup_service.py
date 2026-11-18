@@ -31,6 +31,32 @@ def _connection_parameters():
         raise BackupOperationError("La base de datos configurada no es PostgreSQL.")
     if not parsed.hostname or not parsed.username or not parsed.path.lstrip("/"):
         raise BackupOperationError("La URL de base de datos está incompleta.")
+
+    # Una URL alternativa para pg_dump/psql debe apuntar a la misma base/proyecto.
+    app_url = (
+        settings.DATABASE_URL
+        .replace("postgresql+psycopg://", "postgresql://")
+        .replace("postgres://", "postgresql://")
+    )
+    app_parsed = urlparse(app_url)
+    backup_database = unquote(parsed.path.lstrip("/"))
+    app_database = unquote(app_parsed.path.lstrip("/"))
+    if backup_database != app_database:
+        raise BackupOperationError("BACKUP_DATABASE_URL debe apuntar a la misma base de datos que DATABASE_URL.")
+
+    def supabase_project_ref(url_parts):
+        host = url_parts.hostname or ""
+        if host.startswith("db.") and host.endswith(".supabase.co"):
+            return host[3:-len(".supabase.co")]
+        username = unquote(url_parts.username or "")
+        if username.startswith("postgres."):
+            return username.split(".", 1)[1]
+        return None
+
+    app_ref = supabase_project_ref(app_parsed)
+    backup_ref = supabase_project_ref(parsed)
+    if app_ref and backup_ref and app_ref != backup_ref:
+        raise BackupOperationError("BACKUP_DATABASE_URL apunta a un proyecto Supabase distinto.")
     query = parse_qs(parsed.query)
     return {
         "host": parsed.hostname,
