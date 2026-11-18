@@ -22,6 +22,7 @@ from app.api.routes.auth import get_current_user
 from app.core.security import hash_password, verify_password
 
 import os
+import asyncio
 import logging
 import re
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Request
@@ -397,7 +398,7 @@ async def restore_backup(
             source_label = fname
         else:
             try:
-                stored_content = download_backup(fname)
+                stored_content = await asyncio.to_thread(download_backup, fname)
                 if not isinstance(stored_content, bytes):
                     raise HTTPException(status_code=404, detail="No se encontró el respaldo solicitado.")
                 if len(stored_content) > MAX_BACKUP_SIZE_BYTES:
@@ -459,7 +460,7 @@ async def restore_backup(
         db.rollback()
         # PostgreSQL exige una copia previa subida y verificada en Storage.
         try:
-            pre_restore_backup = restore_postgres_sql(stripped_sql)
+            pre_restore_backup = await asyncio.to_thread(restore_postgres_sql, stripped_sql)
             restored_successfully = True
         except Exception as restore_err:
             db.rollback()
