@@ -80,7 +80,7 @@ def get_backups(
         backups.append({
             "id": name,
             "filename": name,
-            "size": metadata.get("size") or entry.get("metadata", {}).get("size"),
+            "size": metadata.get("size"),
             "date": entry.get("created_at") or entry.get("updated_at"),
             "status": "Completado",
         })
