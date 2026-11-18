@@ -106,7 +106,9 @@ async def lifespan(app: FastAPI):
                 from apscheduler.schedulers.background import BackgroundScheduler
                 from apscheduler.triggers.cron import CronTrigger
                 from app.services.backup_service import generate_database_backup
-                from app.services.backup_storage import upload_backup
+                from app.services.backup_storage import upload_backup, list_backups
+
+                list_backups()  # No iniciar el scheduler si el bucket no existe/no es accesible.
 
                 def run_scheduled_backup():
                     lock_key = 734923847201
