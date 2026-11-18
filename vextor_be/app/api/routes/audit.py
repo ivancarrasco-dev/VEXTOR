@@ -432,6 +432,10 @@ async def restore_backup(
         ) from None
 
 
+    # Capturar datos de auditoría antes de que la restauración pueda reemplazar tablas.
+    restoring_user_id = current_user.id_usuario
+    user_name = f"{current_user.nombres_usuario} {current_user.apellidos_usuario}".strip()
+
     # Ejecución de la restauración
     pre_restore_backup = None
 
