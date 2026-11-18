@@ -71,7 +71,7 @@ const BackupSection = ({
 
         <div className="flex flex-col justify-between p-4 bg-v-dark/10 border border-v-dark-border/40 rounded-xl gap-4">
           <div>
-            <h4 className="font-bold text-v-white text-sm">Restaurar desde Archivo Local</h4>
+            <h4 className="font-bold text-v-white text-sm">Guardar Respaldo SQL</h4>
             <p className="text-xs text-v-gray mt-0.5">Guarde un archivo SQL existente en el almacenamiento privado. Subirlo no ejecuta ni restaura su contenido.</p>
           </div>
           <label className="cursor-pointer inline-flex items-center justify-center gap-2 px-4 py-2 bg-v-dark border border-v-dark-border hover:border-primary/50 text-v-white text-xs font-semibold rounded-lg transition-colors">
