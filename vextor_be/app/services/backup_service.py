@@ -4,6 +4,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+from uuid import uuid4
 from datetime import datetime, timezone
 from urllib.parse import parse_qs, unquote, urlparse
 
@@ -26,7 +27,7 @@ def _connection_parameters():
         .replace("postgres://", "postgresql://")
     )
     parsed = urlparse(raw_url)
-    if parsed.scheme not in ("postgresql", "postgresql"):
+    if parsed.scheme != "postgresql":
         raise BackupOperationError("La base de datos configurada no es PostgreSQL.")
     if not parsed.hostname or not parsed.username or not parsed.path.lstrip("/"):
         raise BackupOperationError("La URL de base de datos está incompleta.")
@@ -58,7 +59,7 @@ def generate_database_backup():
         raise BackupOperationError("pg_dump no está instalado en el servidor.")
     params = _connection_parameters()
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    filename = f"vextor_backup_{timestamp}.sql"
+    filename = f"vextor_backup_{timestamp}_{uuid4().hex[:8]}.sql"
     tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(prefix="vextor_backup_", suffix=".sql", delete=False) as temp:
