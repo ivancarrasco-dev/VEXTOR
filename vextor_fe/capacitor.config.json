@@ -1,3 +1,4 @@
+
 {
   "appId": "com.vextor.driver",
   "appName": "VEXTOR Conductor",
@@ -5,6 +6,9 @@
   "server": {
     "androidScheme": "https",
     "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true
   },
   "plugins": {
     "SplashScreen": {
