@@ -279,7 +279,7 @@ def test_backup_restore_rejects_psql_shell_commands(test_db):
     response = client.post(
         "/api/backup/restore",
         cookies=login_res.cookies,
-        files={"file": ("unsafe.sql", b"SELECT 1;\\n\\\\! echo unsafe", "text/plain")},
+        files={"file": ("unsafe.sql", b"SELECT 1;\n\\! echo unsafe", "text/plain")},
     )
     assert response.status_code == 400
     assert "comandos interactivos" in response.json()["detail"]
