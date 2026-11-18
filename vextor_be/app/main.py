@@ -160,7 +160,7 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    if scheduler:
+    if scheduler and scheduler.running:
         scheduler.shutdown(wait=False)
 
 
