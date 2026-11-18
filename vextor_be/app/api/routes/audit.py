@@ -344,7 +344,7 @@ async def restore_backup(
 
     elif filename:
         fname = filename.strip()
-        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,180}\\.sql", fname, re.IGNORECASE):
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,180}\.sql", fname, re.IGNORECASE):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Nombre de archivo inválido. Debe ser un nombre .sql seguro.",
