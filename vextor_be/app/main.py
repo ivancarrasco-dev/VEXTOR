@@ -105,8 +105,8 @@ async def lifespan(app: FastAPI):
             try:
                 from apscheduler.schedulers.background import BackgroundScheduler
                 from apscheduler.triggers.cron import CronTrigger
-                from app.services.backup_service import generate_database_backup
-                from app.services.backup_storage import upload_backup, list_backups
+                from app.services.backup_service import generate_database_backup, store_backup_verified
+                from app.services.backup_storage import list_backups
 
                 list_backups()  # No iniciar el scheduler si el bucket no existe/no es accesible.
 
@@ -127,7 +127,7 @@ async def lifespan(app: FastAPI):
                                 return
                             try:
                                 filename, content = generate_database_backup()
-                                upload_backup(filename, content)
+                                store_backup_verified(filename, content)
                                 print("Scheduled VEXTOR backup completed.")
                             finally:
                                 # Libera el lock transaccional al finalizar o fallar el respaldo.
