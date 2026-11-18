@@ -20,6 +20,8 @@ class Settings:
 
     # ========== DATABASE ==========
     DATABASE_URL: str = os.getenv("DATABASE_URL")
+    # URL opcional solo para pg_dump/psql; no cambia la conexión normal de la aplicación.
+    BACKUP_DATABASE_URL: str = os.getenv("BACKUP_DATABASE_URL") or DATABASE_URL
     if not DATABASE_URL:
         raise RuntimeError(
             "DATABASE_URL no está configurada. Crea .env en la raíz del proyecto a partir de .env.example."
