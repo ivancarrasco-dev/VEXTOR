@@ -265,3 +265,21 @@ def test_manual_sql_upload_rejects_non_sql(test_db):
         files={"file": ("malware.exe", b"not SQL", "application/octet-stream")},
     )
     assert response.status_code == 400
+
+
+def test_backup_restore_rejects_psql_shell_commands(test_db):
+    """No se deben aceptar metacomandos psql que puedan ejecutar procesos locales."""
+    client = TestClient(app)
+    login_res = client.post(
+        "/api/auth/login",
+        json={"email": "admin_backup@vextor.com", "password": "Admin123!"}
+    )
+    assert login_res.status_code == 200
+
+    response = client.post(
+        "/api/backup/restore",
+        cookies=login_res.cookies,
+        files={"file": ("unsafe.sql", b"SELECT 1;\\n\\\\! echo unsafe", "text/plain")},
+    )
+    assert response.status_code == 400
+    assert "comandos interactivos" in response.json()["detail"]
