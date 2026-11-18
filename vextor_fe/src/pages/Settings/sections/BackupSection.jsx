@@ -8,6 +8,7 @@ const BackupSection = ({
   handleCreateBackup,
   isBackingUp,
   backupList,
+  fetchBackups,
   showToast,
 }) => {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -33,11 +34,7 @@ const BackupSection = ({
       const response = await axios.post(`${API_BASE_URL}/api/backup/upload`, formData);
       showToast(response.data?.message || 'Respaldo subido correctamente.');
       setSelectedFile(null);
-      await axios.get(`${API_BASE_URL}/api/backup`).then((res) => {
-        // El componente recibe la lista desde Settings; el refresco se dispara al volver a entrar.
-        if (!Array.isArray(res.data)) throw new Error('Respuesta de historial inválida');
-      });
-      window.location.reload();
+      await fetchBackups();
     } catch (error) {
       showToast(error.response?.data?.detail || 'No fue posible subir el archivo SQL.');
     } finally {
