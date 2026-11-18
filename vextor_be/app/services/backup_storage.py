@@ -14,7 +14,7 @@ class BackupStorageError(RuntimeError):
     pass
 
 
-def _request(method: str, path: str, body: bytes | None = None, content_type: str = "application/json"):
+def _request(method: str, path: str, body: bytes | None = None, content_type: str = "application/json", raw_response: bool = False):
     if not settings.BACKUP_STORAGE_CONFIGURED:
         raise BackupStorageError("El almacenamiento de respaldos no está configurado en el backend.")
 
@@ -30,6 +30,8 @@ def _request(method: str, path: str, body: bytes | None = None, content_type: st
             payload = response.read()
             if not payload:
                 return None
+            if raw_response:
+                return payload
             try:
                 return json.loads(payload.decode("utf-8"))
             except (UnicodeDecodeError, json.JSONDecodeError):
@@ -72,4 +74,5 @@ def download_backup(filename: str):
         "GET",
         f"/object/{quote(settings.SUPABASE_BACKUP_BUCKET, safe='')}/{object_path}",
         content_type="application/octet-stream",
+        raw_response=True,
     )
