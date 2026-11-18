@@ -346,33 +346,45 @@ async def restore_backup(
                 detail="Nombre de archivo inválido. Debe terminar en .sql",
             )
 
-        # Buscar en carpetas conocidas si el archivo existe físicamente en el servidor
+        if os.path.basename(fname) != fname or "/" in fname or "\\" in fname:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Nombre de archivo inválido.",
+            )
+
+        # Compatibilidad con respaldos antiguos en disco y respaldos nuevos en Storage.
         possible_paths = [
             os.path.join(os.getcwd(), fname),
             os.path.join(os.getcwd(), "backups", fname),
             os.path.join("/tmp", fname),
         ]
-        found_path = None
-        for p in possible_paths:
-            if os.path.exists(p) and os.path.isfile(p):
-                found_path = p
-                break
-
+        found_path = next(
+            (path for path in possible_paths if os.path.isfile(path)),
+            None,
+        )
         if found_path:
             if os.path.getsize(found_path) > MAX_BACKUP_SIZE_BYTES:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="El archivo excede el tamaño máximo permitido (50MB).",
                 )
-            with open(found_path, "r", encoding="utf-8", errors="replace") as f:
-                sql_content = f.read()
+            with open(found_path, "r", encoding="utf-8", errors="replace") as backup_file:
+                sql_content = backup_file.read()
             source_label = fname
         else:
-            # Si no existe en disco local y tampoco se subió un archivo, requerir la subida
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"No se encontró el archivo '{fname}' en el servidor. Por favor, adjunte el archivo SQL directamente.",
-            )
+            try:
+                from app.services.backup_storage import BackupStorageError, download_backup
+                stored_content = download_backup(fname)
+                if not isinstance(stored_content, bytes):
+                    raise HTTPException(status_code=404, detail="No se encontró el respaldo solicitado.")
+                if len(stored_content) > MAX_BACKUP_SIZE_BYTES:
+                    raise HTTPException(status_code=400, detail="El archivo excede el tamaño máximo permitido (50MB).")
+                sql_content = stored_content.decode("utf-8")
+                source_label = fname
+            except UnicodeDecodeError:
+                raise HTTPException(status_code=400, detail="El respaldo no contiene texto UTF-8 válido.") from None
+            except BackupStorageError:
+                raise HTTPException(status_code=404, detail="No se encontró el respaldo en Supabase Storage.") from None
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
