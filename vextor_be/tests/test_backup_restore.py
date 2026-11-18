@@ -15,6 +15,7 @@ from app.database import get_db, Base
 from app.models import Usuario, Rol, Actividad
 from app.core.security import hash_password
 from app.api.routes import backup as backup_routes
+from app.api.routes.audit import validate_restore_sql_content
 
 
 @pytest.fixture
@@ -283,3 +284,12 @@ def test_backup_restore_rejects_psql_shell_commands(test_db):
     )
     assert response.status_code == 400
     assert "comandos interactivos" in response.json()["detail"]
+
+
+def test_restore_sql_validator_accepts_pg_dump_copy_null_values():
+    sql_dump = (
+        "COPY public.example (value) FROM stdin;\\n"
+        "\\N\\n"
+        "\\\\.\\n"
+    )
+    assert validate_restore_sql_content(sql_dump) is True
