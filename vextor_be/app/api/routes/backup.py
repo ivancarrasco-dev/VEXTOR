@@ -4,6 +4,7 @@ Todas las operaciones están restringidas a administradores y usan un bucket pri
 """
 from datetime import datetime, timezone
 from pathlib import Path
+import re
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
@@ -141,7 +142,7 @@ async def upload_manual_backup(
         raise HTTPException(status_code=413, detail="El archivo supera el tamaño máximo permitido.")
     try:
         # Nombre único: nunca sobrescribir una copia que ya exista.
-        safe_name = "".join(ch if ch.isalnum() or ch in "._-" else "_" for ch in original_name)
+        safe_name = "".join(ch if ch.isascii() and (ch.isalnum() or ch in "._-") else "_" for ch in original_name)
         filename = f"manual_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')}_{uuid4().hex[:8]}_{safe_name}"
         upload_backup(filename, content)
     except BackupStorageError as exc:
@@ -166,7 +167,7 @@ def download_backup_file(
     current_user=Depends(get_current_user),
 ):
     require_backup_admin(db, current_user)
-    if "/" in filename or "\\" in filename or not filename.lower().endswith(".sql"):
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,180}\\.sql", filename, re.IGNORECASE):
         raise HTTPException(status_code=400, detail="Nombre de respaldo inválido.")
     try:
         content = download_backup(filename)
