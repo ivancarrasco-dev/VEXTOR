@@ -40,6 +40,13 @@ El almacenamiento objetivo es un bucket privado de Supabase Storage. Las operaci
 
 ## Configuración de despliegue
 
+1. En Supabase Storage crea manualmente el bucket `vextor-backups` y déjalo como **Private**.
+2. En los secretos del entorno del backend configura `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`.
+3. No pongas la clave privilegiada en variables `VITE_*`, en el frontend ni en Git.
+4. Para activar respaldos diarios configura `BACKUP_AUTO_ENABLED=true`. Por defecto queda desactivado.
+5. La programación usa la zona horaria `America/Bogota` y se ejecuta a las 04:00; puedes cambiar hora y zona horaria mediante las variables documentadas en `.env.example`.
+6. El scheduler usa un advisory lock de PostgreSQL para evitar respaldos duplicados entre réplicas. No modifica tablas ni datos de negocio.
+
 Variables nuevas previstas para el backend:
 
 - `SUPABASE_URL`: URL del proyecto Supabase.
