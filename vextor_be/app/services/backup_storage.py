@@ -43,7 +43,20 @@ def _request(method: str, path: str, body: bytes | None = None, content_type: st
         raise BackupStorageError("No fue posible conectar con Supabase Storage.") from None
 
 
+def ensure_private_bucket():
+    bucket = _request(
+        "GET",
+        f"/bucket/{quote(settings.SUPABASE_BACKUP_BUCKET, safe='')}",
+    )
+    if not isinstance(bucket, dict) or bucket.get("public") is not False:
+        raise BackupStorageError(
+            "El bucket de respaldos debe existir y estar configurado como privado en Supabase Storage."
+        )
+    return bucket
+
+
 def upload_backup(filename: str, content: bytes):
+    ensure_private_bucket()
     object_path = f"manual/{quote(filename, safe='')}"
     return _request(
         "POST",
@@ -54,6 +67,7 @@ def upload_backup(filename: str, content: bytes):
 
 
 def list_backups():
+    ensure_private_bucket()
     payload = json.dumps({
         "prefix": "manual/",
         "limit": 100,
@@ -69,6 +83,7 @@ def list_backups():
 
 
 def download_backup(filename: str):
+    ensure_private_bucket()
     object_path = f"manual/{quote(filename, safe='')}"
     return _request(
         "GET",
