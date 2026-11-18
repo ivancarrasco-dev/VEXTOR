@@ -102,7 +102,7 @@ def create_backup(
         filename, content = generate_database_backup()
         upload_backup(filename, content)
     except BackupOperationError as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from None
+        raise HTTPException(status_code=503, detail=str(exc)) from None
     except BackupStorageError as exc:
         _storage_error(exc)
 
