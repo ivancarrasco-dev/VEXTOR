@@ -247,7 +247,7 @@ def test_manual_sql_upload_is_stored_not_executed(test_db, monkeypatch):
 
     assert response.status_code == 201
     assert response.json()["status"] == "success"
-    assert "no se ha ejecutado" in response.json()["message"]
+    assert "no se ha ejecutado" in response.json()["message"].lower()
     assert len(stored) == 1
     assert stored[0][1] == b"-- SQL backup"
 
