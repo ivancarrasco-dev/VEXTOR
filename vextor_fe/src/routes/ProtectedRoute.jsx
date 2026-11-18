@@ -80,7 +80,7 @@ const ProtectedRoute = ({ adminOnly = false }) => {
 
   // En Android, incluso los conductores solo pueden abrir el módulo /driver.
   // Evita el acceso directo por URL a pantallas de usuario o configuración.
-  if (isNative && !adminOnly && !(
+  if (isNative && !(
     location.pathname === '/driver' || location.pathname.startsWith('/driver/')
   )) {
     return <Navigate to="/driver/my-routes" replace />;
