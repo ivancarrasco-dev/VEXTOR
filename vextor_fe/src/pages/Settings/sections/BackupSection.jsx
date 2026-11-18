@@ -88,7 +88,7 @@ const BackupSection = ({
           {!backupStatus
             ? 'Consultando configuración de respaldos...'
             : !backupStatus.storage_configured
-              ? 'Storage no está configurado. Añade las variables privadas del backend para activar los respaldos en la nube.'
+              ? 'Storage no está disponible. Verifica las credenciales del backend y que el bucket vextor-backups exista y sea privado.'
               : backupStatus.automatic_enabled
                 ? `Activo: todos los días a las ${String(backupStatus.hour).padStart(2, '0')}:${String(backupStatus.minute).padStart(2, '0')} (${backupStatus.timezone}).`
                 : 'La programación diaria está desactivada. Puedes activarla con BACKUP_AUTO_ENABLED=true en el entorno del backend.'}
