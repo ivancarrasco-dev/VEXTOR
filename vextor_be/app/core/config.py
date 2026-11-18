@@ -50,6 +50,10 @@ class Settings:
     SUPABASE_BACKUP_BUCKET: str = os.getenv("SUPABASE_BACKUP_BUCKET", "vextor-backups")
     BACKUP_MAX_SIZE_BYTES: int = int(os.getenv("BACKUP_MAX_SIZE_BYTES", str(50 * 1024 * 1024)))
     BACKUP_STORAGE_TIMEOUT_SECONDS: float = float(os.getenv("BACKUP_STORAGE_TIMEOUT_SECONDS", "30"))
+    BACKUP_AUTO_ENABLED: bool = os.getenv("BACKUP_AUTO_ENABLED", "false").lower() in ("true", "1", "yes")
+    BACKUP_AUTO_HOUR: int = int(os.getenv("BACKUP_AUTO_HOUR", "4"))
+    BACKUP_AUTO_MINUTE: int = int(os.getenv("BACKUP_AUTO_MINUTE", "0"))
+    BACKUP_AUTO_TIMEZONE: str = os.getenv("BACKUP_AUTO_TIMEZONE", "America/Bogota")
 
     @property
     def BACKUP_STORAGE_CONFIGURED(self) -> bool:
