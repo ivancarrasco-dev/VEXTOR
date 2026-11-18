@@ -235,7 +235,7 @@ def test_manual_sql_upload_is_stored_not_executed(test_db, monkeypatch):
     )
     monkeypatch.setattr(
         backup_routes,
-        "upload_backup",
+        "store_backup_verified",
         lambda filename, content: stored.append((filename, content)),
     )
 
