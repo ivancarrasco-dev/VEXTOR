@@ -288,8 +288,8 @@ def test_backup_restore_rejects_psql_shell_commands(test_db):
 
 def test_restore_sql_validator_accepts_pg_dump_copy_null_values():
     sql_dump = (
-        "COPY public.example (value) FROM stdin;\\n"
-        "\\N\\n"
-        "\\\\.\\n"
+        "COPY public.example (value) FROM stdin;\n"
+        "\\N\n"
+        "\\.\n"
     )
     assert validate_restore_sql_content(sql_dump) is True
