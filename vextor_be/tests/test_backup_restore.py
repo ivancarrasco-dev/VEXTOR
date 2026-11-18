@@ -14,6 +14,7 @@ from app.main import app
 from app.database import get_db, Base
 from app.models import Usuario, Rol, Actividad
 from app.core.security import hash_password
+from app.api.routes import backup as backup_routes
 
 
 @pytest.fixture
@@ -170,3 +171,45 @@ def test_backup_restore_successful_upload(test_db):
     assert audit is not None
     assert audit.id_usuario == admin.id_usuario
     assert "valid_backup.sql" in audit.descripcion
+
+
+def test_backup_list_requires_admin(test_db):
+    """El historial de Storage no debe estar disponible para usuarios normales."""
+    client = TestClient(app)
+    login_res = client.post(
+        "/api/auth/login",
+        json={"email": "user_backup@vextor.com", "password": "User123!"}
+    )
+    assert login_res.status_code == 200
+
+    response = client.get("/api/backup", cookies=login_res.cookies)
+    assert response.status_code == 403
+
+
+def test_backup_list_returns_storage_objects_for_admin(test_db, monkeypatch):
+    """El administrador recibe solo los objetos SQL del bucket privado."""
+    client = TestClient(app)
+    login_res = client.post(
+        "/api/auth/login",
+        json={"email": "admin_backup@vextor.com", "password": "Admin123!"}
+    )
+    assert login_res.status_code == 200
+
+    monkeypatch.setattr(
+        backup_routes,
+        "list_backups",
+        lambda: [
+            {
+                "name": "vextor_backup_test.sql",
+                "created_at": "2026-11-18T12:00:00Z",
+                "metadata": {"size": 1024},
+            },
+            {"name": "readme.txt", "metadata": {"size": 12}},
+        ],
+    )
+    response = client.get("/api/backup", cookies=login_res.cookies)
+
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+    assert response.json()[0]["filename"] == "vextor_backup_test.sql"
+    assert response.json()[0]["size"] == 1024
