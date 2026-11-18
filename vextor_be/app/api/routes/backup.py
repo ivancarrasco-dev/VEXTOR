@@ -3,6 +3,7 @@
 Todas las operaciones están restringidas a administradores y usan un bucket privado.
 """
 from datetime import datetime, timezone
+import asyncio
 from pathlib import Path
 import re
 from uuid import uuid4
@@ -150,7 +151,7 @@ async def upload_manual_backup(
             f"manual_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')}_"
             f"{uuid4().hex[:8]}_{safe_stem}.sql"
         )
-        upload_backup(filename, content)
+        await asyncio.to_thread(upload_backup, filename, content)
     except BackupStorageError as exc:
         _storage_error(exc)
     return {
