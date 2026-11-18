@@ -36,6 +36,7 @@ from sqlalchemy import text
 from app.services.audit_service import AuditService
 from app.core.config import settings
 from app.services.backup_service import BackupOperationError, restore_postgres_sql
+from app.services.backup_storage import BackupStorageError, download_backup
 
 router = APIRouter(tags=["Audit & Security"])
 
@@ -376,7 +377,6 @@ async def restore_backup(
             source_label = fname
         else:
             try:
-                from app.services.backup_storage import BackupStorageError, download_backup
                 stored_content = download_backup(fname)
                 if not isinstance(stored_content, bytes):
                     raise HTTPException(status_code=404, detail="No se encontró el respaldo solicitado.")
