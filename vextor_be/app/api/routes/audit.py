@@ -344,10 +344,10 @@ async def restore_backup(
 
     elif filename:
         fname = filename.strip()
-        if not fname.lower().endswith(".sql"):
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,180}\\.sql", fname, re.IGNORECASE):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Nombre de archivo inválido. Debe terminar en .sql",
+                detail="Nombre de archivo inválido. Debe ser un nombre .sql seguro.",
             )
 
         if os.path.basename(fname) != fname or "/" in fname or "\\" in fname:
