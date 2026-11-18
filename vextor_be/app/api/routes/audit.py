@@ -5,7 +5,6 @@ Actividades, notificaciones, sesiones
 from typing import List, Optional
 from uuid import UUID
 from datetime import datetime, date
-from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, or_
 
@@ -21,18 +20,11 @@ from app.models import (
 )
 from app.api.routes.auth import get_current_user
 from app.core.security import hash_password, verify_password
-from app.utils import get_client_ip
-from pydantic import BaseModel
 
 import os
-import shutil
-import tempfile
-import subprocess
 import logging
 import re
-from urllib.parse import urlparse
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Request
-from sqlalchemy import text
 from app.services.audit_service import AuditService
 from app.core.config import settings
 from app.services.backup_service import BackupOperationError, restore_postgres_sql
