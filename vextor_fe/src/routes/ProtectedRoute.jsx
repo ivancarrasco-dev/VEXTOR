@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Logo } from '../components/ui/Logo';
 import { isNativePlatform } from '../utils/platform';
@@ -15,6 +15,7 @@ import { Button } from '../components/ui/Button';
 const ProtectedRoute = ({ adminOnly = false }) => {
   const { isAuthenticated, isLoading, user, logout } = useAuth();
   const isNative = isNativePlatform();
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -40,7 +41,7 @@ const ProtectedRoute = ({ adminOnly = false }) => {
   }
 
   const roleLower = (user?.role || '').toLowerCase();
-  const isConductor = roleLower.includes('conductor');
+  const isConductor = roleLower.trim() === 'conductor';
   const isUsuario = roleLower.includes('usuario');
 
   // En la APK móvil nativa, bloquear acceso si el usuario NO es conductor
@@ -77,8 +78,16 @@ const ProtectedRoute = ({ adminOnly = false }) => {
     );
   }
 
+  // En Android, incluso los conductores solo pueden abrir el módulo /driver.
+  // Evita el acceso directo por URL a pantallas de usuario o configuración.
+  if (isNative && !adminOnly && !(
+    location.pathname === '/driver' || location.pathname.startsWith('/driver/')
+  )) {
+    return <Navigate to="/driver/my-routes" replace />;
+  }
+
   // En la plataforma web regular
-  if (adminOnly && (isConductor || isUsuario)) {
+  if (!isNative && adminOnly && (isConductor || isUsuario)) {
     if (isConductor) return <Navigate to="/driver/my-routes" replace />;
     if (isUsuario) return <Navigate to="/user/home" replace />;
   }
