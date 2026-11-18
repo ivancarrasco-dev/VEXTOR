@@ -74,6 +74,8 @@ const BackupSection = ({
       await fetchBackups();
     } catch (error) {
       showToast(error.response?.data?.detail || 'No fue posible completar la restauración.');
+      // La copia previa puede haberse guardado aunque la restauración haya fallado.
+      await fetchBackups();
     } finally {
       setIsRestoring(false);
     }
