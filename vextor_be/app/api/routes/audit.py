@@ -29,10 +29,13 @@ import shutil
 import tempfile
 import subprocess
 import logging
+import re
 from urllib.parse import urlparse
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Request
 from sqlalchemy import text
 from app.services.audit_service import AuditService
+from app.core.config import settings
+from app.services.backup_service import BackupOperationError, restore_postgres_sql
 
 router = APIRouter(tags=["Audit & Security"])
 
@@ -279,7 +282,7 @@ def change_password(
 
 # ========== RESPALDOS Y RESTAURACIÓN ==========
 
-MAX_BACKUP_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
+MAX_BACKUP_SIZE_BYTES = settings.BACKUP_MAX_SIZE_BYTES
 
 @router.post("/api/backup/restore")
 async def restore_backup(
@@ -319,7 +322,7 @@ async def restore_backup(
                 detail="Formato de archivo no permitido. Debe ser un archivo .sql",
             )
 
-        contents = await file.read()
+        contents = await file.read(MAX_BACKUP_SIZE_BYTES + 1)
         if len(contents) > MAX_BACKUP_SIZE_BYTES:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -399,16 +402,25 @@ async def restore_backup(
             detail="El archivo SQL está vacío.",
         )
 
-    # Verificación básica de sintaxis SQL
-    sql_keywords = ["CREATE", "INSERT", "ALTER", "DROP", "UPDATE", "DELETE", "BEGIN", "COMMIT", "SELECT", "SET"]
+    # Validación básica y bloqueo de comandos interactivos de psql que podrían
+    # ejecutar procesos o leer archivos locales del contenedor.
+    sql_keywords = ["CREATE", "INSERT", "ALTER", "DROP", "UPDATE", "DELETE", "BEGIN", "COMMIT", "SELECT", "SET", "COPY"]
     if not any(kw in stripped_sql.upper() for kw in sql_keywords):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="El archivo proporcionado no parece ser un script SQL válido.",
         )
+    for line in stripped_sql.splitlines():
+        command = line.lstrip()
+        if command.startswith("\\"):
+            if command == "\\." or re.match(r"^\\(?:restrict|unrestrict)\\b", command):
+                continue
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El archivo contiene comandos interactivos de psql no permitidos.",
+            )
 
     # Ejecución de la restauración
-    from app.core.config import settings
     pre_restore_backup = None
 
     if settings.DATABASE_URL.startswith("sqlite"):
@@ -428,7 +440,6 @@ async def restore_backup(
     else:
         # PostgreSQL exige una copia previa subida y verificada en Storage.
         try:
-            from app.services.backup_service import BackupOperationError, restore_postgres_sql
             pre_restore_backup = restore_postgres_sql(stripped_sql)
             restored_successfully = True
         except Exception as restore_err:
