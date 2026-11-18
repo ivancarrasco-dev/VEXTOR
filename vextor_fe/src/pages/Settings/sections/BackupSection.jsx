@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RefreshCw, AlertTriangle, Database, X, Upload } from 'lucide-react';
+import { AlertTriangle, Upload, Download } from 'lucide-react';
 import axios from 'axios';
 import { Button } from '../../../components/ui/Button';
 import { API_BASE_URL } from '../../../config/api';
@@ -13,6 +13,7 @@ const BackupSection = ({
   isBackingUp,
   backupList,
   setBackupList,
+  fetchBackups,
   showToast
 }) => {
   const [selectedBackupToRestore, setSelectedBackupToRestore] = useState(null);
@@ -57,30 +58,12 @@ const BackupSection = ({
 
   return (
     <div className="space-y-6 text-left">
-      {/* Automated Backups block */}
-      <div className="flex justify-between items-center bg-v-dark/20 p-4 border border-v-dark-border rounded-xl">
-        <div>
-          <p className="font-bold text-v-white text-sm">Respaldos Automáticos Diarios</p>
-          <p className="text-xs text-v-gray mt-0.5">Guardar automáticamente una copia de la base de datos cada noche en la nube de Vextor.</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            setIsAutoBackup(!isAutoBackup);
-            showToast(isAutoBackup ? 'Backups automáticos deshabilitados.' : 'Backups automáticos habilitados.');
-          }}
-          className={cn(
-            "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
-            isAutoBackup ? "bg-primary" : "bg-v-dark-border"
-          )}
-        >
-          <span
-            className={cn(
-              "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-v-dark shadow ring-0 transition duration-200 ease-in-out",
-              isAutoBackup ? "translate-x-5 bg-v-dark-constant" : "translate-x-0 bg-v-gray"
-            )}
-          />
-        </button>
+      {/* La programación automática se habilitará cuando exista un scheduler persistente. */}
+      <div className="bg-v-dark/20 p-4 border border-v-dark-border rounded-xl">
+        <p className="font-bold text-v-white text-sm">Respaldos automáticos</p>
+        <p className="text-xs text-v-gray mt-0.5">
+          La programación automática todavía no está activa. Los respaldos manuales sí se generan y almacenan en el bucket privado de Supabase.
+        </p>
       </div>
 
       {/* On demand backup actions and Upload Restore */}
@@ -122,11 +105,17 @@ const BackupSection = ({
       <div className="space-y-3">
         <h4 className="font-bold text-sm text-v-white">Copias Guardadas</h4>
         <div className="border border-v-dark-border rounded-xl bg-v-dark/10 divide-y divide-v-dark-border">
+          {backupList.length === 0 && (
+            <p className="p-4 text-xs text-v-gray">No hay respaldos guardados en Supabase Storage.</p>
+          )}
           {backupList.map((bk) => (
             <div key={bk.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between text-sm gap-3 animate-in fade-in">
               <div>
                 <p className="font-mono text-xs text-v-white font-bold">{bk.filename}</p>
-                <p className="text-xs text-v-gray mt-1">Peso: {bk.size} • Creado el: {bk.date}</p>
+                <p className="text-xs text-v-gray mt-1">
+                  Peso: {typeof bk.size === 'number' ? `${(bk.size / 1024 / 1024).toFixed(2)} MB` : (bk.size || 'No disponible')}
+                  {' • '}Creado el: {bk.date ? new Date(bk.date).toLocaleString() : 'Fecha no disponible'}
+                </p>
               </div>
 
               <div className="flex gap-2 shrink-0">
@@ -134,20 +123,35 @@ const BackupSection = ({
                   variant="outline"
                   size="sm"
                   className="text-xs h-8 px-3 font-semibold cursor-pointer"
-                  onClick={() => setSelectedBackupToRestore(bk)}
+                  onClick={async () => {
+                    try {
+                      const response = await axios.get(
+                        `${API_BASE_URL}/api/backup/${encodeURIComponent(bk.filename)}/download`,
+                        { responseType: 'blob' }
+                      );
+                      const url = window.URL.createObjectURL(response.data);
+                      const anchor = document.createElement('a');
+                      anchor.href = url;
+                      anchor.download = bk.filename;
+                      document.body.appendChild(anchor);
+                      anchor.click();
+                      anchor.remove();
+                      window.URL.revokeObjectURL(url);
+                    } catch (error) {
+                      showToast(error.response?.data?.detail || 'No fue posible descargar el respaldo.');
+                    }
+                  }}
                 >
-                  Restaurar
+                  <Download size={14} className="mr-1" /> Descargar
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="text-xs h-8 px-3 text-red-400 hover:text-red-300 hover:bg-red-500/10 font-semibold cursor-pointer"
-                  onClick={() => {
-                    setBackupList(backupList.filter(b => b.id !== bk.id));
-                    showToast('Copia eliminada.');
-                  }}
+                  disabled
+                  title="La restauración desde Storage se habilitará tras implementar y probar el respaldo previo obligatorio."
+                  className="text-xs h-8 px-3 font-semibold"
                 >
-                  Eliminar
+                  Restaurar
                 </Button>
               </div>
             </div>
