@@ -137,17 +137,22 @@ def generate_database_backup():
                 pass
 
 
+def store_backup_verified(filename: str, content: bytes):
+    """Sube un respaldo y comprueba por descarga que el objeto quedó íntegro."""
+    upload_backup(filename, content)
+    stored_content = download_backup(filename)
+    if not isinstance(stored_content, bytes):
+        raise BackupOperationError("No se pudo verificar el respaldo almacenado.")
+    if hashlib.sha256(stored_content).digest() != hashlib.sha256(content).digest():
+        raise BackupOperationError("El respaldo almacenado no superó la verificación de integridad.")
+    return filename
+
+
 def create_verified_pre_restore_backup():
     """Crea una copia del estado actual y verifica que pueda descargarse íntegra."""
     filename, content = generate_database_backup()
     filename = filename.replace("vextor_backup_", "vextor_pre_restore_", 1)
-    upload_backup(filename, content)
-    stored_content = download_backup(filename)
-    if not isinstance(stored_content, bytes):
-        raise BackupOperationError("No se pudo verificar la copia previa almacenada.")
-    if hashlib.sha256(stored_content).digest() != hashlib.sha256(content).digest():
-        raise BackupOperationError("La copia previa no superó la verificación de integridad.")
-    return filename
+    return store_backup_verified(filename, content)
 
 
 def restore_postgres_sql(sql_content: str):
