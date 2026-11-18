@@ -2,14 +2,9 @@
 
 Todas las operaciones están restringidas a administradores y usan un bucket privado.
 """
-import os
-import shutil
-import subprocess
-import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
-from urllib.parse import parse_qs, unquote, urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from fastapi.responses import Response
@@ -25,6 +20,7 @@ from app.services.backup_storage import (
     list_backups,
     download_backup,
 )
+from app.services.backup_service import BackupOperationError, generate_database_backup, restore_postgres_sql
 
 router = APIRouter(prefix="/api/backup", tags=["Backups"])
 
@@ -80,93 +76,25 @@ def create_backup(
             status_code=503,
             detail="Configura SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY en el backend y crea el bucket privado.",
         )
-
-    pg_dump = shutil.which("pg_dump")
-    if not pg_dump:
-        raise HTTPException(
-            status_code=503,
-            detail="pg_dump no está instalado en el servidor. Instala postgresql-client y reinicia el backend.",
-        )
-
-    parsed = urlparse(settings.DATABASE_URL.replace("postgresql+psycopg://", "postgresql://").replace("postgres://", "postgresql://"))
-    if parsed.scheme not in ("postgresql", "postgres"):
-        raise HTTPException(status_code=400, detail="El motor configurado no permite generar un dump PostgreSQL.")
-
-    host = parsed.hostname
-    if not host:
-        raise HTTPException(status_code=500, detail="La URL de base de datos no contiene un host válido.")
-    query = parse_qs(parsed.query)
-    db_name = unquote(parsed.path.lstrip("/").split("?")[0])
-    db_user = unquote(parsed.username or "")
-    db_password = unquote(parsed.password or "")
-    db_port = str(parsed.port or 5432)
-    if not db_name or not db_user:
-        raise HTTPException(status_code=500, detail="La URL de base de datos no contiene usuario o base de datos.")
-
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    filename = f"vextor_backup_{timestamp}.sql"
-    tmp_path = None
     try:
-        with tempfile.NamedTemporaryFile(prefix="vextor_backup_", suffix=".sql", delete=False) as temp:
-            tmp_path = temp.name
-
-        env = os.environ.copy()
-        if db_password:
-            env["PGPASSWORD"] = db_password
-        sslmode = query.get("sslmode", ["require"])[0]
-        env["PGSSLMODE"] = sslmode
-
-        command = [
-            pg_dump, "--host", host, "--port", db_port,
-            "--username", db_user, "--dbname", db_name,
-            "--format", "plain", "--no-owner", "--no-privileges",
-            "--schema=public", "--file", tmp_path,
-        ]
-        result = subprocess.run(
-            command,
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=300,
-            check=False,
-        )
-        if result.returncode != 0:
-            # No incluir stdout/stderr: pueden revelar host, nombres internos u otros datos.
-            raise HTTPException(
-                status_code=500,
-                detail="pg_dump no pudo generar el respaldo. Verifica compatibilidad del cliente PostgreSQL y permisos de lectura.",
-            )
-
-        size = os.path.getsize(tmp_path)
-        if size <= 0 or size > settings.BACKUP_MAX_SIZE_BYTES:
-            raise HTTPException(
-                status_code=413,
-                detail="El respaldo generado está vacío o supera el límite configurado.",
-            )
-        with open(tmp_path, "rb") as backup_file:
-            content = backup_file.read()
+        filename, content = generate_database_backup()
         upload_backup(filename, content)
-        return {
-            "status": "success",
-            "message": "Respaldo generado y almacenado correctamente.",
-            "backup": {
-                "id": filename,
-                "filename": filename,
-                "size": size,
-                "date": datetime.now(timezone.utc).isoformat(),
-                "status": "Completado",
-            },
-        }
-    except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=504, detail="La generación del respaldo superó el tiempo máximo permitido.") from None
+    except BackupOperationError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from None
     except BackupStorageError as exc:
         _storage_error(exc)
-    finally:
-        if tmp_path and os.path.exists(tmp_path):
-            try:
-                os.remove(tmp_path)
-            except OSError:
-                pass
+
+    return {
+        "status": "success",
+        "message": "Respaldo generado y almacenado correctamente.",
+        "backup": {
+            "id": filename,
+            "filename": filename,
+            "size": len(content),
+            "date": datetime.now(timezone.utc).isoformat(),
+            "status": "Completado",
+        },
+    }
 
 
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
