@@ -127,14 +127,14 @@ async def upload_manual_backup(
 ):
     """Guarda un SQL proporcionado por el administrador sin ejecutarlo."""
     require_backup_admin(db, current_user)
+    original_name = Path(file.filename or "backup.sql").name
+    if not original_name.lower().endswith(".sql"):
+        raise HTTPException(status_code=400, detail="Formato no permitido. Debe ser un archivo .sql.")
     if not settings.BACKUP_STORAGE_CONFIGURED:
         raise HTTPException(
             status_code=503,
             detail="Configura Supabase Storage en el backend antes de subir respaldos.",
         )
-    original_name = Path(file.filename or "backup.sql").name
-    if not original_name.lower().endswith(".sql"):
-        raise HTTPException(status_code=400, detail="Formato no permitido. Debe ser un archivo .sql.")
     content = await file.read(settings.BACKUP_MAX_SIZE_BYTES + 1)
     if not content:
         raise HTTPException(status_code=400, detail="El archivo SQL está vacío.")
