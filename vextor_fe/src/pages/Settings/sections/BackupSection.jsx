@@ -166,7 +166,7 @@ const BackupSection = ({
               <div>
                 <p className="font-mono text-xs text-v-white font-bold">{bk.filename}</p>
                 <p className="text-xs text-v-gray mt-1">
-                  Peso: {typeof bk.size === 'number' ? `${(bk.size / 1024 / 1024).toFixed(2)} MB` : (bk.size || 'No disponible')}
+                  Peso: {Number.isFinite(Number(bk.size)) ? `${(Number(bk.size) / 1024 / 1024).toFixed(2)} MB` : (bk.size || 'No disponible')}
                   {' • '}Creado el: {bk.date ? new Date(bk.date).toLocaleString() : 'Fecha no disponible'}
                 </p>
               </div>
