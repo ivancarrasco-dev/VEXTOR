@@ -100,7 +100,7 @@ const BackupSection = ({
         <div className="flex flex-col justify-between p-4 bg-v-dark/10 border border-v-dark-border/40 rounded-xl gap-4">
           <div>
             <h4 className="font-bold text-v-white text-sm">Respaldo Manual</h4>
-            <p className="text-xs text-v-gray mt-0.5">Genere una descarga instantánea de la base de datos de Vextor.</p>
+            <p className="text-xs text-v-gray mt-0.5">Genera un archivo SQL real y lo guarda en Supabase Storage. Después podrás descargarlo desde el historial.</p>
           </div>
           <Button
             variant="primary"
