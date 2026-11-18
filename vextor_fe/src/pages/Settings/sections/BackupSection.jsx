@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, Download, AlertTriangle, X } from 'lucide-react';
 import axios from 'axios';
@@ -17,6 +17,16 @@ const BackupSection = ({
   const [selectedBackupToRestore, setSelectedBackupToRestore] = useState(null);
   const [restoreConfirmation, setRestoreConfirmation] = useState('');
   const [isRestoring, setIsRestoring] = useState(false);
+  const [backupStatus, setBackupStatus] = useState(null);
+
+  useEffect(() => {
+    axios.get(`${API_BASE_URL}/api/backup/status`)
+      .then((response) => setBackupStatus(response.data))
+      .catch((error) => {
+        console.error('Error loading backup status:', error);
+        setBackupStatus({ storage_configured: false, automatic_enabled: false });
+      });
+  }, []);
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
@@ -75,7 +85,13 @@ const BackupSection = ({
       <div className="bg-v-dark/20 p-4 border border-v-dark-border rounded-xl">
         <p className="font-bold text-v-white text-sm">Respaldos automáticos</p>
         <p className="text-xs text-v-gray mt-0.5">
-          La programación automática todavía no está activa. Puedes generar respaldos desde el sistema o guardar archivos SQL existentes en el bucket privado.
+          {!backupStatus
+            ? 'Consultando configuración de respaldos...'
+            : !backupStatus.storage_configured
+              ? 'Storage no está configurado. Añade las variables privadas del backend para activar los respaldos en la nube.'
+              : backupStatus.automatic_enabled
+                ? `Activo: todos los días a las ${String(backupStatus.hour).padStart(2, '0')}:${String(backupStatus.minute).padStart(2, '0')} (${backupStatus.timezone}).`
+                : 'La programación diaria está desactivada. Puedes activarla con BACKUP_AUTO_ENABLED=true en el entorno del backend.'}
         </p>
       </div>
 
