@@ -53,6 +53,9 @@ Variables nuevas previstas para el backend:
 - `SUPABASE_URL`: URL del proyecto Supabase.
 - `SUPABASE_SERVICE_ROLE_KEY`: clave privilegiada, solo en secretos del servidor.
 - `SUPABASE_BACKUP_BUCKET`: nombre del bucket privado (por defecto `vextor-backups`).
+- `BACKUP_DATABASE_URL`: URL opcional de sesión/directa para `pg_dump` y `psql`; si queda vacía usa `DATABASE_URL`.
+- `BACKUP_MAX_SIZE_BYTES` y `BACKUP_STORAGE_TIMEOUT_SECONDS`: límites de tamaño y tiempo de Storage.
+- `BACKUP_AUTO_ENABLED`, `BACKUP_AUTO_HOUR`, `BACKUP_AUTO_MINUTE` y `BACKUP_AUTO_TIMEZONE`: programación diaria opcional.
 
 El bucket debe permanecer privado. No configurar estas variables en `VITE_*` ni incluir sus valores en Git. La ausencia de estas variables deshabilita solo las operaciones de respaldo, no el resto de la API.
 
