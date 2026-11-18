@@ -14,7 +14,7 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 COPY package.json pnpm-lock.yaml .pnpmrc ./
 
 # Instalar dependencias de forma reproducible; cualquier error debe detener la imagen.
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --dangerously-allow-all-builds
 
 # Copiar código fuente
 COPY . .
