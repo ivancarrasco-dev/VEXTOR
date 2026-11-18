@@ -167,7 +167,7 @@ def download_backup_file(
     current_user=Depends(get_current_user),
 ):
     require_backup_admin(db, current_user)
-    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,180}\\.sql", filename, re.IGNORECASE):
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,180}\.sql", filename, re.IGNORECASE):
         raise HTTPException(status_code=400, detail="Nombre de respaldo inválido.")
     try:
         content = download_backup(filename)
